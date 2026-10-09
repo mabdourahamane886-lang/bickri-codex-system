@@ -7,7 +7,9 @@ BCX is the BICKRI project identifier registry and the foundation for a cloud-bas
 - BCX Studio browser-side prototype for HTML/CSS/JavaScript editing and sandboxed preview.
 - Supabase email/password account screen and auth callback route.
 - SQL migrations for the BCX registry schema, user profiles, and owner-scoped product writes.
-- Cloud terminal, isolated build containers, Flutter/Android compilation, AI code execution, and GitHub sync are NOT implemented yet.
+- Bickri Code AI chat UI and server-side API route are implemented; a provider API key is required.
+- BCX Cloud capability dashboard describes project storage, editor, terminal, build workers, AI and GitHub integration status.
+- Cloud terminal, isolated build containers, Flutter/Android compilation, persistent cloud files and GitHub sync are NOT implemented yet.
 
 ## Stack
 - Next.js 15, React 19, TypeScript, Tailwind CSS 4
@@ -15,6 +17,17 @@ BCX is the BICKRI project identifier registry and the foundation for a cloud-bas
 - Monaco desktop / CodeMirror 6 mobile planned for the full editor
 - Isolated Linux worker/container service planned for terminals, builds and tests
 - GitHub integration and AI coding assistant planned
+
+## AI coding assistant
+Configure these variables in Vercel Project Settings → Environment Variables, then redeploy:
+
+OPENAI_API_KEY=your_server_side_api_key
+OPENAI_MODEL=gpt-4o-mini
+
+`OPENAI_API_KEY` is server-only: do not prefix it with `NEXT_PUBLIC_` and never commit its value. The assistant is available at `/ai` and its server endpoint is `/api/ai/code`. Requests are length-limited, but production deployment should also add authenticated access, per-user quotas and abuse monitoring before public launch.
+
+## Cloud infrastructure status
+The `/cloud` page is a capability dashboard, not a running remote-compute service. A real cloud IDE still needs a separately deployed, isolated worker service for terminals/builds, private object storage, job queue, authenticated WebSocket gateway, quotas/timeouts and runtime images. Never run untrusted code inside the Next.js web process. Flutter Android builds additionally need a worker image containing the Flutter, JDK and Android SDK toolchains.
 
 ## Environment
 Copy .env.example to .env.local and configure the dedicated BCX Supabase project, not Bickri Service Agency:
