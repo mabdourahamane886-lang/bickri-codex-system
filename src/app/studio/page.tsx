@@ -24,6 +24,10 @@ export default function StudioPage() {
   const [notice, setNotice] = useState("Bienvenue dans ton espace de code.");
   const [refreshKey, setRefreshKey] = useState(0);
   const [template, setTemplate] = useState("Landing page");
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiReply, setAiReply] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE);
@@ -48,6 +52,33 @@ export default function StudioPage() {
     setWorkspace(old => ({ ...old, ...picked, updatedAt: new Date().toISOString() }));
     setNotice("Modèle « " + template + " » chargé.");
   }
+  async function askAI(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const question = aiPrompt.trim();
+    if (!question || aiLoading) return;
+    setAiLoading(true); setAiError(""); setAiReply("");
+    try {
+      const response = await fetch("/api/ai/code", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          language: activeFile === "html" ? "HTML" : activeFile === "css" ? "CSS" : "JavaScript",
+          projectContext: `Projet : ${workspace.name}\\nFichier actif : ${activeFile}\\n--- index.html ---\\n${workspace.html.slice(0, 5000)}\\n--- style.css ---\\n${workspace.css.slice(0, 5000)}\\n--- script.js ---\\n${workspace.js.slice(0, 5000)}\\nQuand la demande porte sur une modification du fichier actif, donne le contenu complet du fichier dans un bloc de code.`,
+          messages: [{ role: "user", content: question }],
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "L’assistant IA est indisponible.");
+      setAiReply(data.answer);
+    } catch (error) { setAiError(error instanceof Error ? error.message : "Une erreur est survenue."); }
+    finally { setAiLoading(false); }
+  }
+  function applyAIToActiveFile() {
+    const match = aiReply.match(/\\x60\\x60\\x60(?:html|css|javascript|js)?\\s*\\n([\\s\\S]*?)\\n\\x60\\x60\\x60/i);
+    const content = (match ? match[1] : aiReply).trim();
+    if (!content) return;
+    setWorkspace(old => ({ ...old, [activeFile]: content, updatedAt: new Date().toISOString() }));
+    setNotice("Réponse IA appliquée au fichier " + (activeFile === "html" ? "index.html" : activeFile === "css" ? "style.css" : "script.js") + ". Vérifie le résultat dans l’aperçu.");
+  }
   function reset() {
     if (!window.confirm("Remplacer ton code actuel par le modèle de départ ?")) return;
     setWorkspace({ ...starter, updatedAt: new Date().toISOString() }); setNotice("Code de départ restauré.");
@@ -61,6 +92,16 @@ export default function StudioPage() {
       <div className="editor-panel"><div className="editor-title"><span><i/> ÉDITEUR DE CODE</span><button onClick={reset}>Réinitialiser</button></div><div className="file-tabs">{(["html","css","js"] as FileKey[]).map(file=><button key={file} onClick={()=>setActiveFile(file)} className={activeFile===file?"chosen":""}><span className={"file-badge "+file}>{file==="html"?"5":file==="css"?"#":"JS"}</span>{file==="html"?"index.html":file==="css"?"style.css":"script.js"}</button>)}</div><div className="code-editor"><div className="line-numbers">{Array.from({length:Math.max(22,code.split("\n").length)},(_,i)=><span key={i}>{i+1}</span>)}</div><textarea spellCheck={false} autoCapitalize="off" autoCorrect="off" aria-label={"Éditeur "+activeFile} value={code} onChange={e=>edit(e.target.value)} /></div><div className="editor-footer"><span>{code.split("\n").length} lignes · {code.length} caractères</span><span>UTF-8 · {activeFile.toUpperCase()}</span></div></div>
       <div className="preview-panel"><div className="preview-top"><div><span className="preview-dot red"/><span className="preview-dot yellow"/><span className="preview-dot green"/></div><span>APERÇU EN DIRECT</span><button onClick={()=>setRefreshKey(k=>k+1)}>↻ Actualiser</button></div><div className="preview-address"><span>⌑</span><span>bcx-studio.local/{workspace.name.toLowerCase().replace(/[^a-z0-9]+/g,"-")}</span><span className="secure">●</span></div><iframe key={refreshKey} title="Aperçu de votre site" sandbox="allow-scripts" srcDoc={source} />
         <div className="preview-footer"><span><i/> Aperçu isolé</span><span>Responsive · HTML/CSS/JS</span></div></div>
+    </section>
+    <section className="studio-ai-panel" id="bickri-code-ai">
+      <div className="studio-ai-heading"><div><span className="studio-kicker">ASSISTANT INTÉGRÉ · BCX</span><h2><span>✳</span> Bickri Code AI</h2><p>Demande une amélioration ou une correction : l’IA reçoit le contexte de tes fichiers et peut proposer du code à appliquer dans l’éditeur.</p></div><span className="studio-ai-chip">IA DE CODAGE</span></div>
+      <form className="studio-ai-form" onSubmit={askAI}>
+        <textarea value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} placeholder={`Ex. Améliore le design mobile du fichier ${activeFile} ou corrige une erreur…`} rows={3} maxLength={4000} />
+        <div className="studio-ai-controls"><span>Fichier ciblé : <b>{activeFile==="html"?"index.html":activeFile==="css"?"style.css":"script.js"}</b> · Le code ne change qu’après ton action.</span><button type="submit" disabled={aiLoading||!aiPrompt.trim()}>{aiLoading?"Réflexion…":"Demander à l’IA ↗"}</button></div>
+      </form>
+      {aiError && <div className="studio-ai-error" role="alert">{aiError}</div>}
+      {aiLoading && <div className="studio-ai-wait">Bickri Code AI analyse le contexte du projet…</div>}
+      {aiReply && <div className="studio-ai-response"><div className="studio-ai-response-title">RÉPONSE DE BICKRI CODE AI</div><pre>{aiReply}</pre><button onClick={applyAIToActiveFile} type="button">Appliquer au fichier actif ↗</button></div>}
     </section>
     <section className="studio-bottom-grid"><article><span className="bottom-icon">⌘</span><div><b>Écris ton code</b><p>Modifie les trois fichiers directement dans le navigateur.</p></div></article><article><span className="bottom-icon">◉</span><div><b>Teste en direct</b><p>Actualise l’aperçu pour voir le rendu de ton site.</p></div></article><article><span className="bottom-icon">↓</span><div><b>Exporte tes fichiers</b><p>Télécharge HTML, CSS et JavaScript pour continuer ton projet.</p></div></article></section>
     <footer className="studio-footer"><span>© 2026 BICKRI CODEX SYSTEM · BCX STUDIO</span><span>Prototypes web · <b>Θ</b></span></footer>
