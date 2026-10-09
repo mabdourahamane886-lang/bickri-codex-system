@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 type FileKey = "html" | "css" | "js";
 type Workspace = { name: string; html: string; css: string; js: string; updatedAt: string };
@@ -52,7 +52,7 @@ export default function StudioPage() {
     setWorkspace(old => ({ ...old, ...picked, updatedAt: new Date().toISOString() }));
     setNotice("Modèle « " + template + " » chargé.");
   }
-  async function askAI(event: React.FormEvent<HTMLFormElement>) {
+  async function askAI(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const question = aiPrompt.trim();
     if (!question || aiLoading) return;
@@ -73,7 +73,7 @@ export default function StudioPage() {
     finally { setAiLoading(false); }
   }
   function applyAIToActiveFile() {
-    const match = aiReply.match(/\\x60\\x60\\x60(?:html|css|javascript|js)?\\s*\\n([\\s\\S]*?)\\n\\x60\\x60\\x60/i);
+    const match = aiReply.match(/```(?:html|css|javascript|js)?\\s*\\n([\\s\\S]*?)\\n```/i);
     const content = (match ? match[1] : aiReply).trim();
     if (!content) return;
     setWorkspace(old => ({ ...old, [activeFile]: content, updatedAt: new Date().toISOString() }));
