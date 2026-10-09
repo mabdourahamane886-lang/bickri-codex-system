@@ -70,6 +70,8 @@ export default function Home() {
       <a className="nav-item" href="#generator"><span>✳</span> Générateur BCX</a>
       <a className="nav-item" href="#greek"><span>Ω</span> Lettres grecques</a>
       <a className="nav-item studio-nav-link" href="/studio"><span>⌘</span> BCX Studio · Coder</a>
+      <a className="nav-item" href="/cloud"><span>☁</span> BCX Cloud</a>
+      <a className="nav-item" href="/ai"><span>✳</span> Bickri Code AI</a>
       <div className="sidebar-bottom"><div className="status-dot"/> Prototype BCX <span className="version">v0.2.0</span><p>Registre local · Supabase à connecter</p></div>
     </aside>
     <div className="main-area">
