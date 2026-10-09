@@ -62,7 +62,7 @@ export default function StudioPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language: activeFile === "html" ? "HTML" : activeFile === "css" ? "CSS" : "JavaScript",
-          projectContext: `Projet : ${workspace.name}\\nFichier actif : ${activeFile}\\n--- index.html ---\\n${workspace.html.slice(0, 5000)}\\n--- style.css ---\\n${workspace.css.slice(0, 5000)}\\n--- script.js ---\\n${workspace.js.slice(0, 5000)}\\nQuand la demande porte sur une modification du fichier actif, donne le contenu complet du fichier dans un bloc de code.`,
+          projectContext: `Projet : ${workspace.name}\nFichier actif : ${activeFile}\n--- index.html ---\n${workspace.html.slice(0, 5000)}\n--- style.css ---\n${workspace.css.slice(0, 5000)}\n--- script.js ---\n${workspace.js.slice(0, 5000)}\nQuand la demande porte sur une modification du fichier actif, donne le contenu complet du fichier dans un bloc de code.`,
           messages: [{ role: "user", content: question }],
         }),
       });
@@ -73,7 +73,7 @@ export default function StudioPage() {
     finally { setAiLoading(false); }
   }
   function applyAIToActiveFile() {
-    const match = aiReply.match(/```(?:html|css|javascript|js)?\\s*\\n([\\s\\S]*?)\\n```/i);
+    const match = aiReply.match(/```(?:html|css|javascript|js)?\s*\n([\s\S]*?)\n```/i);
     const content = (match ? match[1] : aiReply).trim();
     if (!content) return;
     setWorkspace(old => ({ ...old, [activeFile]: content, updatedAt: new Date().toISOString() }));
