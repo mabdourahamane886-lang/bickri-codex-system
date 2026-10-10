@@ -120,11 +120,29 @@ export async function POST(request: NextRequest) {
       context,
     });
   } catch (error) {
-    console.error("GitHub MCP connection error", error instanceof Error ? error.message : "unknown error");
+    const err = error && typeof error === "object" ? error as Record<string, unknown> : {};
+    const rawMessage = error instanceof Error ? error.message : String(error || "Erreur inconnue");
+    // Expose a sanitized diagnostic to help distinguish auth, URL and transport failures.
+    // Never return the configured bearer token or authorization header to the browser.
+    const token = process.env.GITHUB_MCP_BEARER_TOKEN;
+    const safeMessage = (token ? rawMessage.split(token).join("[masqué]") : rawMessage)
+      .replace(/Bearer\\s+[^\\s"'<>]+/gi, "Bearer [masqué]")
+      .slice(0, 500);
+    const code = typeof err.code === "string" || typeof err.code === "number" ? String(err.code) : undefined;
+    const status = typeof err.status === "number" ? err.status : typeof err.statusCode === "number" ? err.statusCode : undefined;
+    console.error("GitHub MCP connection error", JSON.stringify({ message: safeMessage, code, status }));
     return NextResponse.json({
-      error: "Connexion au serveur GitHub MCP impossible. Vérifie GITHUB_MCP_URL, son transport Streamable HTTP et l'authentification éventuelle.",
+      error: "Connexion au serveur GitHub MCP impossible.",
+      diagnostic: safeMessage,
+      code,
+      upstreamStatus: status,
       mcpConfigured: true,
       mcpConnected: false,
+      hint: status === 401 || status === 403
+        ? "Authentification refusée : vérifie le jeton, son expiration et les autorisations du dépôt."
+        : status === 404
+          ? "URL MCP introuvable : vérifie GITHUB_MCP_URL."
+          : "Vérifie l'URL MCP, le transport Streamable HTTP et les journaux Vercel.",
     }, { status: 502 });
   } finally {
     if (client) await client.close().catch(() => undefined);
