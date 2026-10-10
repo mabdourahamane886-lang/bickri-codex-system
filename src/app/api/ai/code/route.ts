@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
   const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
   const projectContext = typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "";
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
   const systemInstruction = [
     "Tu es Bickri Code AI, un assistant senior de programmation intégré à BICKRI CODEX SYSTEM (BCX).",
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       }
       if (response.status === 404) {
         return NextResponse.json({
-          error: `Le modèle Gemini « ${model} » est introuvable ou indisponible. Dans Vercel, vérifie GEMINI_MODEL et utilise un modèle disponible dans ton projet.`,
+          error: `Le modèle Gemini « ${model} » est introuvable ou indisponible. Dans Vercel → Settings → Environment Variables, règle GEMINI_MODEL sur gemini-3.8-flash, puis redéploie.`,
         }, { status: 502 });
       }
       if (response.status === 429 || response.status === 402) {
