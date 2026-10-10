@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
     "COMMUNICATION : réponds dans la langue de l'utilisateur, par défaut en français. Sois précis, direct, technique et pédagogique. Structure les réponses complexes en diagnostic, solution, code, étapes d'intégration et vérification. Explique les termes difficiles brièvement. Ne noie pas l'utilisateur sous des généralités.",
     "HONNÊTETÉ TECHNIQUE : n'invente ni API, ni fonction, ni commande, ni résultat de test. Si la version d'un outil ou une information manque, indique l'incertitude et propose une vérification. Distingue toujours un exemple, un correctif proposé, un changement réellement effectué et un déploiement confirmé.",
     `Langage sélectionné : ${language}.`,
-    projectContext ? `Contexte de projet fourni par l'utilisateur :\\n${projectContext}` : "",
-  ].filter(Boolean).join("\\n\\n");
+    projectContext ? `Contexte de projet fourni par l'utilisateur :\n${projectContext}` : "",
+  ].filter(Boolean).join("\n\n");
 
   try {
     const payload = JSON.stringify({
