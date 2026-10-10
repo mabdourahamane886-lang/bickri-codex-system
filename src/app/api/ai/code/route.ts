@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: "L’assistant IA n’est pas configuré. Ajoute GEMINI_API_KEY dans les variables d’environnement Vercel, puis redéploie BCX." },
+      { error: "La variable GEMINI_API_KEY est absente dans Vercel. Ajoute-la dans Settings → Environment Variables puis redéploie." },
       { status: 503 }
     );
   }
@@ -49,10 +49,7 @@ export async function POST(request: NextRequest) {
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemInstruction }] },
           contents: validMessages.map((m) => ({
@@ -67,21 +64,37 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json().catch(() => null);
     if (!response.ok) {
-      const providerMessage = typeof data?.error?.message === "string" ? data.error.message : "";
-      if (response.status === 400 || response.status === 401 || response.status === 403) {
-        return NextResponse.json(
-          { error: "Gemini a refusé la requête. Vérifie que GEMINI_API_KEY est correcte, que l’API Gemini est activée et que le modèle est disponible pour ton projet." },
-          { status: 502 }
-        );
+      const providerMessage = typeof data?.error?.message === "string" ? data.error.message.slice(0, 350) : "";
+      console.error("Gemini API error", response.status, providerMessage);
+
+      if (response.status === 400 || response.status === 401) {
+        return NextResponse.json({
+          error: `Gemini a rejeté la requête (HTTP ${response.status}). Vérifie la clé GEMINI_API_KEY et le modèle GEMINI_MODEL. Détail : ${providerMessage || "requête invalide"}`,
+        }, { status: 502 });
       }
-      if (response.status === 429) {
-        return NextResponse.json(
-          { error: "La limite de requêtes Gemini est atteinte. Réessaie plus tard ou vérifie les limites de ton compte Google AI Studio." },
-          { status: 429 }
-        );
+      if (response.status === 403) {
+        return NextResponse.json({
+          error: `Gemini refuse l’accès (HTTP 403). Vérifie que l’API Gemini est activée et que ta clé a accès au projet. Détail : ${providerMessage || "accès refusé"}`,
+        }, { status: 502 });
       }
-      console.error("Gemini API error", response.status, providerMessage.slice(0, 300));
-      return NextResponse.json({ error: "Le service Gemini est temporairement indisponible. Réessaie plus tard." }, { status: 502 });
+      if (response.status === 404) {
+        return NextResponse.json({
+          error: `Le modèle Gemini « ${model} » est introuvable ou indisponible. Dans Vercel, vérifie GEMINI_MODEL et utilise un modèle disponible dans ton projet.`,
+        }, { status: 502 });
+      }
+      if (response.status === 429 || response.status === 402) {
+        return NextResponse.json({
+          error: `La limite ou le quota Gemini est atteint (HTTP ${response.status}). Vérifie les quotas et la facturation Google AI Studio. Détail : ${providerMessage || "quota dépassé"}`,
+        }, { status: 429 });
+      }
+      if (response.status === 503 || response.status === 500 || response.status === 504) {
+        return NextResponse.json({
+          error: `Gemini est temporairement indisponible (HTTP ${response.status}). Réessaie dans quelques minutes. Détail : ${providerMessage || "service indisponible"}`,
+        }, { status: 502 });
+      }
+      return NextResponse.json({
+        error: `Erreur de l’API Gemini (HTTP ${response.status}). ${providerMessage || "Vérifie la configuration dans Google AI Studio."}`,
+      }, { status: 502 });
     }
 
     const answer = data?.candidates?.[0]?.content?.parts
@@ -93,7 +106,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Gemini n’a pas renvoyé de réponse exploitable. Réessaie avec une autre question." }, { status: 502 });
     }
     return NextResponse.json({ answer });
-  } catch {
-    return NextResponse.json({ error: "Impossible de joindre Gemini. Vérifie la connexion et réessaie." }, { status: 502 });
+  } catch (error) {
+    console.error("Gemini connection error", error instanceof Error ? error.message : "unknown error");
+    return NextResponse.json({ error: "Impossible de joindre Gemini : délai dépassé ou erreur réseau. Réessaie." }, { status: 502 });
   }
 }
