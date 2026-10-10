@@ -81,7 +81,7 @@ export default function CodeAIPage() {
       <h1>Construisons avec <span>Bickri Code AI.</span></h1>
       <p className="ai-intro">Ton assistant de codage pour comprendre, écrire, corriger et améliorer tes projets dans plusieurs langages.</p>
       <form className="github-connect" onSubmit={connectGithub}>
-        <div><strong>⌘ Connecter un dépôt GitHub</strong><p>Analyse les dépôts publics en lecture seule, sans toucher à tes clés API.</p></div>
+        <div><strong>⌘ Connecter un dépôt GitHub</strong><p>Connexion au serveur GitHub MCP côté serveur. Le serveur MCP doit être configuré dans Vercel.</p></div>
         <div className="github-row"><input aria-label="Dépôt GitHub public" value={githubRepo} onChange={(e) => setGithubRepo(e.target.value)} placeholder="https://github.com/proprietaire/depot ou proprietaire/depot" /><button disabled={githubLoading || !githubRepo.trim()}>{githubLoading ? "Connexion…" : "Connecter"}</button></div>
         {githubStatus && <p className="github-status" role="status">✓ {githubStatus}</p>}
       </form>
