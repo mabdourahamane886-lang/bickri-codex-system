@@ -45,22 +45,32 @@ export async function POST(request: NextRequest) {
   ].filter(Boolean).join("\n\n");
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    const payload = JSON.stringify({
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      contents: validMessages.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      })),
+      generationConfig: { temperature: 0.2, maxOutputTokens: 1800 },
+    });
+    const callGemini = (modelName: string) => fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          contents: validMessages.map((m) => ({
-            role: m.role === "assistant" ? "model" : "user",
-            parts: [{ text: m.content }],
-          })),
-          generationConfig: { temperature: 0.2, maxOutputTokens: 1800 },
-        }),
+        body: payload,
         signal: AbortSignal.timeout(25000),
       }
     );
+
+    let activeModel = model;
+    let response = await callGemini(activeModel);
+    // Temporary capacity issues can affect one model; retry once with another stable Flash model.
+    if (response.status === 503 && activeModel !== "gemini-3.6-flash") {
+      console.warn(`Gemini model ${activeModel} returned 503; retrying with gemini-3.6-flash`);
+      activeModel = "gemini-3.6-flash";
+      response = await callGemini(activeModel);
+    }
 
     const data = await response.json().catch(() => null);
     if (!response.ok) {
@@ -79,7 +89,7 @@ export async function POST(request: NextRequest) {
       }
       if (response.status === 404) {
         return NextResponse.json({
-          error: `Le modèle Gemini « ${model} » est introuvable ou indisponible. Dans Vercel → Settings → Environment Variables, règle GEMINI_MODEL sur gemini-3.8-flash, puis redéploie.`,
+          error: `Le modèle Gemini « ${activeModel} » est introuvable ou indisponible. Dans Vercel → Settings → Environment Variables, règle GEMINI_MODEL sur gemini-3.8-flash, puis redéploie.`,
         }, { status: 502 });
       }
       if (response.status === 429 || response.status === 402) {
