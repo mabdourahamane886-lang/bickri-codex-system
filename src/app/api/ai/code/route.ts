@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
   const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
   const projectContext = typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "";
   const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.6-flash";
 
   const systemInstruction = [
     "IDENTITÉ ET MISSION : Tu es Bickri Code AI, l'ingénieur logiciel principal et l'architecte technique de BICKRI CODEX SYSTEM (BCX). Adopte une capacité d'analyse exceptionnelle, une rigueur extrême et une expertise de niveau senior/staff/principal engineer. Il s'agit d'une posture de travail exigeante, pas d'une prétention à posséder une conscience réelle ou infaillible.",
@@ -57,23 +58,41 @@ export async function POST(request: NextRequest) {
       })),
       generationConfig: { temperature: 0.2, maxOutputTokens: 1800 },
     });
-    const callGemini = (modelName: string) => fetch(
+    const callGemini = (modelName: string, timeoutMs = 20000) => fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: payload,
-        signal: AbortSignal.timeout(25000),
+        signal: AbortSignal.timeout(timeoutMs),
+        cache: "no-store",
       }
     );
 
+    // Retry transient network/provider failures once with a fallback model.
     let activeModel = model;
-    let response = await callGemini(activeModel);
-    // Temporary capacity issues can affect one model; retry once with another stable Flash model.
-    if (response.status === 503 && activeModel !== "gemini-3.6-flash") {
-      console.warn(`Gemini model ${activeModel} returned 503; retrying with gemini-3.6-flash`);
-      activeModel = "gemini-3.6-flash";
+    let response: Response;
+    try {
       response = await callGemini(activeModel);
+    } catch {
+      console.warn("Gemini primary request timed out or failed; trying fallback model.");
+      activeModel = fallbackModel;
+      try {
+        response = await callGemini(activeModel, 25000);
+      } catch {
+        console.error("Gemini primary and fallback requests both failed at network/timeout level.");
+        return NextResponse.json({ error: "Le service IA n’a pas répondu à temps. Réessaie dans quelques instants. Si cela continue, vérifie l’état de l’API Gemini, la clé GEMINI_API_KEY et les limites réseau de Vercel.", code: "AI_NETWORK_TIMEOUT" }, { status: 504 });
+      }
+    }
+
+    if ([408, 429, 500, 502, 503, 504].includes(response.status) && activeModel !== fallbackModel) {
+      console.warn(`Gemini model ${activeModel} returned HTTP ${response.status}; trying fallback model.`);
+      activeModel = fallbackModel;
+      try {
+        response = await callGemini(activeModel, 25000);
+      } catch {
+        return NextResponse.json({ error: "Les modèles IA ne répondent pas pour le moment. Réessaie dans quelques instants. Vérifie aussi les quotas Gemini si le problème persiste.", code: "AI_PROVIDER_UNAVAILABLE" }, { status: 503 });
+      }
     }
 
     const data = await response.json().catch(() => null);
@@ -122,6 +141,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ answer });
   } catch (error) {
     console.error("Gemini connection error", error instanceof Error ? error.message : "unknown error");
-    return NextResponse.json({ error: "Impossible de joindre Gemini : délai dépassé ou erreur réseau. Réessaie." }, { status: 502 });
+    return NextResponse.json({ error: "La connexion au service IA a échoué. Réessaie dans quelques instants. Si le problème persiste, vérifie GEMINI_API_KEY, le quota Google AI Studio et l’état du service.", code: "AI_CONNECTION_FAILED" }, { status: 502 });
   }
 }
