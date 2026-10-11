@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       mcpConfigured: true,
       mcpConnected: true,
-      repository: `${parsed.owner}/${parsed.repo}`,
+      repository: { full_name: `${parsed.owner}/${parsed.repo}` },
       tools: tools.map((tool) => ({ name: tool.name, description: tool.description || "" })),
       context,
     });
