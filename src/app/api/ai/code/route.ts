@@ -130,13 +130,43 @@ export async function POST(request: NextRequest) {
       }, { status: 502 });
     }
 
-    const answer = data?.candidates?.[0]?.content?.parts
+    const extractAnswer = (payload: any): string => payload?.candidates?.[0]?.content?.parts
       ?.map((part: { text?: string }) => typeof part.text === "string" ? part.text : "")
       .join("")
-      .trim();
+      .trim() || "";
+
+    let answer = extractAnswer(data);
+
+    // A successful HTTP response can still contain no text (for example, a blocked
+    // candidate or an empty candidate list). Retry once with the fallback model.
+    if (!answer && activeModel !== fallbackModel) {
+      console.warn("Gemini returned no usable text; retrying with fallback model.", {
+        finishReason: data?.candidates?.[0]?.finishReason,
+        blockReason: data?.promptFeedback?.blockReason,
+      });
+      try {
+        const fallbackResponse = await callGemini(fallbackModel, 25000);
+        const fallbackData = await fallbackResponse.json().catch(() => null);
+        if (fallbackResponse.ok) {
+          answer = extractAnswer(fallbackData);
+        } else {
+          console.error("Gemini fallback returned HTTP", fallbackResponse.status);
+        }
+      } catch (fallbackError) {
+        console.error("Gemini fallback retry failed:", fallbackError instanceof Error ? fallbackError.message : "unknown error");
+      }
+    }
 
     if (!answer) {
-      return NextResponse.json({ error: "Gemini n’a pas renvoyé de réponse exploitable. Réessaie avec une autre question." }, { status: 502 });
+      const blockReason = typeof data?.promptFeedback?.blockReason === "string"
+        ? data.promptFeedback.blockReason
+        : typeof data?.candidates?.[0]?.finishReason === "string"
+          ? data.candidates[0].finishReason
+          : "aucun texte retourné";
+      return NextResponse.json({
+        error: `Gemini n’a renvoyé aucun texte, même après une nouvelle tentative (${blockReason}). Essaie une demande plus courte et précise. Si cela arrive avec toutes les questions, vérifie les journaux Vercel et l’accès de la clé au modèle.`,
+        code: "AI_EMPTY_RESPONSE",
+      }, { status: 502 });
     }
     return NextResponse.json({ answer });
   } catch (error) {
