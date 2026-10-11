@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CATEGORIES, GREEK_LETTERS } from "@/lib/codex";
+import { createClient } from "@/lib/supabase/client";
 
 type Entry = { id: string; name: string; category: string; greek: string; version: string; status: "Actif" | "Brouillon"; createdAt: string };
 const STORE = "bcx_registry_v1";
@@ -21,10 +22,14 @@ export default function Home() {
   const [version, setVersion] = useState("1.0.0");
   const [filter, setFilter] = useState("Tous");
   const [notice, setNotice] = useState("");
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    try { const raw = localStorage.getItem(STORE); setEntries(raw ? JSON.parse(raw) : starter); }
-    catch { setEntries(starter); }
+    try {
+      const raw = localStorage.getItem(STORE);
+      const parsed: unknown = raw ? JSON.parse(raw) : starter;
+      setEntries(Array.isArray(parsed) && parsed.every((item) => item && typeof item.id === "string" && typeof item.name === "string") ? parsed as Entry[] : starter);
+    } catch { setEntries(starter); }
     setReady(true);
   }, []);
   useEffect(() => { if (ready) localStorage.setItem(STORE, JSON.stringify(entries)); }, [entries, ready]);
@@ -39,12 +44,84 @@ export default function Home() {
     return prefix + String(max + 1).padStart(3, "0");
   }, [entries, category, greek]);
 
-  function createEntry(e: React.FormEvent<HTMLFormElement>) {
+  async function createEntry(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!name.trim()) { setNotice("Ajoute un nom de projet pour continuer."); return; }
-    if (entries.some(x => x.id === nextId)) { setNotice("Cet identifiant existe déjà. Génère-en un autre."); return; }
-    setEntries(old => [{ id: nextId, name: name.trim(), category, greek, version: version.trim() || "1.0.0", status: "Actif", createdAt: new Date().toISOString().slice(0, 10) }, ...old]);
-    setName(""); setNotice(`Identifiant ${nextId} créé sur cet appareil.`);
+    if (creating) return;
+    const cleanName = name.trim();
+    const cleanVersion = version.trim() || "1.0.0";
+    if (!cleanName) { setNotice("Ajoute un nom de projet pour continuer."); return; }
+    if (!/^[0-9]+\\.[0-9]+\\.[0-9]+$/.test(cleanVersion)) {
+      setNotice("Version invalide. Utilise le format X.Y.Z, par exemple 1.0.0.");
+      return;
+    }
+
+    setCreating(true);
+    setNotice("");
+    try {
+      // If Supabase is configured and the user is signed in, persist the identifier
+      // centrally. The database unique constraints remain the final collision guard.
+      let supabase: ReturnType<typeof createClient> | null = null;
+      try { supabase = createClient(); } catch { /* Local-only mode when env vars are absent. */ }
+
+      if (supabase) {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError) throw new Error("Impossible de vérifier la session. Reconnecte-toi puis réessaie.");
+        if (authData.user) {
+          const { data: greekRow, error: greekError } = await supabase
+            .from("bcx_greek_generations").select("id").eq("name", greek).eq("cycle", 1).maybeSingle();
+          if (greekError) throw new Error("Impossible de lire les séries grecques Supabase. Vérifie que les migrations BCX ont été appliquées.");
+          if (!greekRow) throw new Error("Série grecque introuvable dans Supabase. Applique les migrations BCX puis réessaie.");
+
+          const { data: latestRows, error: latestError } = await supabase
+            .from("bcx_products").select("serial_number")
+            .eq("category_code", category).eq("greek_generation_id", greekRow.id)
+            .order("serial_number", { ascending: false }).limit(1);
+          if (latestError) throw new Error("Impossible de consulter le registre Supabase. Vérifie les permissions de ton compte.");
+          let serial = Math.max(Number(latestRows?.[0]?.serial_number) || 0,
+            ...entries.filter(item => item.category === category && item.greek === greek)
+              .map(item => Number(item.id.split("-").at(-1)) || 0)) + 1;
+
+          for (let attempt = 0; attempt < 3; attempt++, serial++) {
+            const identifier = `BCX-${category}-${greek}-${String(serial).padStart(3, "0")}`;
+            const { error: insertError } = await supabase.from("bcx_products").insert({
+              identifier, name: cleanName, category_code: category, greek_generation_id: greekRow.id,
+              serial_number: serial, technical_version: cleanVersion, status: "active", owner_user_id: authData.user.id,
+            });
+            if (!insertError) {
+              const entry: Entry = { id: identifier, name: cleanName, category, greek, version: cleanVersion, status: "Actif", createdAt: new Date().toISOString().slice(0, 10) };
+              setEntries(old => [entry, ...old.filter(item => item.id !== identifier)]);
+              setName("");
+              setNotice(`Identifiant ${identifier} créé et enregistré dans Supabase.`);
+              return;
+            }
+            if (insertError.code !== "23505") {
+              throw new Error(insertError.message.includes("row-level security")
+                ? "Ton compte n’a pas l’autorisation d’enregistrer cet identifiant. Vérifie le rôle et les règles d’accès BCX."
+                : `Échec de l’enregistrement Supabase : ${insertError.message}`);
+            }
+          }
+          throw new Error("Impossible de réserver un numéro unique après plusieurs tentatives. Réessaie.");
+        }
+      }
+
+      // Local fallback remains available without configured Supabase or without a session.
+      const used = new Set(entries.map(item => item.id));
+      let serial = Math.max(0, ...entries.filter(item => item.category === category && item.greek === greek)
+        .map(item => Number(item.id.split("-").at(-1)) || 0)) + 1;
+      let identifier = `BCX-${category}-${greek}-${String(serial).padStart(3, "0")}`;
+      while (used.has(identifier)) {
+        serial++;
+        identifier = `BCX-${category}-${greek}-${String(serial).padStart(3, "0")}`;
+      }
+      const entry: Entry = { id: identifier, name: cleanName, category, greek, version: cleanVersion, status: "Actif", createdAt: new Date().toISOString().slice(0, 10) };
+      setEntries(old => [entry, ...old.filter(item => item.id !== identifier)]);
+      setName("");
+      setNotice(`Identifiant ${identifier} créé sur cet appareil uniquement. Connecte-toi pour l’enregistrer dans le registre partagé.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "La création a échoué. Réessaie.");
+    } finally {
+      setCreating(false);
+    }
   }
   async function copy(value: string) {
     try { await navigator.clipboard.writeText(value); setNotice(`Copié : ${value}`); }
@@ -91,9 +168,9 @@ export default function Home() {
             <div className="form-row"><label>Catégorie<select value={category} onChange={e=>setCategory(e.target.value)}>{CATEGORIES.map(c=><option key={c.code} value={c.code}>{c.code} — {c.label}</option>)}</select></label><label>Série grecque<select value={greek} onChange={e=>setGreek(e.target.value)}>{GREEK_LETTERS.map(g=><option key={g.name} value={slug(g.name)}>{g.symbol} {g.name}</option>)}</select></label></div>
             <label>Version technique<input value={version} onChange={e=>setVersion(e.target.value)} placeholder="1.0.0" pattern="^[0-9]+\\.[0-9]+\\.[0-9]+$" title="Format attendu : 1.0.0"/></label>
             <div className="preview-label">APERÇU DU CODE</div><div className="code-preview"><span>{nextId}</span><button type="button" className="copy-button" onClick={()=>copy(nextId)}>Copier</button></div>
-            <button type="submit" className="primary-button full-button">Créer l’identifiant <span>→</span></button>
+            <button type="submit" className="primary-button full-button" disabled={creating || !ready}>{creating ? "Création en cours…" : "Créer l’identifiant"} <span>→</span></button>
           </form>
-          <p className="form-footnote">ⓘ L’identifiant est unique dans ce registre local. La validation centralisée nécessitera Supabase.</p>
+          <p className="form-footnote">ⓘ L’identifiant est unique dans ce registre local. Connecte-toi pour enregistrer les identifiants dans le registre partagé Supabase.</p>
         </article>
         <article className="panel rules-panel"><div className="panel-heading"><div><span className="section-kicker">STANDARD BCX</span><h3>Structure du code</h3></div><span className="rule-symbol">Θ</span></div><div className="formula"><span>BCX</span><b>–</b><span>CATÉGORIE</span><b>–</b><span>GREC</span><b>–</b><span>001</span></div><div className="rule-list"><div><i className="rule-dot cyan-dot"/> <span><b>BCX</b><small>Préfixe officiel du système</small></span></div><div><i className="rule-dot gold-dot"/> <span><b>Catégorie</b><small>Famille du produit ou projet</small></span></div><div><i className="rule-dot purple-dot"/> <span><b>Lettre grecque</b><small>Série de classification</small></span></div><div><i className="rule-dot green-dot"/> <span><b>Numéro séquentiel</b><small>Trois chiffres, incrémentés par série</small></span></div></div><div className="rule-callout"><b>Version ≠ identifiant</b><p>La version technique (ex. 1.0.0) évolue indépendamment du code BCX.</p></div></article>
       </section>
