@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const { answer, model } = await generateWithGemini({
       apiKey,
       model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
-      fallbackModel: process.env.GEMINI_FALLBACK_MODEL || "gemini-3.6-flash",
+      fallbackModel: process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite",
       systemInstruction: buildSystemInstruction(language, projectContext),
       messages,
     });
