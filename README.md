@@ -75,6 +75,7 @@ Applique les migrations dans l'ordre, uniquement sur le projet Supabase BCX :
 
 1. `supabase/migrations/202610090001_initial_schema.sql`
 2. `supabase/migrations/202610090002_auth_profiles_and_owner_access.sql`
+3. `supabase/migrations/202610140001_revoke_trigger_function_execute.sql`
 
 Les nouveaux comptes reçoivent le rôle `viewer`. Chaque utilisateur ne peut créer, modifier ou supprimer que ses propres identifiants. Les rôles élevés sont attribués par un administrateur.
 

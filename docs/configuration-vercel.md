@@ -21,10 +21,11 @@ Après l'ajout, redéploie : **Deployments → … → Redeploy**.
 
 ## 2. Base de données
 
-Appliquer, dans l'ordre, sur `avgzbyvmsjjfgywtijno` uniquement :
+Migrations 1 et 2 appliquées le 14/10/2026 sur `avgzbyvmsjjfgywtijno`. Ordre complet :
 
 1. `supabase/migrations/202610090001_initial_schema.sql`
 2. `supabase/migrations/202610090002_auth_profiles_and_owner_access.sql`
+3. `supabase/migrations/202610140001_revoke_trigger_function_execute.sql`
 
 ## 3. Authentification Supabase
 
