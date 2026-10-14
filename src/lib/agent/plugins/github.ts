@@ -4,7 +4,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { toGeminiSchema } from "../schema";
 import { str, type Plugin, type Tool } from "../types";
 
-/** Outils MCP exposés à l'IA. Tout ce qui n'est pas listé ici reste inaccessible. */
+/** Outils MCP exposés à l'IA. Lecture pour les comptes connectés ; écriture uniquement pour les comptes de confiance. */
 const READ: Record<string, string> = {
   get_me: "Identifier le compte GitHub",
   get_file_contents: "Lire un fichier ou un dossier",
@@ -54,11 +54,11 @@ function describe(name: string, args: Record<string, unknown>): string {
 export const githubPlugin: Plugin = {
   id: "github",
   name: "GitHub",
-  description: "Lire les dépôts, créer des branches, écrire des fichiers et ouvrir des pull requests.",
+  description: "Lire les dépôts autorisés pour les utilisateurs connectés ; les écritures sont réservées aux comptes de confiance.",
   async load(ctx) {
     const endpoint = process.env.GITHUB_MCP_URL;
     if (!endpoint) return { tools: [], reason: "GITHUB_MCP_URL n'est pas configurée." };
-    if (!ctx.trusted) return { tools: [], reason: "Réservé aux comptes administrateurs (le plugin agit avec le jeton GitHub du propriétaire)." };
+    if (!ctx.user) return { tools: [], reason: "Connecte-toi pour accéder à GitHub." };
 
     const headers: Record<string, string> = {};
     if (process.env.GITHUB_MCP_BEARER_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_MCP_BEARER_TOKEN}`;
@@ -69,7 +69,7 @@ export const githubPlugin: Plugin = {
       const owners = allowedOwners();
 
       const tools: Tool[] = remote
-        .filter((t) => t.name in READ || t.name in WRITE)
+        .filter((t) => t.name in READ || (ctx.trusted && t.name in WRITE))
         .map((t) => {
           const write = t.name in WRITE;
           const params = toGeminiSchema(t.inputSchema);
