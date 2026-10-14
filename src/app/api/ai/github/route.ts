@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     // Never return the configured bearer token or authorization header to the browser.
     const token = process.env.GITHUB_MCP_BEARER_TOKEN;
     const safeMessage = (token ? rawMessage.split(token).join("[masqué]") : rawMessage)
-      .replace(/Bearer\\s+[^\\s"'<>]+/gi, "Bearer [masqué]")
+      .replace(/Bearer\s+[^\s"'<>]+/gi, "Bearer [masqué]")
       .slice(0, 500);
     const code = typeof err.code === "string" || typeof err.code === "number" ? String(err.code) : undefined;
     const status = typeof err.status === "number" ? err.status : typeof err.statusCode === "number" ? err.statusCode : undefined;

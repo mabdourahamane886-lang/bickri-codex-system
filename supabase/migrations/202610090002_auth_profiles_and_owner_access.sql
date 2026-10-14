@@ -1,5 +1,5 @@
 -- BCX migration 002: create profiles for new accounts and allow users to manage their own products.
--- Run only in the dedicated BCX Supabase project: ahyjrpeweniwrnuedkux.
+-- Run only in the dedicated BCX Supabase project: avgzbyvmsjjfgywtijno (organisation ahyjrpeweniwrnuedkux).
 create or replace function public.bcx_handle_new_user()
 returns trigger
 language plpgsql
