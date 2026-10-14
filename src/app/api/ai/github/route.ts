@@ -74,6 +74,11 @@ export async function POST(request: NextRequest) {
   if (!owners.includes(parsed.owner.toLowerCase())) {
     return NextResponse.json({ error: `Seuls les dépôts de ${owners.join(", ")} sont accessibles (variable GITHUB_ALLOWED_OWNERS).` }, { status: 403 });
   }
+  const allowedRepositories = (process.env.GITHUB_ALLOWED_REPOSITORIES || "mabdourahamane886-lang/bickri-codex-system")
+    .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (!allowedRepositories.includes(`${parsed.owner}/${parsed.repo}`.toLowerCase())) {
+    return NextResponse.json({ error: `Ce dépôt n'est pas autorisé pour la lecture. Dépôts permis : ${allowedRepositories.join(", ")} (GITHUB_ALLOWED_REPOSITORIES).` }, { status: 403 });
+  }
 
   let client: Client | undefined;
   try {
