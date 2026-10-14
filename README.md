@@ -1,68 +1,111 @@
 # BICKRI CODEX SYSTEM (BCX)
 
-BCX is the BICKRI project identifier registry and the foundation for a cloud-based multilingual development workspace.
+Plateforme de l'écosystème BICKRI : registre officiel des identifiants produits, studio de code dans le navigateur et assistant de programmation **Bickri Code AI**.
 
-## Current state
-- Responsive BCX identifier registry UI and identifier generator.
-- BCX Studio browser-side prototype for HTML/CSS/JavaScript editing and sandboxed preview.
-- Supabase email/password account screen and auth callback route.
-- SQL migrations for the BCX registry schema, user profiles, and owner-scoped product writes.
-- Bickri Code AI chat UI and server-side API route are implemented; a provider API key is required.
-- BCX Cloud capability dashboard describes project storage, editor, terminal, build workers, AI and GitHub integration status.
-- Cloud terminal, isolated build containers, Flutter/Android compilation, persistent cloud files and GitHub sync are NOT implemented yet.
+## Fonctionnalités
+
+| Module | Route | État |
+| --- | --- | --- |
+| Tableau de bord | `/` | Indicateurs réels, derniers identifiants, état des services |
+| Registre BCX | `/registry` | Création, recherche, filtres, export CSV, synchronisation Supabase avec repli local |
+| Studio de code | `/studio` | Éditeur CodeMirror (HTML/CSS/JS), aperçu ordinateur/tablette/mobile, console, modèles, export, assistant intégré |
+| Bickri Code AI | `/ai` | Discussion avec rendu Markdown, blocs de code copiables, choix du langage, contexte de dépôt GitHub (MCP) |
+| BCX Cloud | `/cloud` | État réel des briques de la plateforme et feuille de route |
+| Paramètres | `/settings` | Vérification de la configuration, compte, thème, données locales |
+| Connexion | `/login` | E-mail et mot de passe via Supabase Auth |
+
+Non implémenté à ce jour : terminal cloud, conteneurs de build, compilation Flutter/Android, stockage cloud des fichiers, écriture GitHub (commits, branches).
+
+## Format des identifiants
+
+```
+BCX-<CATÉGORIE>-<SÉRIE GRECQUE>-<NUMÉRO>
+BCX-AI-THETA-001
+```
+
+- **Catégories** : `AI`, `APP`, `WEB`, `SYS`, `SEC`, `LAB`
+- **Séries** : les 24 lettres grecques, d'ALPHA à OMEGA
+- **Numéro** : séquentiel, unique par couple catégorie et série, sur 3 chiffres minimum
 
 ## Stack
-- Next.js 15, React 19, TypeScript, Tailwind CSS 4
-- Supabase Auth, PostgreSQL and Row Level Security
-- Monaco desktop / CodeMirror 6 mobile planned for the full editor
-- Isolated Linux worker/container service planned for terminals, builds and tests
-- GitHub integration and AI coding assistant planned
 
-## AI coding assistant
-Configure these variables in Vercel Project Settings → Environment Variables, then redeploy:
+- Next.js 15 (App Router), React 19, TypeScript strict
+- Supabase Auth, PostgreSQL et Row Level Security
+- CodeMirror 6, react-markdown, lucide-react, polices Geist
+- Gemini (Google AI Studio) côté serveur, avec modèle de repli
+- Vitest, ESLint, GitHub Actions
 
-OPENAI_API_KEY=your_server_side_api_key
-OPENAI_MODEL=gpt-4o-mini
+## Structure
 
-`OPENAI_API_KEY` is server-only: do not prefix it with `NEXT_PUBLIC_` and never commit its value. The assistant is available at `/ai` and its server endpoint is `/api/ai/code`. Requests are length-limited, but production deployment should also add authenticated access, per-user quotas and abuse monitoring before public launch.
+```
+src/
+  app/
+    (app)/            pages avec la barre latérale (tableau de bord, registre, studio, ia, cloud, paramètres)
+    api/ai/code       assistant IA (Gemini)
+    api/ai/github     contexte de dépôt via un serveur GitHub MCP (lecture seule)
+    api/health        état de configuration (booléens uniquement)
+    auth/callback     confirmation e-mail Supabase
+    login             connexion et inscription
+  components/         shell, interface, éditeur, rendu Markdown, fournisseurs (session, thème)
+  hooks/              useRegistry, useConfig
+  lib/                règles BCX, registre, client Supabase, moteur IA, limiteur de débit
+  middleware.ts       rafraîchissement de session Supabase
+supabase/migrations/  schéma SQL du registre
+```
 
-## Cloud infrastructure status
-The `/cloud` page is a capability dashboard, not a running remote-compute service. A real cloud IDE still needs a separately deployed, isolated worker service for terminals/builds, private object storage, job queue, authenticated WebSocket gateway, quotas/timeouts and runtime images. Never run untrusted code inside the Next.js web process. Flutter Android builds additionally need a worker image containing the Flutter, JDK and Android SDK toolchains.
+## Variables d'environnement
 
-## Environment
-Copy .env.example to .env.local and configure the dedicated BCX Supabase project, not Bickri Service Agency:
+Copie `.env.example` vers `.env.local` en local, ou configure-les dans **Vercel → Settings → Environment Variables** puis redéploie.
 
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_BCX_PROJECT_REF.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_REPLACE_ME
+| Variable | Requise | Rôle |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Oui | URL du projet Supabase BCX (`ahyjrpeweniwrnuedkux`) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Oui | Clé publique Supabase |
+| `GEMINI_API_KEY` | Oui pour l'IA | Clé serveur Google AI Studio |
+| `GEMINI_MODEL` | Non | Modèle principal |
+| `GEMINI_FALLBACK_MODEL` | Non | Modèle de repli |
+| `GITHUB_MCP_URL` | Non | Serveur GitHub MCP distant (Streamable HTTP, HTTPS) |
+| `GITHUB_MCP_BEARER_TOKEN` | Non | Jeton du serveur MCP |
 
-The expected BCX project reference is ahyjrpeweniwrnuedkux. Copy its URL and publishable key from the Supabase API settings. Never expose a service_role key in browser code or a NEXT_PUBLIC variable.
+Ne préfixe jamais une clé secrète par `NEXT_PUBLIC_` et n'expose jamais une clé `service_role`. La page `/settings` indique ce qui est configuré sans jamais afficher les valeurs.
 
-## Database setup
-Apply the SQL migrations in order to the dedicated BCX project only:
-1. supabase/migrations/202610090001_initial_schema.sql
-2. supabase/migrations/202610090002_auth_profiles_and_owner_access.sql
+## Base de données
 
-Review and test SQL before production. New accounts receive the least-privileged viewer role. Owner policies allow users to manage only products whose owner_user_id is their own. Elevated roles must be granted through a trusted administrator process.
+Applique les migrations dans l'ordre, uniquement sur le projet Supabase BCX :
 
-## Local development
-Run npm install, then npm run dev. Open http://localhost:3000 and use /login after configuring Supabase.
+1. `supabase/migrations/202610090001_initial_schema.sql`
+2. `supabase/migrations/202610090002_auth_profiles_and_owner_access.sql`
 
-## Deployment checklist
-- Verify Vercel is connected to this repository and main branch.
-- Configure the two public Supabase environment variables for Preview and Production.
-- Apply both migrations to the dedicated BCX Supabase project.
-- Configure Supabase Auth site URL and redirect URL for the deployed domain, including /auth/callback.
-- Test sign-up, email confirmation, sign-in, sign-out and session expiry.
-- Confirm RLS prevents one account from changing another account's products.
-- Keep Vercel deployment protection intentional; disable it only if the site is meant to be public.
-- Add cloud workers only with non-root execution, quotas, network restrictions, timeouts and short-lived credentials.
+Les nouveaux comptes reçoivent le rôle `viewer`. Chaque utilisateur ne peut créer, modifier ou supprimer que ses propres identifiants. Les rôles élevés sont attribués par un administrateur.
 
-## Roadmap
-1. Stabilize deployment and configure Supabase auth/database.
-2. Connect registry CRUD to PostgreSQL.
-3. Replace Studio textareas with Monaco/CodeMirror and a file explorer.
-4. Add isolated cloud sessions, terminal, logs and preview ports.
-5. Add web/Node/Python runtimes, then compiled languages.
-6. Add Flutter/Dart/Android build workers and APK/AAB artifacts.
-7. Add project-aware AI, GitHub import/commit/sync and deployment integration.
-8. Complete security review, quotas, monitoring, backups and production readiness.
+Dans Supabase Auth, déclare l'URL du site et l'URL de redirection `https://<ton-domaine>/auth/callback`.
+
+## Développement
+
+```bash
+npm install
+npm run dev        # http://localhost:3000
+npm run check      # types + lint + tests
+npm run build      # build de production
+```
+
+Sans Supabase, l'application fonctionne en **mode local** : les identifiants et le projet du studio sont enregistrés dans le navigateur.
+
+## Sécurité
+
+- Clés IA et MCP uniquement côté serveur ; limitation de débit sur `/api/ai/code` (20 requêtes par minute et par IP, par instance).
+- En-têtes de sécurité (HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`).
+- Aperçu du studio isolé dans une iframe `sandbox` sans accès à l'origine de l'application.
+- Redirections d'authentification limitées aux chemins internes.
+- Avant un lancement public : authentification obligatoire pour l'IA, quotas persistants (Upstash ou Supabase) et surveillance.
+
+## Feuille de route
+
+1. ~~Déploiement stable, authentification et base de données~~
+2. ~~Registre connecté à PostgreSQL~~
+3. ~~Éditeur professionnel (CodeMirror, aperçu multi-écrans, console)~~
+4. Sessions cloud isolées : terminal, journaux, ports d'aperçu
+5. Environnements Node.js et Python, puis langages compilés
+6. Workers Flutter, Dart et Android (APK/AAB)
+7. IA consciente du projet, synchronisation GitHub et déploiements
+8. Revue de sécurité, quotas, surveillance, sauvegardes
