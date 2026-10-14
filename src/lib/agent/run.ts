@@ -108,7 +108,7 @@ export async function runAgent(opts: {
     // Reprise après une validation : exécuter les appels en attente.
     const pendingCalls = callsOf(contents.at(-1));
     if (pendingCalls.length) {
-      const allow = opts.decision === "approve" && opts.ctx.trusted;
+      const allow = opts.decision === "approve" && Boolean(opts.ctx.user);
       const parts: GeminiPart[] = [];
       for (const call of pendingCalls) parts.push(await execute(call, tools, opts.ctx, allow, events));
       contents.push({ role: "user", parts });
