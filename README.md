@@ -59,7 +59,7 @@ Copie `.env.example` vers `.env.local` en local, ou configure-les dans **Vercel 
 
 | Variable | Requise | Rôle |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Oui | URL du projet Supabase BCX (`https://ahyjrpeweniwrnuedkux.supabase.co`) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Oui | URL du projet Supabase BCX (`https://avgzbyvmsjjfgywtijno.supabase.co`) |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Oui | Clé publique Supabase |
 | `GEMINI_API_KEY` | Oui pour l'IA | Clé serveur Google AI Studio |
 | `GEMINI_MODEL` | Non | Modèle principal |
