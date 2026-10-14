@@ -24,7 +24,7 @@ function LoginForm() {
     try {
       const supabase = createClient();
       const result = mode === "login"
-        ? await supabase.auth.signInWithPassword({ email, password })
+        ? await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
         : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
       if (result.error) throw result.error;
       if (mode === "signup" && !result.data.session) {
@@ -35,7 +35,7 @@ function LoginForm() {
       }
     } catch (err) {
       const raw = err instanceof Error ? err.message : "";
-      const text = /invalid login credentials/i.test(raw) ? "E-mail ou mot de passe incorrect."
+      const text = /invalid login credentials/i.test(raw) ? "E-mail ou mot de passe incorrect, ou compte absent du projet Supabase configuré. Vérifie que tu utilises le compte créé dans BCX et que NEXT_PUBLIC_SUPABASE_URL pointe vers le bon projet."
         : /email not confirmed/i.test(raw) ? "Confirme d'abord ton adresse e-mail grâce au lien reçu."
         : /already registered/i.test(raw) ? "Un compte existe déjà avec cette adresse. Connecte-toi."
         : raw || "Connexion impossible. Vérifie la configuration Supabase.";
