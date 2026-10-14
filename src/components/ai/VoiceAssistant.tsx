@@ -72,6 +72,7 @@ export function VoiceAssistant({
   const blockedRef = useRef(blocked);
   const waitingForResponseRef = useRef(false);
   const lastSpokenRef = useRef("");
+  const previousBusyRef = useRef(busy);
 
   useEffect(() => { onSendRef.current = onSend; }, [onSend]);
   useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
@@ -139,9 +140,20 @@ export function VoiceAssistant({
       waitingForResponseRef.current = true;
       void onSendRef.current(transcript);
     };
-    recognition.onerror = () => {
+    recognition.onerror = (event?: { error?: string }) => {
       setListening(false);
-      setNotice("Erreur du microphone ou autorisation refusée. Vérifie les permissions du navigateur.");
+      const reason = event?.error;
+      if (reason === "not-allowed" || reason === "service-not-allowed") {
+        voiceModeRef.current = false;
+        setVoiceMode(false);
+        setNotice("Accès au microphone refusé. Autorise le microphone dans les paramètres du navigateur, puis réessaie.");
+      } else if (reason === "no-speech") {
+        setNotice("Je n'ai rien entendu. Parle après le signal d'écoute, puis réessaie.");
+      } else if (reason === "audio-capture") {
+        setNotice("Aucun microphone disponible. Vérifie que ton téléphone autorise l'accès au micro.");
+      } else {
+        setNotice("La reconnaissance vocale a échoué. Vérifie la connexion et les permissions du microphone.");
+      }
     };
     recognition.onend = () => setListening(false);
     recognitionRef.current = recognition;
@@ -168,6 +180,20 @@ export function VoiceAssistant({
 
   useEffect(() => {
     const clean = speechSafeText(assistantResponse);
+    // If the request ends without an assistant response, release the voice loop
+    // instead of leaving it waiting forever (for example after a network/API error).
+    const wasBusy = previousBusyRef.current;
+    previousBusyRef.current = busy;
+    if (wasBusy && !busy && waitingForResponseRef.current && !clean && !blocked) {
+      waitingForResponseRef.current = false;
+      setNotice("Je n'ai pas reçu de réponse. Je relance l'écoute…");
+      if (voiceModeRef.current) {
+        window.setTimeout(() => {
+          if (voiceModeRef.current && !blockedRef.current) startListening();
+        }, 500);
+      }
+      return;
+    }
     if (!voiceMode || !waitingForResponseRef.current || busy || blocked || !clean || clean === lastSpokenRef.current) return;
     if (!("speechSynthesis" in window)) {
       setNotice("La lecture vocale n'est pas prise en charge par ce navigateur.");
