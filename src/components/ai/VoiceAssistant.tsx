@@ -236,12 +236,11 @@ export function VoiceAssistant({
       <select
         id="bcx-voice-language"
         className="select"
-        style={{ width: 1, minWidth: 1, maxWidth: 1, height: 1, padding: 0, border: 0, opacity: 0, position: "absolute", pointerEvents: "none" }}
+        style={{ width: 105, minWidth: 0, height: 30, fontSize: "var(--text-xs)", padding: "0 6px" }}
         value={locale}
         onChange={(event) => setLocale(event.target.value)}
         disabled={listening || speaking}
-        tabIndex={-1}
-        aria-hidden="true"
+        aria-label="Langue vocale"
       >
         {LOCALES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
       </select>
