@@ -34,13 +34,22 @@ const WRITE: Record<string, string> = {
   add_issue_comment: "Commenter un ticket",
 };
 
+// Ancien nom affiché par certaines sessions : rediriger vers le dépôt GitHub réel.
+const REPOSITORY_ALIASES: Record<string, string> = {
+  bickristudioai: "bickriaistudio",
+};
+
+function canonicalRepoName(name: string): string {
+  return REPOSITORY_ALIASES[name.toLowerCase()] ?? name.toLowerCase();
+}
+
 function allowedOwners(): string[] {
   return (process.env.GITHUB_ALLOWED_OWNERS || "mabdourahamane886-lang").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 }
 
 /** Dépôts explicitement autorisés à la lecture et à l'écriture pour tous les comptes connectés. */
 function allowedRepositories(): string[] {
-  return (process.env.GITHUB_ALLOWED_REPOSITORIES || "mabdourahamane886-lang/bickri-codex-system,mabdourahamane886-lang/bickristudioai")
+  return (process.env.GITHUB_ALLOWED_REPOSITORIES || "mabdourahamane886-lang/bickri-codex-system,mabdourahamane886-lang/bickriaistudio")
     .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 }
 
@@ -94,7 +103,8 @@ export const githubPlugin: Plugin = {
             label: (args) => describe(t.name, args),
             run: async (args) => {
               const owner = str(args.owner).toLowerCase();
-              const repoName = str(args.repo).toLowerCase();
+              const requestedRepo = str(args.repo).toLowerCase();
+              const repoName = canonicalRepoName(requestedRepo);
               if (owner && !owners.includes(owner)) {
                 return { error: `Accès refusé : seul le ou les comptes ${owners.join(", ")} sont autorisés (GITHUB_ALLOWED_OWNERS).` };
               }
@@ -106,7 +116,8 @@ export const githubPlugin: Plugin = {
                   return { error: `Accès refusé : dépôt non autorisé. Dépôts permis : ${repositories.join(", ")} (GITHUB_ALLOWED_REPOSITORIES).` };
                 }
               }
-              const res = resultText(await client.callTool({ name: t.name, arguments: args }));
+              const normalizedArgs = requestedRepo ? { ...args, repo: repoName } : args;
+              const res = resultText(await client.callTool({ name: t.name, arguments: normalizedArgs }));
               return res.isError ? { error: res.text || "Erreur GitHub." } : { result: res.text };
             },
           };
