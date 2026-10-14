@@ -40,7 +40,7 @@ function allowedOwners(): string[] {
 
 /** Dépôts explicitement autorisés à la lecture et à l'écriture pour tous les comptes connectés. */
 function allowedRepositories(): string[] {
-  return (process.env.GITHUB_ALLOWED_REPOSITORIES || "mabdourahamane886-lang/bickri-codex-system")
+  return (process.env.GITHUB_ALLOWED_REPOSITORIES || "mabdourahamane886-lang/bickri-codex-system,mabdourahamane886-lang/bickristudioai")
     .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 }
 
