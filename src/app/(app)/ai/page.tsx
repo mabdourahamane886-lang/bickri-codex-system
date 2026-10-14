@@ -295,16 +295,16 @@ export default function CodeAIPage() {
               {pluginList}
             </div>
           )}
-          <VoiceAssistant
-            onSend={(text) => send(text)}
-            assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}
-            busy={loading}
-            blocked={Boolean(pending)}
-          />
           <form className="composer" onSubmit={onSubmit}>
             <label htmlFor="ai-input" className="sr-only">Message</label>
             <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Décris ton application, demande une modification de dépôt ou colle une erreur…"} />
             <div className="composer-bar">
+              <VoiceAssistant
+                onSend={(text) => send(text)}
+                assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}
+                busy={loading}
+                blocked={Boolean(pending)}
+              />
               <select className="select" style={{ width: "auto", height: 28, fontSize: "var(--text-xs)" }} value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Langage de travail">
                 {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
               </select>
