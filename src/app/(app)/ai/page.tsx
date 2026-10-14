@@ -295,12 +295,6 @@ export default function CodeAIPage() {
               {pluginList}
             </div>
           )}
-          <VoiceAssistant
-            onSend={(text) => send(text)}
-            assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}
-            busy={loading}
-            blocked={Boolean(pending)}
-          />
           <form className="composer" onSubmit={onSubmit}>
             <label htmlFor="ai-input" className="sr-only">Message</label>
             <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Décris ton application, demande une modification de dépôt ou colle une erreur…"} />
@@ -312,6 +306,12 @@ export default function CodeAIPage() {
                 <Plug /> Plugins{activePlugins.length ? ` · ${activePlugins.length}` : ""}
               </button>
               <small className="grow hide-sm"><span className="kbd">Entrée</span> envoyer · <span className="kbd">Maj + Entrée</span> nouvelle ligne</small>
+              <VoiceAssistant
+                onSend={(text) => send(text)}
+                assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}
+                busy={loading}
+                blocked={Boolean(pending)}
+              />
               {messages.length > 0 && <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={newChat} aria-label="Nouvelle conversation" title="Nouvelle conversation"><SquarePen /></button>}
               <button className="btn btn-primary btn-icon btn-sm" type="submit" disabled={loading || !prompt.trim() || Boolean(pending)} aria-label="Envoyer"><ArrowUp /></button>
             </div>
