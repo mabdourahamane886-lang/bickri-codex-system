@@ -81,6 +81,7 @@ export function VoiceAssistant({
     const recognition = recognitionRef.current;
     if (!recognition) {
       setNotice("La reconnaissance vocale n'est pas prise en charge par ce navigateur. Essaie Chrome récent.");
+      voiceModeRef.current = false;
       setVoiceMode(false);
       return;
     }
@@ -134,6 +135,7 @@ export function VoiceAssistant({
         return;
       }
       setNotice(`Commande reconnue : « ${transcript.slice(0, 180)} »`);
+      lastSpokenRef.current = "";
       waitingForResponseRef.current = true;
       void onSendRef.current(transcript);
     };
