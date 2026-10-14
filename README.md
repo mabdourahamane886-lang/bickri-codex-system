@@ -67,7 +67,8 @@ Copie `.env.example` vers `.env.local` en local, ou configure-les dans **Vercel 
 | `GITHUB_MCP_URL` | Non | Serveur GitHub MCP distant (Streamable HTTP, HTTPS) |
 | `GITHUB_MCP_BEARER_TOKEN` | Non | Jeton du serveur MCP |
 | `BCX_ADMIN_EMAILS` | Non | E-mails (séparés par des virgules) des comptes autorisés à utiliser le plugin GitHub |
-| `GITHUB_ALLOWED_OWNERS` | Non | Comptes GitHub accessibles aux plugins (défaut : `mabdourahamane886-lang`) |
+| `GITHUB_ALLOWED_OWNERS` | Non | Propriétaires GitHub autorisés pour les comptes de confiance (défaut : `mabdourahamane886-lang`) |
+| `GITHUB_ALLOWED_REPOSITORIES` | Non | Dépôts accessibles en lecture aux comptes connectés non privilégiés (défaut : `mabdourahamane886-lang/bickri-codex-system`, liste séparée par des virgules) |
 
 Ne préfixe jamais une clé secrète par `NEXT_PUBLIC_` et n'expose jamais une clé `service_role`. La page `/settings` indique ce qui est configuré sans jamais afficher les valeurs.
 
@@ -84,7 +85,7 @@ L'assistant peut appeler de vrais outils pendant la conversation (appel de fonct
 Garde-fous :
 
 - Chaque action d'écriture s'arrête et attend un clic sur « Approuver » ; « Refuser » l'annule et l'IA en est informée.
-- Le jeton GitHub/MCP reste exclusivement côté serveur. Tout utilisateur connecté peut lire les dépôts des propriétaires listés dans `GITHUB_ALLOWED_OWNERS`. Les outils d'écriture (branches, fichiers, pull requests, tickets) restent limités aux comptes dont l'e-mail confirmé figure dans `BCX_ADMIN_EMAILS` ou dont le rôle `bcx_profiles.role` vaut `admin` ou `editor`. Les dépôts restent limités à `GITHUB_ALLOWED_OWNERS`.
+- Le jeton GitHub/MCP reste exclusivement côté serveur. Tout utilisateur connecté peut lire uniquement les dépôts listés dans `GITHUB_ALLOWED_REPOSITORIES` (par défaut, le dépôt BCX). Les outils d'écriture (branches, fichiers, pull requests, tickets) restent limités aux comptes dont l'e-mail confirmé figure dans `BCX_ADMIN_EMAILS` ou dont le rôle `bcx_profiles.role` vaut `admin` ou `editor`. Les dépôts restent limités à `GITHUB_ALLOWED_OWNERS`.
 - Outils GitHub exclus volontairement : suppression de fichiers, fusion de pull requests, création ou fork de dépôts.
 - Le plugin Web refuse les adresses privées et internes (protection SSRF) et limite la taille des réponses.
 - Les résultats d'outils sont traités comme des données non fiables dans les instructions du modèle.
