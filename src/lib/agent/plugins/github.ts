@@ -76,11 +76,13 @@ export const githubPlugin: Plugin = {
       const repositories = allowedRepositories();
 
       const tools: Tool[] = remote
-        .filter((t) => ctx.trusted ? (t.name in READ || t.name in WRITE) : [
-          "get_me", "get_file_contents", "list_branches", "list_commits", "get_commit",
-          "list_tags", "list_issues", "issue_read", "list_pull_requests", "pull_request_read",
-          "list_releases", "get_latest_release",
-        ].includes(t.name))
+        .filter((t) => ctx.trusted
+          ? (t.name in READ || t.name in WRITE)
+          : ([
+              "get_me", "get_file_contents", "list_branches", "list_commits", "get_commit",
+              "list_tags", "list_issues", "issue_read", "list_pull_requests", "pull_request_read",
+              "list_releases", "get_latest_release",
+            ].includes(t.name) || t.name in WRITE))
         .map((t) => {
           const write = t.name in WRITE;
           const params = toGeminiSchema(t.inputSchema);
@@ -96,10 +98,12 @@ export const githubPlugin: Plugin = {
               if (owner && !owners.includes(owner)) {
                 return { error: `Accès refusé : seul le ou les comptes ${owners.join(", ")} sont autorisés (GITHUB_ALLOWED_OWNERS).` };
               }
-              if (!ctx.trusted) {
-                if (!owner || !repoName) return { error: "Accès lecture refusé : cette action doit cibler un dépôt autorisé." };
+              // Toute lecture/écriture ciblant un dépôt doit rester dans la liste autorisée,
+              // quel que soit le rôle. get_me est la seule action sans dépôt.
+              if (t.name !== "get_me") {
+                if (!owner || !repoName) return { error: "Accès refusé : cette action doit cibler un dépôt autorisé." };
                 if (!repositories.includes(`${owner}/${repoName}`)) {
-                  return { error: `Accès lecture refusé : dépôt non autorisé. Dépôts permis : ${repositories.join(", ")} (GITHUB_ALLOWED_REPOSITORIES).` };
+                  return { error: `Accès refusé : dépôt non autorisé. Dépôts permis : ${repositories.join(", ")} (GITHUB_ALLOWED_REPOSITORIES).` };
                 }
               }
               const res = resultText(await client.callTool({ name: t.name, arguments: args }));
