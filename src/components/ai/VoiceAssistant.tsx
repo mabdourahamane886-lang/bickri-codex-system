@@ -169,8 +169,12 @@ export function VoiceAssistant({
         }
       } else if (reason === "audio-capture") {
         setNotice("Aucun microphone disponible. Vérifie que ton téléphone autorise l'accès au micro.");
+      } else if (reason === "network") {
+        setNotice("Le service de reconnaissance vocale est inaccessible. Vérifie Internet puis réessaie.");
+      } else if (reason === "aborted") {
+        setNotice("Écoute interrompue. Appuie sur le micro pour recommencer.");
       } else {
-        setNotice("La reconnaissance vocale a échoué. Vérifie la connexion et les permissions du microphone.");
+        setNotice(`La reconnaissance vocale a échoué (${reason ?? "erreur inconnue"}). Vérifie Internet et les autorisations du micro.`);
       }
     };
     recognition.onend = () => setListening(false);
@@ -294,7 +298,20 @@ export function VoiceAssistant({
           <Volume2 size={17} aria-hidden="true" />
         </button>
       )}
-      <span className="sr-only" role="status" aria-live="polite">{blocked ? "Une action nécessite ton approbation. Confirme-la dans la conversation." : notice}</span>
+      <span
+        role="status"
+        aria-live="polite"
+        style={{
+          display: notice ? "inline-block" : "none",
+          maxWidth: 230,
+          fontSize: 11,
+          lineHeight: 1.35,
+          color: "var(--muted-foreground, #64748b)",
+          overflowWrap: "anywhere",
+        }}
+      >
+        {blocked ? "Une action nécessite ton approbation. Confirme-la dans la conversation." : notice}
+      </span>
     </span>
   );
 }
