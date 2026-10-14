@@ -96,7 +96,9 @@ export async function generateWithGemini(opts: {
 
   // En cas d'erreur réseau ou de surcharge, essaie le modèle secondaire
   // uniquement s'il est différent afin d'éviter de répéter la même panne.
-  if ((!response || RETRYABLE.has(response.status)) && opts.fallbackModel.trim() !== model) {
+  // Un modèle supprimé/indisponible renvoie souvent 404 : dans ce cas aussi,
+  // bascule vers le modèle de repli au lieu d'arrêter la requête immédiatement.
+  if ((!response || RETRYABLE.has(response.status) || response.status === 404) && opts.fallbackModel.trim() !== model) {
     console.warn(`Gemini : modèle principal indisponible (${model}); bascule vers ${opts.fallbackModel}.`);
     model = opts.fallbackModel.trim();
     response = await callWithRetry(model);
