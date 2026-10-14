@@ -7,6 +7,7 @@ import {
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
+import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
 import { Badge } from "@/components/ui/Badge";
 import { useConfig } from "@/hooks/useConfig";
 
@@ -294,6 +295,12 @@ export default function CodeAIPage() {
               {pluginList}
             </div>
           )}
+          <VoiceAssistant
+            onSend={(text) => send(text)}
+            assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}
+            busy={loading}
+            blocked={Boolean(pending)}
+          />
           <form className="composer" onSubmit={onSubmit}>
             <label htmlFor="ai-input" className="sr-only">Message</label>
             <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Décris ton application, demande une modification de dépôt ou colle une erreur…"} />
