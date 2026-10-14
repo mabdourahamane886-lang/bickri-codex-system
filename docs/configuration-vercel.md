@@ -14,6 +14,8 @@ Dans **Vercel → bickri-codex-system → Settings → Environment Variables**, 
 | `GEMINI_API_KEY` | Clé créée sur [Google AI Studio](https://aistudio.google.com/apikey) | **Secrète** : type « Sensitive » |
 | `GEMINI_MODEL` | `gemini-3.8-flash` | Optionnelle |
 | `GEMINI_FALLBACK_MODEL` | `gemini-3.6-flash` | Optionnelle |
+| `BCX_ADMIN_EMAILS` | `mabdourahamane886@gmail.com` | Optionnelle : active le plugin GitHub pour ce compte |
+| `GITHUB_ALLOWED_OWNERS` | `mabdourahamane886-lang` | Optionnelle : comptes GitHub accessibles |
 
 Ne mets jamais la clé `service_role` de Supabase dans Vercel pour ce projet, et ne préfixe jamais `GEMINI_API_KEY` par `NEXT_PUBLIC_`.
 

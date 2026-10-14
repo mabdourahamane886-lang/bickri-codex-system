@@ -1,34 +1,76 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { ArrowUp, Bug, CircleAlert, CircleCheck, Code, GitBranch, Layers, RefreshCw, Sparkles, SquarePen, Unlink, User } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import {
+  ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Fingerprint, GitBranch, Globe, Layers, Loader2, LogIn,
+  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X,
+} from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { Badge } from "@/components/ui/Badge";
 import { useConfig } from "@/hooks/useConfig";
 
-type ChatMessage = { role: "user" | "assistant"; content: string };
+type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
+type Pending = { tool: string; label: string; args: Record<string, unknown> };
+type PluginStatus = { id: string; name: string; description: string; available: boolean; reason?: string; tools: number; writeTools: number };
+type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string };
+type AgentResponse = {
+  contents: unknown[]; events: AgentEvent[]; answer?: string; pending?: Pending[]; continue?: boolean; model?: string; error?: string;
+};
 
-const CHAT_KEY = "bcx_ai_chat_v1";
+const CHAT_KEY = "bcx_ai_chat_v2";
+const PLUGINS_KEY = "bcx_ai_plugins_v1";
+const MAX_CONTINUATIONS = 4;
 const LANGUAGES = ["TypeScript / Next.js", "JavaScript", "HTML / CSS", "Python", "Python / Django", "Dart / Flutter", "Kotlin / Android", "Java", "C / C++", "Rust", "PHP", "SQL / Supabase", "Autre langage"];
+const PLUGIN_ICONS: Record<string, typeof GitBranch> = { github: GitBranch, registry: Fingerprint, web: Globe };
 const STARTERS = [
+  { icon: GitBranch, text: "Liste les branches et les derniers commits de mabdourahamane886-lang/bickri-codex-system." },
   { icon: Layers, text: "Crée une application web responsive en Next.js avec authentification Supabase." },
   { icon: Bug, text: "Explique et corrige cette erreur TypeScript : " },
-  { icon: Code, text: "Écris un script Python propre et commenté qui lit un fichier CSV." },
-  { icon: Sparkles, text: "Propose une architecture claire pour un projet Flutter." },
+  { icon: Fingerprint, text: "Quel serait le prochain identifiant BCX libre pour la catégorie AI en série THETA ?" },
 ];
+
+function argsPreview(args: Record<string, unknown>): string {
+  const copy: Record<string, unknown> = { ...args };
+  for (const [k, v] of Object.entries(copy)) {
+    if (typeof v === "string" && v.length > 1500) copy[k] = `${v.slice(0, 1500)}\n…(${v.length - 1500} caractères de plus)`;
+  }
+  return JSON.stringify(copy, null, 2);
+}
+
+function ToolEvents({ events }: { events: AgentEvent[] }) {
+  if (!events.length) return null;
+  return (
+    <ul className="tool-events" aria-label="Actions des plugins">
+      {events.map((e, i) => {
+        const Icon = e.status === "ok" ? CircleCheck : e.status === "pending" ? ShieldAlert : CircleX;
+        const text = e.status === "refused" ? "refusé" : e.status === "error" ? "échec" : e.status === "pending" ? "en attente de validation" : e.write ? "effectué" : "";
+        return (
+          <li key={i} className={`tool-event ${e.status}`}>
+            <Icon aria-hidden="true" />
+            <span className="grow">{e.label}</span>
+            {text && <small>{text}</small>}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 export default function CodeAIPage() {
   const { config } = useConfig();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [contents, setContents] = useState<unknown[]>([]);
+  const [pending, setPending] = useState<Pending[] | null>(null);
   const [prompt, setPrompt] = useState("");
   const [language, setLanguage] = useState(LANGUAGES[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [repo, setRepo] = useState("");
-  const [repoContext, setRepoContext] = useState("");
-  const [repoName, setRepoName] = useState("");
-  const [repoLoading, setRepoLoading] = useState(false);
-  const [repoError, setRepoError] = useState("");
+  const [lastMessage, setLastMessage] = useState("");
+  const [plugins, setPlugins] = useState<PluginStatus[] | null>(null);
+  const [account, setAccount] = useState<{ signedIn: boolean; trusted: boolean } | null>(null);
+  const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
+  const [showPlugins, setShowPlugins] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -36,15 +78,29 @@ export default function CodeAIPage() {
     try {
       const saved = JSON.parse(sessionStorage.getItem(CHAT_KEY) || "null");
       if (saved?.messages) setMessages(saved.messages);
+      if (Array.isArray(saved?.contents)) setContents(saved.contents);
+      if (saved?.pending) setPending(saved.pending);
       if (saved?.language) setLanguage(saved.language);
+      const p = JSON.parse(localStorage.getItem(PLUGINS_KEY) || "null");
+      if (Array.isArray(p)) setEnabled(p);
     } catch { /* ignoré */ }
   }, []);
   useEffect(() => {
-    try { sessionStorage.setItem(CHAT_KEY, JSON.stringify({ messages, language })); } catch { /* ignoré */ }
+    try { sessionStorage.setItem(CHAT_KEY, JSON.stringify({ messages, contents, pending, language })); } catch { /* quota : ignoré */ }
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, language, loading]);
+  }, [messages, contents, pending, language, loading]);
+  useEffect(() => { try { localStorage.setItem(PLUGINS_KEY, JSON.stringify(enabled)); } catch { /* ignoré */ } }, [enabled]);
 
-  // Hauteur automatique du champ de saisie.
+  const loadPlugins = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ai/agent", { cache: "no-store" });
+      const data = await res.json();
+      setPlugins(data.plugins ?? []);
+      setAccount({ signedIn: Boolean(data.signedIn), trusted: Boolean(data.trusted) });
+    } catch { setPlugins([]); }
+  }, []);
+  useEffect(() => { void loadPlugins(); }, [loadPlugins]);
+
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -52,23 +108,39 @@ export default function CodeAIPage() {
     el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
   }, [prompt]);
 
-  async function send(text: string) {
-    const content = text.trim();
-    if (!content || loading) return;
-    const next = [...messages, { role: "user" as const, content }];
-    setMessages(next);
-    setPrompt("");
-    setError("");
-    setLoading(true);
+  const activePlugins = (plugins ?? []).filter((p) => p.available && enabled.includes(p.id));
+
+  /** Met à jour la dernière réponse de l'assistant (créée à l'envoi). */
+  function patchAssistant(fn: (m: ChatMessage) => ChatMessage) {
+    setMessages((all) => {
+      const copy = [...all];
+      const i = copy.length - 1;
+      if (i >= 0 && copy[i].role === "assistant") copy[i] = fn(copy[i]);
+      return copy;
+    });
+  }
+
+  async function runAgent(body: Record<string, unknown>, baseContents: unknown[]) {
+    setLoading(true); setError("");
+    let state = baseContents;
     try {
-      const res = await fetch("/api/ai/code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next, language, projectContext: repoContext }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "La requête a échoué.");
-      setMessages([...next, { role: "assistant", content: data.answer }]);
+      for (let round = 0; round <= MAX_CONTINUATIONS; round++) {
+        const res = await fetch("/api/ai/agent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...body, contents: state, plugins: activePlugins.map((p) => p.id), language }),
+        });
+        const data = (await res.json().catch(() => ({}))) as AgentResponse;
+        if (!res.ok) throw new Error(data.error || "La requête a échoué.");
+        state = data.contents;
+        setContents(data.contents);
+        patchAssistant((m) => ({ ...m, model: data.model, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...data.events] }));
+        if (data.pending?.length) { setPending(data.pending); return; }
+        if (data.answer !== undefined) { patchAssistant((m) => ({ ...m, content: data.answer! })); return; }
+        if (!data.continue) return;
+        body = {}; // poursuite automatique sans nouveau message
+      }
+      patchAssistant((m) => ({ ...m, content: m.content || "La tâche est longue : écris « continue » pour que je poursuive." }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {
@@ -76,35 +148,61 @@ export default function CodeAIPage() {
     }
   }
 
+  async function send(text: string) {
+    const content = text.trim();
+    if (!content || loading || pending) return;
+    setMessages((all) => [...all, { role: "user", content }, { role: "assistant", content: "", events: [] }]);
+    setPrompt(""); setLastMessage(content);
+    await runAgent({ message: content }, contents);
+  }
+
+  async function decide(decision: "approve" | "reject") {
+    if (!pending || loading) return;
+    setPending(null);
+    await runAgent({ decision }, contents);
+  }
+
   function onSubmit(e: FormEvent) { e.preventDefault(); void send(prompt); }
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(prompt); }
   }
   function retry() {
-    const lastUser = [...messages].reverse().find((m) => m.role === "user");
-    if (!lastUser) return;
-    setMessages((all) => all.slice(0, all.lastIndexOf(lastUser)));
-    void send(lastUser.content);
+    if (!lastMessage) return;
+    // Retire la question échouée et sa réponse vide, puis renvoie.
+    setMessages((all) => {
+      const idx = all.map((m) => m.role).lastIndexOf("user");
+      return idx >= 0 ? all.slice(0, idx) : all;
+    });
+    setContents((c) => {
+      const copy = [...c] as Array<{ role?: string; parts?: Array<{ text?: string }> }>;
+      while (copy.length && !(copy.at(-1)?.role === "model" && !copy.at(-1)?.parts?.some((p) => "functionCall" in p))) copy.pop();
+      return copy;
+    });
+    setError("");
+    setTimeout(() => void send(lastMessage), 0);
   }
-  function newChat() { setMessages([]); setError(""); inputRef.current?.focus(); }
+  function newChat() { setMessages([]); setContents([]); setPending(null); setError(""); inputRef.current?.focus(); }
+  function toggle(id: string) { setEnabled((all) => (all.includes(id) ? all.filter((x) => x !== id) : [...all, id])); }
 
-  async function connectRepo(e: FormEvent) {
-    e.preventDefault();
-    if (!repo.trim() || repoLoading) return;
-    setRepoLoading(true); setRepoError("");
-    try {
-      const res = await fetch("/api/ai/github", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ repository: repo.trim() }) });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error([data.error, data.hint].filter(Boolean).join(" ") || "Impossible de lire ce dépôt.");
-      setRepoContext(data.context);
-      setRepoName(data.repository.full_name);
-    } catch (err) {
-      setRepoContext(""); setRepoName("");
-      setRepoError(err instanceof Error ? err.message : "Erreur de connexion GitHub.");
-    } finally {
-      setRepoLoading(false);
-    }
-  }
+  const pluginList = (
+    <ul className="plugin-list">
+      {(plugins ?? []).map((p) => {
+        const Icon = PLUGIN_ICONS[p.id] ?? Plug;
+        const on = enabled.includes(p.id);
+        return (
+          <li key={p.id} className={`plugin ${p.available ? "" : "off"}`}>
+            <span className="plugin-icon" aria-hidden="true"><Icon /></span>
+            <div className="grow" style={{ minWidth: 0 }}>
+              <div className="plugin-name">{p.name}{p.available && p.writeTools > 0 && <Badge tone="gold">écriture validée</Badge>}</div>
+              <p>{p.available ? p.description : p.reason}</p>
+            </div>
+            <button type="button" role="switch" aria-checked={on && p.available} aria-label={`Plugin ${p.name}`} className="switch" disabled={!p.available} onClick={() => toggle(p.id)}><i /></button>
+          </li>
+        );
+      })}
+      {!plugins && <li className="plugin off"><Loader2 className="spin" size={14} /> <p>Chargement des plugins…</p></li>}
+    </ul>
+  );
 
   return (
     <main className="chat">
@@ -120,7 +218,10 @@ export default function CodeAIPage() {
                 <div className="chat-hero">
                   <Badge tone="accent">Bickri Code AI</Badge>
                   <h1>Que veux-tu construire aujourd&apos;hui ?</h1>
-                  <p>Décris une fonctionnalité, colle une erreur ou demande du code. Les réponses s&apos;adaptent au langage choisi{repoName ? ` et au dépôt ${repoName}` : ""}.</p>
+                  <p>
+                    Décris une fonctionnalité, colle une erreur ou demande du code.
+                    {activePlugins.length ? ` Plugins actifs : ${activePlugins.map((p) => p.name).join(", ")}.` : " Active des plugins pour que l'IA travaille directement sur GitHub et le registre."}
+                  </p>
                 </div>
                 <div className="starter-grid">
                   {STARTERS.map(({ icon: Icon, text }) => (
@@ -132,22 +233,48 @@ export default function CodeAIPage() {
               </>
             ) : (
               <div aria-live="polite" style={{ display: "grid", gap: 22 }}>
-                {messages.map((m, i) => (
-                  <article key={i} className={`msg ${m.role}`}>
-                    <div className="msg-avatar" aria-hidden="true">{m.role === "user" ? <User /> : <Sparkles />}</div>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="msg-role">{m.role === "user" ? "Toi" : "Bickri Code AI"}</div>
-                      {m.role === "user" ? <div className="msg-text">{m.content}</div> : <Markdown>{m.content}</Markdown>}
-                    </div>
-                  </article>
-                ))}
-                {loading && (
-                  <article className="msg assistant">
-                    <div className="msg-avatar" aria-hidden="true"><Sparkles /></div>
-                    <div><div className="msg-role">Bickri Code AI</div><span className="typing" aria-label="Réponse en cours"><i /><i /><i /></span></div>
-                  </article>
-                )}
+                {messages.map((m, i) => {
+                  const isLast = i === messages.length - 1;
+                  if (m.role === "assistant" && !m.content && !m.events?.length && !(isLast && loading)) return null;
+                  return (
+                    <article key={i} className={`msg ${m.role}`}>
+                      <div className="msg-avatar" aria-hidden="true">{m.role === "user" ? <User /> : <Sparkles />}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="msg-role">{m.role === "user" ? "Toi" : "Bickri Code AI"}</div>
+                        {m.role === "user" ? <div className="msg-text">{m.content}</div> : (
+                          <>
+                            <ToolEvents events={m.events ?? []} />
+                            {m.content && <Markdown>{m.content}</Markdown>}
+                            {isLast && loading && <span className="typing" aria-label="Réponse en cours"><i /><i /><i /></span>}
+                          </>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
+            )}
+
+            {pending && (
+              <section className="approval" aria-label="Validation requise">
+                <header className="row">
+                  <ShieldAlert aria-hidden="true" />
+                  <div className="grow">
+                    <h2>Validation requise</h2>
+                    <p>L&apos;IA veut effectuer {pending.length > 1 ? `${pending.length} actions` : "une action"} d&apos;écriture. Rien n&apos;est exécuté sans ton accord.</p>
+                  </div>
+                </header>
+                {pending.map((p, i) => (
+                  <details key={i} className="approval-item" open={pending.length === 1}>
+                    <summary>{p.label}</summary>
+                    <pre className="mono">{argsPreview(p.args)}</pre>
+                  </details>
+                ))}
+                <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
+                  <button className="btn btn-sm" onClick={() => void decide("reject")} disabled={loading}><X /> Refuser</button>
+                  <button className="btn btn-primary btn-sm" onClick={() => void decide("approve")} disabled={loading}><Check /> Approuver</button>
+                </div>
+              </section>
             )}
 
             {error && (
@@ -161,50 +288,57 @@ export default function CodeAIPage() {
         </div>
 
         <div className="chat-composer">
+          {showPlugins && (
+            <div className="plugin-popover" role="dialog" aria-label="Plugins">
+              <div className="row"><b className="grow">Plugins</b><button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowPlugins(false)} aria-label="Fermer"><X /></button></div>
+              {pluginList}
+            </div>
+          )}
           <form className="composer" onSubmit={onSubmit}>
             <label htmlFor="ai-input" className="sr-only">Message</label>
-            <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} placeholder="Décris ton application, colle une erreur ou demande du code…" />
+            <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Décris ton application, demande une modification de dépôt ou colle une erreur…"} />
             <div className="composer-bar">
               <select className="select" style={{ width: "auto", height: 28, fontSize: "var(--text-xs)" }} value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Langage de travail">
                 {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
               </select>
-              {repoName && <Badge tone="success">{repoName}</Badge>}
+              <button type="button" className={`btn btn-sm ${activePlugins.length ? "btn-plugins-on" : ""}`} onClick={() => setShowPlugins((v) => !v)} aria-expanded={showPlugins} style={{ height: 28 }}>
+                <Plug /> Plugins{activePlugins.length ? ` · ${activePlugins.length}` : ""}
+              </button>
               <small className="grow hide-sm"><span className="kbd">Entrée</span> envoyer · <span className="kbd">Maj + Entrée</span> nouvelle ligne</small>
               {messages.length > 0 && <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={newChat} aria-label="Nouvelle conversation" title="Nouvelle conversation"><SquarePen /></button>}
-              <button className="btn btn-primary btn-icon btn-sm" type="submit" disabled={loading || !prompt.trim()} aria-label="Envoyer"><ArrowUp /></button>
+              <button className="btn btn-primary btn-icon btn-sm" type="submit" disabled={loading || !prompt.trim() || Boolean(pending)} aria-label="Envoyer"><ArrowUp /></button>
             </div>
           </form>
-          <p className="composer-note">Les réponses sont générées par IA : vérifie le code avant une mise en production. Ne partage jamais de clé secrète ni de mot de passe.</p>
+          <p className="composer-note">Les réponses sont générées par IA : vérifie le code avant une mise en production. Les actions d&apos;écriture demandent toujours ta validation.</p>
         </div>
       </div>
 
       <aside className="chat-side" aria-label="Contexte">
         <div>
           <h3>Conversation</h3>
-          <p>{messages.length ? `${messages.length} message(s) dans cette session.` : "Aucun message pour l'instant."}</p>
+          <p>{messages.length ? `${messages.filter((m) => m.role === "user").length} question(s) dans cette session.` : "Aucun message pour l'instant."}</p>
           <button className="btn btn-sm" style={{ marginTop: 10 }} onClick={newChat} disabled={!messages.length}><SquarePen /> Nouvelle conversation</button>
         </div>
         <hr className="divider" />
-        <form onSubmit={connectRepo} className="stack" style={{ gap: 10 }}>
-          <div>
-            <h3 className="row"><GitBranch size={14} /> Dépôt GitHub</h3>
-            <p>Donne à l&apos;IA le contexte d&apos;un dépôt (lecture seule, via le serveur GitHub MCP).</p>
+        <div className="stack" style={{ gap: 10 }}>
+          <div className="row">
+            <h3 className="row grow" style={{ marginBottom: 0 }}><Plug size={14} /> Plugins</h3>
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={() => void loadPlugins()} aria-label="Actualiser les plugins" title="Actualiser"><RefreshCw /></button>
           </div>
-          {config && !config.githubMcp && <div className="alert alert-warning" style={{ fontSize: "var(--text-xs)" }}><CircleAlert /><span>GITHUB_MCP_URL n&apos;est pas configurée.</span></div>}
-          {repoName ? (
-            <div className="alert alert-success" style={{ fontSize: "var(--text-xs)" }}>
-              <CircleCheck />
-              <div className="grow"><b>{repoName}</b><p className="muted">README, package.json et fichiers d&apos;entrée chargés.</p></div>
-              <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => { setRepoContext(""); setRepoName(""); }} aria-label="Déconnecter le dépôt"><Unlink /></button>
+          {account && !account.signedIn && (
+            <div className="alert alert-info" style={{ fontSize: "var(--text-xs)" }}>
+              <LogIn />
+              <span>Les plugins demandent un compte. <Link href="/login?next=/ai" className="link">Se connecter</Link></span>
             </div>
-          ) : (
-            <>
-              <input className="input" value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="proprietaire/depot" aria-label="Dépôt GitHub" />
-              <button className="btn btn-sm" type="submit" disabled={repoLoading || !repo.trim()}>{repoLoading ? <RefreshCw className="spin" /> : <GitBranch />} {repoLoading ? "Connexion…" : "Connecter"}</button>
-            </>
           )}
-          {repoError && <p className="field-error">{repoError}</p>}
-        </form>
+          {account?.signedIn && !account.trusted && (
+            <div className="alert alert-warning" style={{ fontSize: "var(--text-xs)" }}>
+              <ShieldAlert />
+              <span>GitHub est réservé aux comptes administrateurs, car il agit avec le jeton du propriétaire.</span>
+            </div>
+          )}
+          {pluginList}
+        </div>
         <hr className="divider" />
         <div>
           <h3>Modèle</h3>
