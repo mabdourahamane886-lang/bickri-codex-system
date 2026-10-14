@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { getAgentContext } from "@/lib/agent/context";
 
 export const runtime = "nodejs";
 export const maxDuration = 20;
@@ -48,6 +49,11 @@ function makeToolArguments(tool: { inputSchema?: unknown }, owner: string, repo:
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await getAgentContext();
+  if (!auth.user) {
+    return NextResponse.json({ error: "Connecte-toi pour accéder au contexte GitHub." }, { status: 401 });
+  }
+
   const endpoint = process.env.GITHUB_MCP_URL;
   if (!endpoint) {
     return NextResponse.json({
@@ -63,7 +69,7 @@ export async function POST(request: NextRequest) {
   const parsed = parseRepository(body.repository);
   if (!parsed) return NextResponse.json({ error: "Indique un dépôt au format propriétaire/depot ou une URL GitHub." }, { status: 400 });
 
-  // Le serveur MCP utilise le jeton du propriétaire : on limite la lecture aux comptes autorisés.
+  // Lecture seule du dépôt autorisé pour tout utilisateur connecté. Le jeton reste côté serveur.
   const owners = (process.env.GITHUB_ALLOWED_OWNERS || "mabdourahamane886-lang").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   if (!owners.includes(parsed.owner.toLowerCase())) {
     return NextResponse.json({ error: `Seuls les dépôts de ${owners.join(", ")} sont accessibles (variable GITHUB_ALLOWED_OWNERS).` }, { status: 403 });
