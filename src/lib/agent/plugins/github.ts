@@ -38,6 +38,12 @@ function allowedOwners(): string[] {
   return (process.env.GITHUB_ALLOWED_OWNERS || "mabdourahamane886-lang").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 }
 
+/** Dépôts explicitement autorisés à la lecture pour les comptes non privilégiés. */
+function allowedRepositories(): string[] {
+  return (process.env.GITHUB_ALLOWED_REPOSITORIES || "mabdourahamane886-lang/bickri-codex-system")
+    .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+}
+
 function resultText(result: unknown): { text: string; isError: boolean } {
   const r = (result ?? {}) as { content?: Array<{ type?: string; text?: string }>; isError?: boolean };
   const text = (r.content ?? []).filter((p) => p.type === "text" && typeof p.text === "string").map((p) => p.text).join("\n");
@@ -67,9 +73,14 @@ export const githubPlugin: Plugin = {
       await client.connect(new StreamableHTTPClientTransport(new URL(endpoint), { requestInit: { headers } }));
       const { tools: remote } = await client.listTools();
       const owners = allowedOwners();
+      const repositories = allowedRepositories();
 
       const tools: Tool[] = remote
-        .filter((t) => t.name in READ || (ctx.trusted && t.name in WRITE))
+        .filter((t) => ctx.trusted ? (t.name in READ || t.name in WRITE) : [
+          "get_me", "get_file_contents", "list_branches", "list_commits", "get_commit",
+          "list_tags", "list_issues", "issue_read", "list_pull_requests", "pull_request_read",
+          "list_releases", "get_latest_release",
+        ].includes(t.name))
         .map((t) => {
           const write = t.name in WRITE;
           const params = toGeminiSchema(t.inputSchema);
@@ -81,8 +92,15 @@ export const githubPlugin: Plugin = {
             label: (args) => describe(t.name, args),
             run: async (args) => {
               const owner = str(args.owner).toLowerCase();
+              const repoName = str(args.repo).toLowerCase();
               if (owner && !owners.includes(owner)) {
                 return { error: `Accès refusé : seul le ou les comptes ${owners.join(", ")} sont autorisés (GITHUB_ALLOWED_OWNERS).` };
+              }
+              if (!ctx.trusted) {
+                if (!owner || !repoName) return { error: "Accès lecture refusé : cette action doit cibler un dépôt autorisé." };
+                if (!repositories.includes(`${owner}/${repoName}`)) {
+                  return { error: `Accès lecture refusé : dépôt non autorisé. Dépôts permis : ${repositories.join(", ")} (GITHUB_ALLOWED_REPOSITORIES).` };
+                }
               }
               const res = resultText(await client.callTool({ name: t.name, arguments: args }));
               return res.isError ? { error: res.text || "Erreur GitHub." } : { result: res.text };
