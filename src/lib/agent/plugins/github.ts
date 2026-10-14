@@ -4,7 +4,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { toGeminiSchema } from "../schema";
 import { str, type Plugin, type Tool } from "../types";
 
-/** Outils MCP exposés à l'IA. Lecture pour les comptes connectés ; écriture uniquement pour les comptes de confiance. */
+/** Outils MCP exposés à l'IA. Lecture et écriture pour les comptes connectés, limitées aux dépôts autorisés. */
 const READ: Record<string, string> = {
   get_me: "Identifier le compte GitHub",
   get_file_contents: "Lire un fichier ou un dossier",
@@ -38,7 +38,7 @@ function allowedOwners(): string[] {
   return (process.env.GITHUB_ALLOWED_OWNERS || "mabdourahamane886-lang").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 }
 
-/** Dépôts explicitement autorisés à la lecture pour les comptes non privilégiés. */
+/** Dépôts explicitement autorisés à la lecture et à l'écriture pour tous les comptes connectés. */
 function allowedRepositories(): string[] {
   return (process.env.GITHUB_ALLOWED_REPOSITORIES || "mabdourahamane886-lang/bickri-codex-system")
     .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -60,7 +60,7 @@ function describe(name: string, args: Record<string, unknown>): string {
 export const githubPlugin: Plugin = {
   id: "github",
   name: "GitHub",
-  description: "Lire les dépôts autorisés pour les utilisateurs connectés ; les écritures sont réservées aux comptes de confiance.",
+  description: "Lire et modifier les dépôts autorisés pour les utilisateurs connectés, après approbation de chaque écriture.",
   async load(ctx) {
     const endpoint = process.env.GITHUB_MCP_URL;
     if (!endpoint) return { tools: [], reason: "GITHUB_MCP_URL n'est pas configurée." };
