@@ -63,6 +63,12 @@ export async function POST(request: NextRequest) {
   const parsed = parseRepository(body.repository);
   if (!parsed) return NextResponse.json({ error: "Indique un dépôt au format propriétaire/depot ou une URL GitHub." }, { status: 400 });
 
+  // Le serveur MCP utilise le jeton du propriétaire : on limite la lecture aux comptes autorisés.
+  const owners = (process.env.GITHUB_ALLOWED_OWNERS || "mabdourahamane886-lang").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (!owners.includes(parsed.owner.toLowerCase())) {
+    return NextResponse.json({ error: `Seuls les dépôts de ${owners.join(", ")} sont accessibles (variable GITHUB_ALLOWED_OWNERS).` }, { status: 403 });
+  }
+
   let client: Client | undefined;
   try {
     const url = new URL(endpoint);

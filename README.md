@@ -66,8 +66,30 @@ Copie `.env.example` vers `.env.local` en local, ou configure-les dans **Vercel 
 | `GEMINI_FALLBACK_MODEL` | Non | Modèle de repli |
 | `GITHUB_MCP_URL` | Non | Serveur GitHub MCP distant (Streamable HTTP, HTTPS) |
 | `GITHUB_MCP_BEARER_TOKEN` | Non | Jeton du serveur MCP |
+| `BCX_ADMIN_EMAILS` | Non | E-mails (séparés par des virgules) des comptes autorisés à utiliser le plugin GitHub |
+| `GITHUB_ALLOWED_OWNERS` | Non | Comptes GitHub accessibles aux plugins (défaut : `mabdourahamane886-lang`) |
 
 Ne préfixe jamais une clé secrète par `NEXT_PUBLIC_` et n'expose jamais une clé `service_role`. La page `/settings` indique ce qui est configuré sans jamais afficher les valeurs.
+
+## Plugins de Bickri Code AI
+
+L'assistant peut appeler de vrais outils pendant la conversation (appel de fonctions Gemini). Les plugins s'activent dans le panneau « Plugins » de la page `/ai`.
+
+| Plugin | Ce que l'IA peut faire | Accès |
+| --- | --- | --- |
+| GitHub | Lire fichiers, branches, commits, tickets et pull requests ; créer une branche, écrire des fichiers, ouvrir ou modifier une pull request, créer ou commenter un ticket | Comptes de confiance uniquement |
+| Registre BCX | Lister les identifiants, calculer le prochain code libre, créer un identifiant | Tout compte connecté (règles RLS) |
+| Web | Lire une page web publique (documentation, fichier brut, API JSON) | Tout compte connecté |
+
+Garde-fous :
+
+- Chaque action d'écriture s'arrête et attend un clic sur « Approuver » ; « Refuser » l'annule et l'IA en est informée.
+- Le plugin GitHub agit avec le jeton du serveur MCP : il est réservé aux comptes dont l'e-mail confirmé figure dans `BCX_ADMIN_EMAILS` ou dont le rôle `bcx_profiles.role` vaut `admin` ou `editor`, et limité aux propriétaires listés dans `GITHUB_ALLOWED_OWNERS`.
+- Outils GitHub exclus volontairement : suppression de fichiers, fusion de pull requests, création ou fork de dépôts.
+- Le plugin Web refuse les adresses privées et internes (protection SSRF) et limite la taille des réponses.
+- Les résultats d'outils sont traités comme des données non fiables dans les instructions du modèle.
+
+Ajouter un plugin : créer `src/lib/agent/plugins/<nom>.ts` qui implémente l'interface `Plugin` (`src/lib/agent/types.ts`), puis l'ajouter à `src/lib/agent/plugins/index.ts`.
 
 ## Base de données
 
@@ -94,7 +116,8 @@ Sans Supabase, l'application fonctionne en **mode local** : les identifiants et 
 
 ## Sécurité
 
-- Clés IA et MCP uniquement côté serveur ; limitation de débit sur `/api/ai/code` (20 requêtes par minute et par IP, par instance).
+- Clés IA et MCP uniquement côté serveur ; limitation de débit sur `/api/ai/code` (20 requêtes par minute et par IP) et `/api/ai/agent` (30), par instance.
+- Plugins réservés aux comptes connectés, GitHub aux comptes de confiance, écritures soumises à validation (voir « Plugins »).
 - En-têtes de sécurité (HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`).
 - Aperçu du studio isolé dans une iframe `sandbox` sans accès à l'origine de l'application.
 - Redirections d'authentification limitées aux chemins internes.
