@@ -78,7 +78,7 @@ export function VoiceAssistant({
   useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
   useEffect(() => { blockedRef.current = blocked; }, [blocked]);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     const recognition = recognitionRef.current;
     if (!recognition) {
       setNotice("La reconnaissance vocale n'est pas prise en charge par ce navigateur. Essaie Chrome récent.");
@@ -90,16 +90,45 @@ export function VoiceAssistant({
       setNotice("Valide ou refuse d'abord l'action en attente dans la conversation.");
       return;
     }
+    if (!window.isSecureContext) {
+      setNotice("Le micro exige une connexion HTTPS sécurisée. Ouvre BCX avec son adresse HTTPS.");
+      voiceModeRef.current = false;
+      setVoiceMode(false);
+      return;
+    }
     try {
+      setNotice("Vérification de l'accès au microphone…");
+      // Request microphone access explicitly before starting SpeechRecognition.
+      // Some Android browsers otherwise report a generic not-allowed error.
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setNotice("Ce navigateur ne permet pas d'ouvrir le microphone. Mets Chrome à jour.");
+        voiceModeRef.current = false;
+        setVoiceMode(false);
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+      if (!voiceModeRef.current || blockedRef.current) return;
       window.speechSynthesis?.cancel();
       recognition.lang = locale;
       recognition.start();
       setListening(true);
       setSpeaking(false);
       setNotice("J'écoute… parle naturellement, puis fais une courte pause.");
-    } catch {
+    } catch (error) {
       setListening(false);
-      setNotice("Le microphone est déjà actif ou n'a pas pu démarrer. Réessaie.");
+      const name = error instanceof DOMException ? error.name : "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        setNotice("Le navigateur ou le téléphone bloque le micro pour BCX. Autorise-le pour ce site, puis recharge la page.");
+      } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+        setNotice("Aucun microphone n'a été détecté sur cet appareil.");
+      } else if (name === "NotReadableError" || name === "TrackStartError") {
+        setNotice("Le micro est utilisé par une autre application. Ferme-la puis réessaie.");
+      } else {
+        setNotice(`Impossible de démarrer le micro (${name || "erreur inconnue"}). Réessaie.`);
+      }
+      voiceModeRef.current = false;
+      setVoiceMode(false);
     }
   }, [locale]);
 
