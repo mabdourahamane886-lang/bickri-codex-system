@@ -24,7 +24,7 @@ type SpeechRecognitionLike = {
   interimResults: boolean;
   continuous: boolean;
   onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event?: { error?: string }) => void) | null;
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
@@ -132,13 +132,26 @@ export function VoiceAssistant({
         .trim();
       setListening(false);
       if (!transcript) {
-        setNotice("Je n'ai pas reconnu de phrase. Tu peux réessayer.");
+        setNotice("Je n'ai pas reconnu de phrase. Je relance l'écoute…");
+        if (voiceModeRef.current && !blockedRef.current) {
+          window.setTimeout(() => {
+            if (voiceModeRef.current && !blockedRef.current) startListening();
+          }, 400);
+        }
         return;
       }
       setNotice(`Commande reconnue : « ${transcript.slice(0, 180)} »`);
       lastSpokenRef.current = "";
       waitingForResponseRef.current = true;
-      void onSendRef.current(transcript);
+      Promise.resolve(onSendRef.current(transcript)).catch(() => {
+        waitingForResponseRef.current = false;
+        setNotice("L'envoi a échoué. Je relance l'écoute…");
+        if (voiceModeRef.current && !blockedRef.current) {
+          window.setTimeout(() => {
+            if (voiceModeRef.current && !blockedRef.current) startListening();
+          }, 500);
+        }
+      });
     };
     recognition.onerror = (event?: { error?: string }) => {
       setListening(false);
@@ -148,7 +161,12 @@ export function VoiceAssistant({
         setVoiceMode(false);
         setNotice("Accès au microphone refusé. Autorise le microphone dans les paramètres du navigateur, puis réessaie.");
       } else if (reason === "no-speech") {
-        setNotice("Je n'ai rien entendu. Parle après le signal d'écoute, puis réessaie.");
+        setNotice("Je n'ai rien entendu. Je relance l'écoute…");
+        if (voiceModeRef.current && !blockedRef.current) {
+          window.setTimeout(() => {
+            if (voiceModeRef.current && !blockedRef.current) startListening();
+          }, 500);
+        }
       } else if (reason === "audio-capture") {
         setNotice("Aucun microphone disponible. Vérifie que ton téléphone autorise l'accès au micro.");
       } else {
