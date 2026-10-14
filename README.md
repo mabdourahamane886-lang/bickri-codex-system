@@ -77,14 +77,14 @@ L'assistant peut appeler de vrais outils pendant la conversation (appel de fonct
 
 | Plugin | Ce que l'IA peut faire | Accès |
 | --- | --- | --- |
-| GitHub | Lire fichiers, branches, commits, tickets et pull requests ; créer une branche, écrire des fichiers, ouvrir ou modifier une pull request, créer ou commenter un ticket | Comptes de confiance uniquement |
+| GitHub | Lire fichiers, branches, commits, tickets et pull requests des dépôts autorisés ; les écritures GitHub sont réservées aux comptes de confiance | Lecture : tout compte connecté ; écriture : admin/editor ou e-mail autorisé |
 | Registre BCX | Lister les identifiants, calculer le prochain code libre, créer un identifiant | Tout compte connecté (règles RLS) |
 | Web | Lire une page web publique (documentation, fichier brut, API JSON) | Tout compte connecté |
 
 Garde-fous :
 
 - Chaque action d'écriture s'arrête et attend un clic sur « Approuver » ; « Refuser » l'annule et l'IA en est informée.
-- Le plugin GitHub agit avec le jeton du serveur MCP : il est réservé aux comptes dont l'e-mail confirmé figure dans `BCX_ADMIN_EMAILS` ou dont le rôle `bcx_profiles.role` vaut `admin` ou `editor`, et limité aux propriétaires listés dans `GITHUB_ALLOWED_OWNERS`.
+- Le jeton GitHub/MCP reste exclusivement côté serveur. Tout utilisateur connecté peut lire les dépôts des propriétaires listés dans `GITHUB_ALLOWED_OWNERS`. Les outils d'écriture (branches, fichiers, pull requests, tickets) restent limités aux comptes dont l'e-mail confirmé figure dans `BCX_ADMIN_EMAILS` ou dont le rôle `bcx_profiles.role` vaut `admin` ou `editor`. Les dépôts restent limités à `GITHUB_ALLOWED_OWNERS`.
 - Outils GitHub exclus volontairement : suppression de fichiers, fusion de pull requests, création ou fork de dépôts.
 - Le plugin Web refuse les adresses privées et internes (protection SSRF) et limite la taille des réponses.
 - Les résultats d'outils sont traités comme des données non fiables dans les instructions du modèle.
@@ -117,7 +117,7 @@ Sans Supabase, l'application fonctionne en **mode local** : les identifiants et 
 ## Sécurité
 
 - Clés IA et MCP uniquement côté serveur ; limitation de débit sur `/api/ai/code` (20 requêtes par minute et par IP) et `/api/ai/agent` (30), par instance.
-- Plugins réservés aux comptes connectés, GitHub aux comptes de confiance, écritures soumises à validation (voir « Plugins »).
+- Plugins réservés aux comptes connectés ; GitHub en lecture seule pour tous les comptes connectés et en écriture pour les comptes de confiance, avec validation humaine avant chaque écriture (voir « Plugins »).
 - En-têtes de sécurité (HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`).
 - Aperçu du studio isolé dans une iframe `sandbox` sans accès à l'origine de l'application.
 - Redirections d'authentification limitées aux chemins internes.
