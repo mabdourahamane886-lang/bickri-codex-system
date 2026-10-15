@@ -27,7 +27,11 @@ export async function POST(request: NextRequest) {
   const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
   const projectContext = typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "";
   try {
-    const result = await generateWithRouter({ systemInstruction: buildSystemInstruction(language, projectContext), messages });
+    const latestUserQuery = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+    const result = await generateWithRouter({
+      systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery),
+      messages,
+    });
     return NextResponse.json({ answer: result.answer, model: result.model, provider: result.provider });
   } catch (error) {
     if (error instanceof AIError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
