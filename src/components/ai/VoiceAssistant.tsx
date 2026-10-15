@@ -233,6 +233,27 @@ export function VoiceAssistant({
     recognition.onend = () => {
       recognitionActiveRef.current = false;
       setListening(false);
+
+      // SpeechRecognition s'arrête naturellement après une pause ou une phrase.
+      // En mode conversation, on le relance seulement lorsqu'aucune réponse n'est
+      // en cours afin de garder un échange mains libres sans double démarrage.
+      if (
+        voiceModeRef.current &&
+        !blockedRef.current &&
+        !busyRef.current &&
+        !waitingForResponseRef.current
+      ) {
+        window.setTimeout(() => {
+          if (
+            voiceModeRef.current &&
+            !blockedRef.current &&
+            !busyRef.current &&
+            !waitingForResponseRef.current
+          ) {
+            startListening();
+          }
+        }, 250);
+      }
     };
     recognitionRef.current = recognition;
 
