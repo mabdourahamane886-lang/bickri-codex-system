@@ -29,7 +29,7 @@ export function stableDocumentId(value: string): string {
 }
 
 /** Gemini embeddings use the same server-side key as the configured Gemini provider. */
-export async function embedTexts(texts: string[]): Promise<number[][] | null> {
+export async function embedTexts(texts: string[], taskType: "RETRIEVAL_DOCUMENT" | "RETRIEVAL_QUERY" = "RETRIEVAL_DOCUMENT"): Promise<number[][] | null> {
   const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
   if (!apiKey || !texts.length) return null;
 
@@ -44,7 +44,7 @@ export async function embedTexts(texts: string[]): Promise<number[][] | null> {
           model: `models/${model}`,
           content: { parts: [{ text }] },
           outputDimensionality: EMBEDDING_DIMENSIONS,
-          taskType: "RETRIEVAL_DOCUMENT",
+          taskType,
         })),
       }),
       signal: AbortSignal.timeout(25000),
