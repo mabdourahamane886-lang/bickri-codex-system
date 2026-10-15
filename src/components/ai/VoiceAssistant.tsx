@@ -281,109 +281,66 @@ export function VoiceAssistant({
     window.speechSynthesis.speak(utterance);
   }, [assistantResponse, blocked, busy, locale, startListening, voiceMode]);
 
-  const robotState = blocked
-    ? "blocked"
-    : speaking
-      ? "speaking"
-      : listening
-        ? "listening"
-        : busy
-          ? "thinking"
-          : voiceMode
-            ? "active"
-            : "idle";
-  const robotLabel = blocked
-    ? "Validation requise"
-    : speaking
-      ? "Je te réponds"
-      : listening
-        ? "Je t'écoute"
-        : busy
-          ? "Je réfléchis"
-          : voiceMode
-            ? "Prêt à t'écouter"
-            : "Assistant vocal";
-
   return (
-    <span className="bcx-voice-control row">
-      <div
-        className="bcx-robot"
-        data-state={robotState}
-        role="img"
-        aria-label={`Robot BICKRI AI : ${robotLabel}`}
+    <span className="row" style={{ gap: 4, flexShrink: 0 }}>
+      <label className="sr-only" htmlFor="bcx-voice-language">Langue vocale</label>
+      <select
+        id="bcx-voice-language"
+        className="select"
+        style={{ width: 1, minWidth: 1, height: 1, padding: 0, border: 0, opacity: 0, position: "absolute", pointerEvents: "none" }}
+        value={locale}
+        onChange={(event) => setLocale(event.target.value)}
+        disabled={listening || speaking}
+        tabIndex={-1}
+        aria-hidden="true"
       >
-        <span className="bcx-robot-antenna"><i /></span>
-        <span className="bcx-robot-ear bcx-robot-ear-left" />
-        <span className="bcx-robot-ear bcx-robot-ear-right" />
-        <span className="bcx-robot-head">
-          <span className="bcx-robot-eye bcx-robot-eye-left" />
-          <span className="bcx-robot-eye bcx-robot-eye-right" />
-          <span className="bcx-robot-mouth" />
-        </span>
-        <span className="bcx-robot-neck" />
-        <span className="bcx-robot-body">
-          <span className="bcx-robot-core" />
-        </span>
-        <span className="bcx-robot-arm bcx-robot-arm-left" />
-        <span className="bcx-robot-arm bcx-robot-arm-right" />
-      </div>
-
-      <div className="bcx-voice-identity">
-        <strong>BICKRI AI</strong>
-        <span className="bcx-voice-label">{robotLabel}</span>
-        {notice && (
-          <small className="bcx-voice-notice" role="status" aria-live="polite">
-            {blocked ? "Une action nécessite ton approbation. Confirme-la dans la conversation." : notice}
-          </small>
-        )}
-      </div>
-
-      <div className="bcx-voice-actions">
-        <label className="sr-only" htmlFor="bcx-voice-language">Langue vocale</label>
-        <select
-          id="bcx-voice-language"
-          className="select"
-          style={{ width: 1, minWidth: 1, height: 1, padding: 0, border: 0, opacity: 0, position: "absolute", pointerEvents: "none" }}
-          value={locale}
-          onChange={(event) => setLocale(event.target.value)}
-          disabled={listening || speaking}
-          tabIndex={-1}
-          aria-hidden="true"
+        {LOCALES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+      </select>
+      {!voiceMode ? (
+        <button
+          type="button"
+          className="btn btn-ghost btn-icon btn-sm"
+          onClick={() => { setVoiceMode(true); voiceModeRef.current = true; setNotice("Activation du microphone…"); startListening(); }}
+          disabled={busy || blocked}
+          aria-label="Parler à BICKRI AI"
+          title="Parler à BICKRI AI"
         >
-          {LOCALES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-        </select>
-        {!voiceMode ? (
-          <button
-            type="button"
-            className="btn btn-ghost btn-icon btn-sm"
-            onClick={() => { setVoiceMode(true); voiceModeRef.current = true; setNotice("Activation du microphone…"); startListening(); }}
-            disabled={busy || blocked}
-            aria-label="Parler à BICKRI AI"
-            title="Parler à BICKRI AI"
-          >
-            <Mic size={18} aria-hidden="true" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            className={`btn btn-icon btn-sm ${listening ? "btn-primary" : "btn-danger"}`}
-            onClick={stopVoice}
-            aria-label="Arrêter la conversation vocale"
-            title={listening ? "Écoute active — appuie pour arrêter" : speaking ? "BICKRI AI parle — appuie pour arrêter" : "Arrêter le mode vocal"}
-          >
-            {listening ? <Radio size={18} aria-hidden="true" /> : speaking ? <Volume2 size={18} aria-hidden="true" /> : <MicOff size={18} aria-hidden="true" />}
-          </button>
-        )}
-        {speaking && (
-          <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => {
-            if (typeof window !== "undefined") window.speechSynthesis?.cancel();
-            setSpeaking(false);
-            setNotice("Lecture vocale interrompue.");
-          }} aria-label="Couper la réponse vocale" title="Couper la voix">
-            <Volume2 size={17} aria-hidden="true" />
-          </button>
-        )}
-      </div>
+          <Mic size={18} aria-hidden="true" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          className={`btn btn-icon btn-sm ${listening ? "btn-primary" : "btn-danger"}`}
+          onClick={stopVoice}
+          aria-label="Arrêter la conversation vocale"
+          title={listening ? "Écoute active — appuie pour arrêter" : speaking ? "BICKRI AI parle — appuie pour arrêter" : "Arrêter le mode vocal"}
+        >
+          {listening ? <Radio size={18} aria-hidden="true" /> : speaking ? <Volume2 size={18} aria-hidden="true" /> : <MicOff size={18} aria-hidden="true" />}
+        </button>
+      )}
+      {speaking && (
+        <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => {
+          if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+          setSpeaking(false);
+          setNotice("Lecture vocale interrompue.");
+        }} aria-label="Couper la réponse vocale" title="Couper la voix">
+          <Volume2 size={17} aria-hidden="true" />
+        </button>
+      )}
+      <span
+        role="status"
+        aria-live="polite"
+        style={{
+          display: notice ? "inline-block" : "none",
+          maxWidth: 230,
+          fontSize: 11,
+          lineHeight: 1.35,
+          color: "var(--muted-foreground, #64748b)",
+          overflowWrap: "anywhere",
+        }}
+      >
+        {blocked ? "Une action nécessite ton approbation. Confirme-la dans la conversation." : notice}
+      </span>
     </span>
   );
 }
