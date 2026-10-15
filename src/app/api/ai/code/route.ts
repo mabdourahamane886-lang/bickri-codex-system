@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AIError } from "@/lib/ai/gemini";
 import { generateWithRouter } from "@/lib/ai/router";
-import { buildSystemInstruction } from "@/lib/ai/prompt";
+import { buildSystemInstruction } from "@/lib/ai/prompt";\nimport { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -28,8 +28,9 @@ export async function POST(request: NextRequest) {
   const projectContext = typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "";
   try {
     const latestUserQuery = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+    const retrieved = await retrieveKnowledge(latestUserQuery, 5);
     const result = await generateWithRouter({
-      systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery),
+      systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery, formatRetrievedKnowledge(retrieved)),
       messages,
     });
     return NextResponse.json({ answer: result.answer, model: result.model, provider: result.provider });

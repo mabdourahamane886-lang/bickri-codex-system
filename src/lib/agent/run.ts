@@ -1,6 +1,6 @@
 import "server-only";
 import { generateContent, type GeminiContent, type GeminiPart } from "@/lib/ai/gemini-raw";
-import { buildSystemInstruction } from "@/lib/ai/prompt";
+import { buildSystemInstruction } from "@/lib/ai/prompt";\nimport { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
 import { PLUGINS } from "./plugins";
 import type { AgentContext, PluginStatus, Tool } from "./types";
 
@@ -106,7 +106,14 @@ export async function runAgent(opts: {
     .flatMap((item) => item.parts.filter((part) => typeof part.text === "string").map((part) => part.text!))
     .join("\n")
     .slice(-8000);
-  const system = buildSystemInstruction(opts.language, opts.projectContext, [...tools.keys()], latestUserQuery);
+  const retrieved = await retrieveKnowledge(latestUserQuery, 5);
+  const system = buildSystemInstruction(
+    opts.language,
+    opts.projectContext,
+    [...tools.keys()],
+    latestUserQuery,
+    formatRetrievedKnowledge(retrieved),
+  );
   let model: string | undefined;
 
   try {
