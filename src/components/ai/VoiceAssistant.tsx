@@ -72,6 +72,7 @@ export function VoiceAssistant({
   const onSendRef = useRef(onSend);
   const voiceModeRef = useRef(voiceMode);
   const blockedRef = useRef(blocked);
+  const busyRef = useRef(busy);
   const waitingForResponseRef = useRef(false);
   const lastSpokenRef = useRef("");
   const previousBusyRef = useRef(busy);
@@ -84,6 +85,7 @@ export function VoiceAssistant({
   useEffect(() => { onSendRef.current = onSend; }, [onSend]);
   useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
   useEffect(() => { blockedRef.current = blocked; }, [blocked]);
+  useEffect(() => { busyRef.current = busy; }, [busy]);
 
   const startListening = useCallback(async () => {
     if (startInProgressRef.current || recognitionActiveRef.current) return;
@@ -190,15 +192,6 @@ export function VoiceAssistant({
       if (!isFinal || !transcript || submittedThisSessionRef.current) return;
       submittedThisSessionRef.current = true;
       setListening(false);
-      if (!transcript) {
-        setNotice("Je n'ai pas reconnu de phrase. Je relance l'écoute…");
-        if (voiceModeRef.current && !blockedRef.current) {
-          window.setTimeout(() => {
-            if (voiceModeRef.current && !blockedRef.current) startListening();
-          }, 400);
-        }
-        return;
-      }
       setNotice(`Commande reconnue : « ${transcript.slice(0, 180)} »`);
       lastSpokenRef.current = "";
       waitingForResponseRef.current = true;
@@ -267,8 +260,6 @@ export function VoiceAssistant({
 
   useEffect(() => {
     const clean = speechSafeText(assistantResponse);
-    // If the request ends without an assistant response, release the voice loop
-    // instead of leaving it waiting forever (for example after a network/API error).
     const wasBusy = previousBusyRef.current;
     previousBusyRef.current = busy;
     if (wasBusy && !busy && waitingForResponseRef.current && !clean && !blocked) {
