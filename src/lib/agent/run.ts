@@ -101,7 +101,12 @@ export async function runAgent(opts: {
 
   const contents = opts.contents;
   const declarations = [...tools.values()].map((t) => ({ name: t.name, description: t.description, ...(t.parameters ? { parameters: t.parameters } : {}) }));
-  const system = buildSystemInstruction(opts.language, opts.projectContext, [...tools.keys()]);
+  const latestUserQuery = [...contents].reverse()
+    .filter((item) => item.role === "user")
+    .flatMap((item) => item.parts.filter((part) => typeof part.text === "string").map((part) => part.text!))
+    .join("\n")
+    .slice(-8000);
+  const system = buildSystemInstruction(opts.language, opts.projectContext, [...tools.keys()], latestUserQuery);
   let model: string | undefined;
 
   try {
