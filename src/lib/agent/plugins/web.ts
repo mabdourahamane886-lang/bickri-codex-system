@@ -1,7 +1,7 @@
 import "server-only";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import { str, type Plugin } from "../types";
+import { str, type Plugin, type Tool } from "../types";
 
 type SearchResult = { title?: string; url?: string; content?: string };
 
@@ -71,13 +71,13 @@ export const webPlugin: Plugin = {
   description: "Recherche Web en temps réel et lecture de pages publiques.",
   async load(ctx) {
     if (!ctx.user) return { tools: [], reason: "Connecte-toi pour utiliser les outils Web." };
-    const tools = [{
+    const tools: Tool[] = [{
       name: "web_fetch",
       description: "Télécharge le texte d'une page web publique (documentation, README brut, API JSON). Les adresses privées sont refusées.",
       parameters: { type: "object", properties: { url: { type: "string", description: "URL complète en https" } }, required: ["url"] },
       write: false,
-      label: (a: Record<string, unknown>) => `Lire ${str(a.url, 100)}`,
-      run: async (a: Record<string, unknown>) => {
+      label: (a) => `Lire ${str(a.url, 100)}`,
+      run: async (a) => {
         try { return await fetchPublic(str(a.url, 2000)); }
         catch (err) { return { error: err instanceof Error ? err.message : "Lecture impossible." }; }
       },
@@ -88,8 +88,8 @@ export const webPlugin: Plugin = {
         description: "Recherche des pages Web récentes et pertinentes. Présente les URL retournées comme sources et distingue les résultats trouvés des faits vérifiés.",
         parameters: { type: "object", properties: { query: { type: "string", description: "Question ou sujet à rechercher sur le Web." } }, required: ["query"] },
         write: false,
-        label: (a: Record<string, unknown>) => `Recherche Web : ${str(a.query, 90)}`,
-        run: async (a: Record<string, unknown>) => {
+        label: (a) => `Recherche Web : ${str(a.query, 90)}`,
+        run: async (a) => {
           const query = str(a.query, 400).trim();
           if (!query) return { error: "La requête est vide." };
           try { return await searchWeb(query); }
