@@ -15,7 +15,7 @@ const LOCALES: LocaleOption[] = [
   { label: "Português", value: "pt-PT" },
 ];
 
-type SpeechRecognitionResultLike = { transcript: string };
+type SpeechRecognitionResultLike = { transcript: string; isFinal?: boolean };
 type SpeechRecognitionEventLike = {
   results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>>;
 };
@@ -66,6 +66,7 @@ export function VoiceAssistant({
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [notice, setNotice] = useState("");
+  const [transcript, setTranscript] = useState("");
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const onSendRef = useRef(onSend);
   const voiceModeRef = useRef(voiceMode);
@@ -73,12 +74,19 @@ export function VoiceAssistant({
   const waitingForResponseRef = useRef(false);
   const lastSpokenRef = useRef("");
   const previousBusyRef = useRef(busy);
+  const startInProgressRef = useRef(false);
+  const recognitionActiveRef = useRef(false);
+  const submittedThisSessionRef = useRef(false);
+  const cancelledSpeechRef = useRef(false);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => { onSendRef.current = onSend; }, [onSend]);
   useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
   useEffect(() => { blockedRef.current = blocked; }, [blocked]);
 
   const startListening = useCallback(async () => {
+    if (startInProgressRef.current || recognitionActiveRef.current) return;
+    if (!voiceModeRef.current || blockedRef.current || busyRef.current) return;
     const recognition = recognitionRef.current;
     if (!recognition) {
       setNotice("La reconnaissance vocale n'est pas prise en charge par ce navigateur. Essaie Chrome récent.");
@@ -96,6 +104,8 @@ export function VoiceAssistant({
       setVoiceMode(false);
       return;
     }
+    startInProgressRef.current = true;
+    let stream: MediaStream | null = null;
     try {
       setNotice("Vérification de l'accès au microphone…");
       // Request microphone access explicitly before starting SpeechRecognition.
@@ -106,12 +116,16 @@ export function VoiceAssistant({
         setVoiceMode(false);
         return;
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((track) => track.stop());
-      if (!voiceModeRef.current || blockedRef.current) return;
+      stream = null;
+      if (!voiceModeRef.current || blockedRef.current || busyRef.current) return;
       window.speechSynthesis?.cancel();
       recognition.lang = locale;
+      submittedThisSessionRef.current = false;
+      setTranscript("");
       recognition.start();
+      recognitionActiveRef.current = true;
       setListening(true);
       setSpeaking(false);
       setNotice("J'écoute… parle naturellement, puis fais une courte pause.");
@@ -129,6 +143,9 @@ export function VoiceAssistant({
       }
       voiceModeRef.current = false;
       setVoiceMode(false);
+    } finally {
+      stream?.getTracks().forEach((track) => track.stop());
+      startInProgressRef.current = false;
     }
   }, [locale]);
 
@@ -137,6 +154,10 @@ export function VoiceAssistant({
     setVoiceMode(false);
     setListening(false);
     waitingForResponseRef.current = false;
+    startInProgressRef.current = false;
+    recognitionActiveRef.current = false;
+    cancelledSpeechRef.current = true;
+    utteranceRef.current = null;
     try { recognitionRef.current?.stop(); } catch { /* déjà arrêté */ }
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
     setSpeaking(false);
@@ -151,14 +172,22 @@ export function VoiceAssistant({
     }
 
     const recognition = new Recognition();
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.continuous = false;
     recognition.lang = locale;
     recognition.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .map((result) => result[0]?.transcript ?? "")
-        .join(" ")
-        .trim();
+      const parts: string[] = [];
+      let isFinal = false;
+      for (let index = 0; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const phrase = result?.[0]?.transcript?.trim();
+        if (phrase) parts.push(phrase);
+        if (result?.[0]?.isFinal) isFinal = true;
+      }
+      const transcript = parts.join(" ").replace(/\s+/g, " ").trim();
+      setTranscript(transcript);
+      if (!isFinal || !transcript || submittedThisSessionRef.current) return;
+      submittedThisSessionRef.current = true;
       setListening(false);
       if (!transcript) {
         setNotice("Je n'ai pas reconnu de phrase. Je relance l'écoute…");
@@ -183,6 +212,7 @@ export function VoiceAssistant({
       });
     };
     recognition.onerror = (event?: { error?: string }) => {
+      recognitionActiveRef.current = false;
       setListening(false);
       const reason = event?.error;
       if (reason === "not-allowed" || reason === "service-not-allowed") {
@@ -206,11 +236,16 @@ export function VoiceAssistant({
         setNotice(`La reconnaissance vocale a échoué (${reason ?? "erreur inconnue"}). Vérifie Internet et les autorisations du micro.`);
       }
     };
-    recognition.onend = () => setListening(false);
+    recognition.onend = () => {
+      recognitionActiveRef.current = false;
+      setListening(false);
+    };
     recognitionRef.current = recognition;
 
     return () => {
+      recognitionActiveRef.current = false;
       try { recognition.stop(); } catch { /* déjà arrêté */ }
+      if (recognitionRef.current === recognition) recognitionRef.current = null;
     };
   }, [locale]);
 
@@ -254,7 +289,9 @@ export function VoiceAssistant({
 
     waitingForResponseRef.current = false;
     lastSpokenRef.current = clean;
+    cancelledSpeechRef.current = false;
     const utterance = new SpeechSynthesisUtterance(clean);
+    utteranceRef.current = utterance;
     utterance.lang = locale;
     utterance.rate = 1;
     utterance.pitch = 1;
@@ -262,12 +299,19 @@ export function VoiceAssistant({
       setSpeaking(true);
       setNotice("BICKRI AI répond à voix haute…");
     };
-    utterance.onerror = () => {
+    utterance.onerror = (event) => {
+      if (utteranceRef.current !== utterance) return;
+      utteranceRef.current = null;
       setSpeaking(false);
-      setNotice("La lecture vocale a échoué. Tu peux lire la réponse à l'écran.");
+      if (!cancelledSpeechRef.current && event.error !== "canceled" && event.error !== "interrupted") {
+        setNotice("La lecture vocale a échoué. Tu peux lire la réponse à l'écran.");
+      }
     };
     utterance.onend = () => {
+      if (utteranceRef.current !== utterance) return;
+      utteranceRef.current = null;
       setSpeaking(false);
+      if (cancelledSpeechRef.current) return;
       if (voiceModeRef.current && !blockedRef.current) {
         setNotice("À toi : je t'écoute de nouveau.");
         window.setTimeout(() => {
@@ -320,6 +364,8 @@ export function VoiceAssistant({
       )}
       {speaking && (
         <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => {
+          cancelledSpeechRef.current = true;
+          utteranceRef.current = null;
           if (typeof window !== "undefined") window.speechSynthesis?.cancel();
           setSpeaking(false);
           setNotice("Lecture vocale interrompue.");
@@ -331,7 +377,7 @@ export function VoiceAssistant({
         role="status"
         aria-live="polite"
         style={{
-          display: notice ? "inline-block" : "none",
+          display: notice || transcript ? "inline-block" : "none",
           maxWidth: 230,
           fontSize: 11,
           lineHeight: 1.35,
@@ -339,7 +385,7 @@ export function VoiceAssistant({
           overflowWrap: "anywhere",
         }}
       >
-        {blocked ? "Une action nécessite ton approbation. Confirme-la dans la conversation." : notice}
+        {blocked ? "Une action nécessite ton approbation. Confirme-la dans la conversation." : <>{notice}{transcript && <><br /><strong>Transcription :</strong> {transcript}</>}</>}
       </span>
     </span>
   );
