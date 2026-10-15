@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.AI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
       { error: "La variable GEMINI_API_KEY est absente. Ajoute-la dans Vercel → Settings → Environment Variables puis redéploie.", code: "AI_NOT_CONFIGURED" },

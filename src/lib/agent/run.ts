@@ -117,7 +117,14 @@ export async function runAgent(opts: {
     for (let step = 0; step < MAX_STEPS; step++) {
       if (Date.now() - started > TIME_BUDGET_MS) return { contents, events, continue: true, model, plugins: statuses };
       compact(contents);
-      const res = await generateContent({ apiKey: opts.apiKey, model: process.env.GEMINI_MODEL || "gemini-3.8-flash", fallbackModel: process.env.GEMINI_FALLBACK_MODEL || "gemini-3.6-flash", systemInstruction: system, contents, tools: declarations });
+      const res = await generateContent({
+        apiKey: opts.apiKey,
+        model: process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-3.8-flash",
+        fallbackModel: process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-3.6-flash",
+        systemInstruction: system,
+        contents,
+        tools: declarations,
+      });
       model = res.model;
       contents.push(res.content);
 
