@@ -152,7 +152,13 @@ export function getRelevantKnowledge(query: string, maxPacks = 4): string {
     pack,
     score: pack.triggers.reduce((score, trigger) => {
       const needle = normalize(trigger);
+      const matches = needle.length <= 3
+        ? new RegExp(`(^|[^a-z0-9])${needle.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\    score: pack.triggers.reduce((score, trigger) => {
+      const needle = normalize(trigger);
       return score + (normalized.includes(needle) ? (needle.length >= 7 ? 2 : 1) : 0);
+    }, 0),")}($|[^a-z0-9])`).test(normalized)
+        : normalized.includes(needle);
+      return score + (matches ? (needle.length >= 7 ? 2 : 1) : 0);
     }, 0),
   }))
     .filter((item) => item.score > 0)
