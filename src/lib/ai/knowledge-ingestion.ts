@@ -110,5 +110,14 @@ export async function saveKnowledgeDocument(input: {
     .from("bcx_knowledge_chunks")
     .upsert(rows, { onConflict: "source_url,chunk_index" });
   if (error) throw new Error(`Enregistrement de la bibliothèque impossible (${error.code}).`);
+
+  // Remove old tail chunks when a source is re-imported with shorter content.
+  const { error: cleanupError } = await input.supabase
+    .from("bcx_knowledge_chunks")
+    .delete()
+    .eq("source_url", input.sourceUrl)
+    .gte("chunk_index", chunks.length);
+  if (cleanupError) console.warn("BCX stale chunk cleanup failed:", cleanupError.code);
+
   return { chunks: chunks.length, vectorized: vectorized ? chunks.length : 0 };
 }
