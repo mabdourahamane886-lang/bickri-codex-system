@@ -858,3 +858,12 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .bcx-robot-core,
   .bcx-robot-mouth { animation: none !important; }
 }
+
+
+/* The voice robot takes its own row on small screens to keep every control reachable. */
+@media (max-width: 560px) {
+  .composer-bar { flex-wrap: wrap; }
+  .bcx-voice-control { flex: 1 0 100%; }
+  .bcx-voice-identity { flex: 1 1 auto; }
+  .bcx-voice-notice { max-width: min(100%, 240px); }
+}
