@@ -56,6 +56,17 @@ function speechSafeText(value: string): string {
     .slice(0, 5000);
 }
 
+function selectMaleVoice(locale: string): SpeechSynthesisVoice | undefined {
+  const voices = window.speechSynthesis.getVoices();
+  const language = locale.toLowerCase().split("-")[0];
+  const matchingVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith(language));
+  const candidates = matchingVoices.length ? matchingVoices : voices;
+  const maleHints = /male|homme|man|marcha|thomas|henri|paul|jacques|antoine|françois|daniel|michel|george|google français/i;
+  const femaleHints = /female|femme|woman|aurelie|audrey|amelie|marie|sophie|julie|female/i;
+  return candidates.find((voice) => maleHints.test(`${voice.name} ${voice.voiceURI}`))
+    ?? candidates.find((voice) => !femaleHints.test(`${voice.name} ${voice.voiceURI}`));
+}
+
 export function VoiceAssistant({
   onSend,
   assistantResponse,
@@ -306,8 +317,9 @@ export function VoiceAssistant({
     const utterance = new SpeechSynthesisUtterance(clean);
     utteranceRef.current = utterance;
     utterance.lang = locale;
-    utterance.rate = 1;
-    utterance.pitch = 1;
+    utterance.voice = selectMaleVoice(locale) ?? null;
+    utterance.rate = 0.95;
+    utterance.pitch = 0.9;
     utterance.onstart = () => {
       setSpeaking(true);
       setNotice("BICKRI AI répond à voix haute…");
