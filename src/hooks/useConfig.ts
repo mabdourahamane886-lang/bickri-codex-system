@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from "react";
 
-export type PublicConfig = { supabase: boolean; ai: boolean; aiModel: string; aiFallbackModel: string; githubMcp: boolean };
+export type PublicConfig = {
+  supabase: boolean;
+  ai: boolean;
+  aiModel: string;
+  aiFallbackModel: string;
+  imageGeneration: boolean;
+  imageModel: string;
+  githubMcp: boolean;
+};
 
-/** Lit l'état de configuration exposé par /api/health (booléens uniquement). */
+/** Lit l'état de configuration exposé par /api/health (booléens et noms de modèles uniquement). */
 export function useConfig() {
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [error, setError] = useState(false);
