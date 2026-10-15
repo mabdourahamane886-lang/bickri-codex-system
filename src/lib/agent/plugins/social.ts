@@ -31,8 +31,9 @@ export const socialPlugin: Plugin = {
         if (!(platform in PLATFORMS)) return { error: "Plateforme non prise en charge." };
         const scopedQuery = [PLATFORMS[platform], query].filter(Boolean).join(" ");
         const response = await fetch("https://api.tavily.com/search", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ api_key: process.env.TAVILY_API_KEY, query: scopedQuery, search_depth: "advanced", max_results: 6, include_answer: false, include_raw_content: false }),
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.TAVILY_API_KEY}` },
+          body: JSON.stringify({ query: scopedQuery, search_depth: "advanced", max_results: 6, include_answer: false, include_raw_content: false }),
           signal: AbortSignal.timeout(15000), cache: "no-store",
         });
         if (!response.ok) return { error: `Le moteur de recherche a renvoyé HTTP ${response.status}.` };
