@@ -32,7 +32,7 @@ BCX-AI-THETA-001
 - Next.js 15 (App Router), React 19, TypeScript strict
 - Supabase Auth, PostgreSQL et Row Level Security
 - CodeMirror 6, react-markdown, lucide-react, polices Geist
-- Gemini (Google AI Studio) côté serveur, avec modèle de repli
+- Routeur IA multi-fournisseurs : Gemini en priorité, API compatible OpenAI/OpenRouter en repli pour l'endpoint de programmation
 - Vitest, ESLint, GitHub Actions
 
 ## Structure
@@ -61,9 +61,14 @@ Copie `.env.example` vers `.env.local` en local, ou configure-les dans **Vercel 
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Oui | URL du projet Supabase BCX (`https://avgzbyvmsjjfgywtijno.supabase.co`) |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Oui | Clé publique Supabase |
-| `GEMINI_API_KEY` | Oui pour l'IA | Clé serveur Google AI Studio |
-| `GEMINI_MODEL` | Non | Modèle principal |
-| `GEMINI_FALLBACK_MODEL` | Non | Modèle de repli |
+| `AI_PROVIDER` | Non | `auto`, `google`, `openai` ou `openrouter` |
+| `GEMINI_API_KEY` | Pour Gemini | Clé serveur Google AI Studio |
+| `GEMINI_MODEL` | Non | Modèle Gemini principal |
+| `GEMINI_FALLBACK_MODEL` | Non | Modèle Gemini de repli |
+| `OPENAI_API_KEY` | Pour OpenAI/OpenRouter | Clé serveur compatible OpenAI |
+| `OPENAI_BASE_URL` | Non | URL API ; OpenRouter : `https://openrouter.ai/api/v1` |
+| `OPENAI_MODEL` | Non | Modèle compatible OpenAI |
+| `TAVILY_API_KEY` | Pour la recherche | Recherche Web et contenus sociaux publics indexés |
 | `GITHUB_MCP_URL` | Non | Serveur GitHub MCP distant (Streamable HTTP, HTTPS) |
 | `GITHUB_MCP_BEARER_TOKEN` | Non | Jeton du serveur MCP |
 | `BCX_ADMIN_EMAILS` | Non | E-mails (séparés par des virgules) des comptes autorisés à utiliser le plugin GitHub |
@@ -80,7 +85,8 @@ L'assistant peut appeler de vrais outils pendant la conversation (appel de fonct
 | --- | --- | --- |
 | GitHub | Lire et écrire dans les dépôts autorisés : branches, fichiers, pull requests et tickets | Tout compte connecté ; approbation explicite requise pour chaque écriture |
 | Registre BCX | Lister les identifiants, calculer le prochain code libre, créer un identifiant | Tout compte connecté (règles RLS) |
-| Web | Lire une page web publique (documentation, fichier brut, API JSON) | Tout compte connecté |
+| Web | Recherche Web via Tavily et lecture de pages publiques | Tout compte connecté ; `TAVILY_API_KEY` pour la recherche |
+| Réseaux sociaux | Recherche de contenus publics indexés sur YouTube, Instagram, Facebook, TikTok, X et LinkedIn | Tout compte connecté ; `TAVILY_API_KEY` requis |
 
 Garde-fous :
 
