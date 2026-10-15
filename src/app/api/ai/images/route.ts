@@ -95,8 +95,11 @@ export async function POST(request: NextRequest) {
 
   const responseParts = data?.candidates?.[0]?.content?.parts ?? [];
   for (const part of responseParts) {
-    const inline = part.inlineData ?? part.inline_data;
-    const mime = inline?.mimeType ?? inline?.mime_type;
+    const inline = part.inlineData ?? (part.inline_data ? {
+      mimeType: part.inline_data.mime_type ?? part.inline_data.mimeType,
+      data: part.inline_data.data,
+    } : undefined);
+    const mime = inline?.mimeType;
     if (inline?.data && mime && /^image\/(png|jpeg|webp)$/.test(mime)) {
       return NextResponse.json({ image: `data:${mime};base64,${inline.data}`, mimeType: mime, model });
     }
