@@ -22,6 +22,7 @@ export default function SettingsPage() {
   const rows = [
     { name: "Supabase (authentification et registre)", vars: "NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", ok: config?.supabase, required: true },
     { name: "Bickri Code AI (Gemini)", vars: "GEMINI_API_KEY, GEMINI_MODEL, GEMINI_FALLBACK_MODEL", ok: config?.ai, required: true },
+    { name: "Studio d’images IA", vars: "GEMINI_API_KEY, GEMINI_IMAGE_MODEL (optionnel)", ok: config?.imageGeneration, required: false },
     { name: "GitHub MCP (contexte de dépôt)", vars: "GITHUB_MCP_URL, GITHUB_MCP_BEARER_TOKEN", ok: config?.githubMcp, required: false },
   ];
 
