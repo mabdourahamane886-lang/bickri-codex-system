@@ -15,9 +15,10 @@ const LOCALES: LocaleOption[] = [
   { label: "Português", value: "pt-PT" },
 ];
 
-type SpeechRecognitionResultLike = { transcript: string; isFinal?: boolean };
+type SpeechRecognitionAlternativeLike = { transcript: string };
+type SpeechRecognitionResultLike = ArrayLike<SpeechRecognitionAlternativeLike> & { isFinal?: boolean };
 type SpeechRecognitionEventLike = {
-  results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>>;
+  results: ArrayLike<SpeechRecognitionResultLike>;
 };
 type SpeechRecognitionLike = {
   lang: string;
@@ -182,7 +183,7 @@ export function VoiceAssistant({
         const result = event.results[index];
         const phrase = result?.[0]?.transcript?.trim();
         if (phrase) parts.push(phrase);
-        if (result?.[0]?.isFinal) isFinal = true;
+        if (index === event.results.length - 1 && result?.isFinal) isFinal = true;
       }
       const transcript = parts.join(" ").replace(/\s+/g, " ").trim();
       setTranscript(transcript);
