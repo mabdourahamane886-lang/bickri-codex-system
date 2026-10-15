@@ -39,5 +39,24 @@ as $$
   limit greatest(1, least(match_count, 10));
 $$;
 
+drop policy if exists "Editors update BCX knowledge" on public.bcx_knowledge_chunks;
+create policy "Editors update BCX knowledge"
+  on public.bcx_knowledge_chunks for update
+  to authenticated
+  using (
+    exists (
+      select 1 from public.bcx_profiles p
+      where p.user_id = auth.uid()
+        and p.role in ('admin', 'editor')
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.bcx_profiles p
+      where p.user_id = auth.uid()
+        and p.role in ('admin', 'editor')
+    )
+  );
+
 grant execute on function public.match_bcx_knowledge(extensions.vector, integer, double precision)
   to anon, authenticated;
