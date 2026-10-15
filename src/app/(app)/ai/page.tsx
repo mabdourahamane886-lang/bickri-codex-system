@@ -74,6 +74,7 @@ export default function CodeAIPage() {
   const [showPlugins, setShowPlugins] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const sendLockRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -151,10 +152,15 @@ export default function CodeAIPage() {
 
   async function send(text: string) {
     const content = text.trim();
-    if (!content || loading || pending) return;
+    if (!content || loading || pending || sendLockRef.current) return;
+    sendLockRef.current = true;
     setMessages((all) => [...all, { role: "user", content }, { role: "assistant", content: "", events: [] }]);
     setPrompt(""); setLastMessage(content);
-    await runAgent({ message: content }, contents);
+    try {
+      await runAgent({ message: content }, contents);
+    } finally {
+      sendLockRef.current = false;
+    }
   }
 
   async function decide(decision: "approve" | "reject") {
