@@ -8,7 +8,7 @@ export const maxDuration = 30;
 function chunkText(value: string, size = 3200): string[] {
   const normalized = value.replace(/\r\n/g, "\n").trim();
   const chunks: string[] = [];
-  for (let start = 0; start < normalized.length; start += size) {
+  let start = 0;\n  while (start < normalized.length) {
     let end = Math.min(start + size, normalized.length);
     if (end < normalized.length) {
       const paragraph = normalized.lastIndexOf("\n\n", end);
@@ -18,7 +18,7 @@ function chunkText(value: string, size = 3200): string[] {
     }
     const part = normalized.slice(start, end).trim();
     if (part) chunks.push(part);
-    start = end - size;
+    start = end;
   }
   return chunks;
 }
