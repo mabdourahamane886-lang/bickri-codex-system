@@ -72,10 +72,12 @@ export default function CodeAIPage() {
   const [account, setAccount] = useState<{ signedIn: boolean; trusted: boolean } | null>(null);
   const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
   const [showPlugins, setShowPlugins] = useState(false);
-  const [showAttachMenu, setShowAttachMenu] = useState(false);\n  const [showNav, setShowNav] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [showNav, setShowNav] = useState(false);
   const [imageMode, setImageMode] = useState(false);
   const [attachedImage, setAttachedImage] = useState<{ data: string; type: string; name: string } | null>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);\n  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sendLockRef = useRef(false);
@@ -204,7 +206,9 @@ export default function CodeAIPage() {
 
   function onSubmit(e: FormEvent) { e.preventDefault(); void send(prompt); }
   function readImage(event: React.ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 8 * 1024 * 1024) { setError("Image JPG, PNG ou WebP de 8 Mo maximum."); return; } const reader = new FileReader(); reader.onload = () => { if (typeof reader.result === "string") { setAttachedImage({ data: reader.result, type: file.type, name: file.name }); setImageMode(true); setShowAttachMenu(false); } }; reader.readAsDataURL(file); }
-  async function readDocument(event: React.ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (file.size > 2 * 1024 * 1024 || !/\.(txt|md|json|csv|ts|tsx|js|jsx|py|html|css|xml|log)$/i.test(file.name)) { setError("Formats acceptés : TXT, MD, JSON, CSV et code, 2 Mo maximum."); return; } const text = await file.text(); setPrompt((old) => old + (old ? "\n\n" : "") + "Fichier joint : " + file.name + "\n\n" + text.slice(0, 30000)); setShowAttachMenu(false); inputRef.current?.focus(); }\n\n  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+  async function readDocument(event: React.ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (file.size > 2 * 1024 * 1024 || !/\.(txt|md|json|csv|ts|tsx|js|jsx|py|html|css|xml|log)$/i.test(file.name)) { setError("Formats acceptés : TXT, MD, JSON, CSV et code, 2 Mo maximum."); return; } const text = await file.text(); setPrompt((old) => old + (old ? "\n\n" : "") + "Fichier joint : " + file.name + "\n\n" + text.slice(0, 30000)); setShowAttachMenu(false); inputRef.current?.focus(); }
+
+  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(prompt); }
   }
   function retry() {
