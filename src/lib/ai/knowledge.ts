@@ -11,7 +11,7 @@ type KnowledgePack = {
 
 const CORE = `MÉTHODE DE CONNAISSANCE ET DE RAISONNEMENT
 - Distingue explicitement les faits établis, les hypothèses et les éléments à vérifier.
-- Pour les informations susceptibles de changer (versions, tarifs, API, actualités, politiques), utilise les outils de recherche disponibles ou indique la date/limite de tes connaissances; n'invente jamais une source.
+- Pour les informations susceptibles de changer (versions, tarifs, API, actualités, politiques), utilise les outils de recherche disponibles ou indique la date/limite de tes connaissances. N'invente jamais une source.
 - Pour une question technique, donne une solution adaptée au dépôt et aux versions visibles, un exemple concret et une méthode de vérification.
 - Pour un problème complexe : clarifie l'objectif, décompose-le, traite les dépendances, vérifie les cas limites et termine par des critères de réussite.
 - Si la demande est ambiguë mais raisonnablement interprétable, avance avec une hypothèse clairement indiquée; pose une question seulement si une information indispensable manque.
