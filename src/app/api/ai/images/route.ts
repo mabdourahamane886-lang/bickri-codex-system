@@ -6,12 +6,61 @@ export const maxDuration = 60;
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+const DEFAULT_MODEL = "gemini-nano-banana-2.1";
 
-type GeminiPart = { text?: string; inlineData?: { mimeType?: string; data?: string }; inline_data?: { mime_type?: string; mimeType?: string; data?: string } };
-type GeminiResponse = {
-  candidates?: Array<{ content?: { parts?: GeminiPart[] }; finishReason?: string }>;
+type InteractionContent = {
+  type?: string;
+  text?: string;
+  data?: string;
+  mime_type?: string;
+  mimeType?: string;
+};
+type InteractionStep = {
+  type?: string;
+  content?: InteractionContent[] | string;
+  output_image?: { data?: string; mime_type?: string; mimeType?: string };
+};
+type InteractionResponse = {
+  status?: string;
+  output_image?: { data?: string; mime_type?: string; mimeType?: string };
+  steps?: InteractionStep[];
   error?: { message?: string };
 };
+
+function getImage(result: InteractionResponse) {
+  const convenienceImage = result.output_image;
+  if (convenienceImage?.data) {
+    return {
+      data: convenienceImage.data,
+      mimeType: convenienceImage.mime_type ?? convenienceImage.mimeType ?? "image/png",
+    };
+  }
+
+  for (const step of result.steps ?? []) {
+    const contents = Array.isArray(step.content) ? step.content : [];
+    for (const item of contents) {
+      if (item.type === "image" && item.data) {
+        return { data: item.data, mimeType: item.mime_type ?? item.mimeType ?? "image/png" };
+      }
+    }
+    if (step.output_image?.data) {
+      return {
+        data: step.output_image.data,
+        mimeType: step.output_image.mime_type ?? step.output_image.mimeType ?? "image/png",
+      };
+    }
+  }
+  return null;
+}
+
+function getText(result: InteractionResponse) {
+  return (result.steps ?? [])
+    .flatMap((step) => Array.isArray(step.content) ? step.content : [])
+    .filter((item) => item.type === "text" && typeof item.text === "string")
+    .map((item) => item.text)
+    .join("\n")
+    .slice(0, 600);
+}
 
 export async function POST(request: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
@@ -43,7 +92,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Décris l’image à créer ou les modifications souhaitées." }, { status: 400 });
   }
 
-  const parts: Array<Record<string, unknown>> = [{
+  const input: Array<Record<string, string>> = [{
+    type: "text",
     text: mode === "edit"
       ? `Modifie l’image fournie en respectant cette demande : ${prompt}. Retourne une image modifiée, pas seulement une description textuelle. Préserve les éléments qui ne doivent pas changer.`
       : `Crée une image originale de haute qualité à partir de cette description : ${prompt}. Retourne l’image générée, pas seulement une description textuelle.`,
@@ -55,22 +105,30 @@ export async function POST(request: NextRequest) {
     if (!imageData || !ALLOWED_MIME.has(mimeType)) {
       return NextResponse.json({ error: "Pour modifier une photo, importe une image JPG, PNG ou WebP." }, { status: 400 });
     }
+
     const base64 = imageData.replace(/^data:[^;]+;base64,/, "");
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64) || Math.floor(base64.length * 0.75) > MAX_IMAGE_BYTES) {
       return NextResponse.json({ error: "Image invalide ou trop volumineuse (maximum 8 Mo)." }, { status: 413 });
     }
-    parts.push({ inlineData: { mimeType, data: base64 } });
+    input.push({ type: "image", data: base64, mime_type: mimeType });
   }
 
-  const model = (process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image").trim();
+  const model = (process.env.GEMINI_IMAGE_MODEL || DEFAULT_MODEL).trim();
   let response: Response;
   try {
-    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
       body: JSON.stringify({
-        contents: [{ role: "user", parts }],
-        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+        model,
+        input,
+        response_format: {
+          type: "image",
+          aspect_ratio: "4:5",
+        },
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(55_000),
@@ -79,9 +137,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Le service d’image n’a pas répondu. Réessaie dans quelques instants." }, { status: 502 });
   }
 
-  const data = await response.json().catch(() => null) as GeminiResponse | null;
-  if (!response.ok) {
-    const detail = typeof data?.error?.message === "string" ? data.error.message.slice(0, 240) : "";
+  const result = await response.json().catch(() => null) as InteractionResponse | null;
+  if (!response.ok || !result) {
+    const detail = typeof result?.error?.message === "string" ? result.error.message.slice(0, 240) : "";
     console.error("Gemini image API error", response.status, detail);
     const message = response.status === 404
       ? `Le modèle d’image « ${model} » est introuvable. Vérifie GEMINI_IMAGE_MODEL dans Vercel.`
@@ -93,20 +151,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message, providerDetail: detail || undefined }, { status: response.status === 429 ? 429 : 502 });
   }
 
-  const responseParts = data?.candidates?.[0]?.content?.parts ?? [];
-  for (const part of responseParts) {
-    const inline = part.inlineData ?? (part.inline_data ? {
-      mimeType: part.inline_data.mime_type ?? part.inline_data.mimeType,
-      data: part.inline_data.data,
-    } : undefined);
-    const mime = inline?.mimeType;
-    if (inline?.data && mime && /^image\/(png|jpeg|webp)$/.test(mime)) {
-      return NextResponse.json({ image: `data:${mime};base64,${inline.data}`, mimeType: mime, model });
-    }
+  const generated = getImage(result);
+  if (generated?.data && /^image\/(png|jpeg|webp)$/.test(generated.mimeType)) {
+    return NextResponse.json({
+      image: `data:${generated.mimeType};base64,${generated.data}`,
+      mimeType: generated.mimeType,
+      model,
+    });
   }
-  const text = responseParts.map((p) => p.text).filter(Boolean).join("\n").slice(0, 600);
+
   return NextResponse.json(
-    { error: text || "Le modèle n’a renvoyé aucune image. Essaie une description plus précise ou vérifie le modèle configuré." },
+    { error: getText(result) || "Le modèle n’a renvoyé aucune image. Essaie une description plus précise ou vérifie le modèle configuré." },
     { status: 502 },
   );
 }
