@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AIError } from "@/lib/ai/gemini";
 import { generateWithRouter } from "@/lib/ai/router";
-import { buildSystemInstruction } from "@/lib/ai/prompt";\nimport { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
+import { buildSystemInstruction } from "@/lib/ai/prompt";
+import { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
