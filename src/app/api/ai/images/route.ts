@@ -16,8 +16,8 @@ type GeminiContentPart = {
   data?: string;
   mime_type?: string;
   mimeType?: string;
-  inlineData?: { data?: string; mimeType?: string; mime_type?: string };
-  inline_data?: { data?: string; mime_type?: string; mimeType?: string };
+  inlineData?: { data?: string; mimeType?: string };
+  inline_data?: { data?: string; mime_type?: string };
 };
 type GeminiStep = { content?: GeminiContentPart[] | string; output_image?: GeminiImage };
 type GeminiResponse = {
@@ -30,7 +30,8 @@ type GeminiResponse = {
 function imageFromPart(part: GeminiContentPart) {
   const inline = part.inlineData ?? part.inline_data;
   const data = part.data ?? inline?.data;
-  const mimeType = part.mime_type ?? part.mimeType ?? inline?.mime_type ?? inline?.mimeType;
+  const inlineRecord = inline as { mime_type?: string; mimeType?: string } | undefined;
+  const mimeType = part.mime_type ?? part.mimeType ?? inlineRecord?.mime_type ?? inlineRecord?.mimeType;
   if (data && (!part.type || part.type === "image" || inline)) {
     return { data, mimeType: mimeType ?? "image/png" };
   }
