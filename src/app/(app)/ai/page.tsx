@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Fingerprint, GitBranch, Globe, Layers, Loader2, LogIn,
-  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Plus, ImagePlus, WandSparkles,
+  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Plus, ImagePlus, WandSparkles, Menu, BookOpen, Folder, Clock3, Compass, FileText,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
@@ -72,10 +72,10 @@ export default function CodeAIPage() {
   const [account, setAccount] = useState<{ signedIn: boolean; trusted: boolean } | null>(null);
   const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
   const [showPlugins, setShowPlugins] = useState(false);
-  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);\n  const [showNav, setShowNav] = useState(false);
   const [imageMode, setImageMode] = useState(false);
   const [attachedImage, setAttachedImage] = useState<{ data: string; type: string; name: string } | null>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);\n  const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sendLockRef = useRef(false);
@@ -204,7 +204,7 @@ export default function CodeAIPage() {
 
   function onSubmit(e: FormEvent) { e.preventDefault(); void send(prompt); }
   function readImage(event: React.ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 8 * 1024 * 1024) { setError("Image JPG, PNG ou WebP de 8 Mo maximum."); return; } const reader = new FileReader(); reader.onload = () => { if (typeof reader.result === "string") { setAttachedImage({ data: reader.result, type: file.type, name: file.name }); setImageMode(true); setShowAttachMenu(false); } }; reader.readAsDataURL(file); }
-  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+  async function readDocument(event: React.ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (file.size > 2 * 1024 * 1024 || !/\.(txt|md|json|csv|ts|tsx|js|jsx|py|html|css|xml|log)$/i.test(file.name)) { setError("Formats acceptés : TXT, MD, JSON, CSV et code, 2 Mo maximum."); return; } const text = await file.text(); setPrompt((old) => old + (old ? "\n\n" : "") + "Fichier joint : " + file.name + "\n\n" + text.slice(0, 30000)); setShowAttachMenu(false); inputRef.current?.focus(); }\n\n  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(prompt); }
   }
   function retry() {
@@ -246,7 +246,7 @@ export default function CodeAIPage() {
   );
 
   return (
-    <main className="chat">
+    <main className="chat">\n      <div className="row" style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", justifyContent: "space-between" }}><button type="button" className="btn btn-ghost btn-icon" aria-label="Ouvrir le menu" onClick={() => setShowNav((v) => !v)}><Menu /></button><strong>Bickri Code AI</strong><button type="button" className="btn btn-ghost btn-icon" aria-label="Nouvelle conversation" onClick={newChat}><SquarePen /></button></div>\n      {showNav && <div className="plugin-popover" role="dialog" aria-label="Navigation Bickri" style={{ position: "fixed", zIndex: 100, top: 72, left: 12, width: "min(320px, calc(100vw - 24px))", maxHeight: "75vh", overflowY: "auto", boxShadow: "0 12px 36px #0002" }}><div className="row"><b className="grow">Bickri Codex System</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Sparkles size={18}/> Chat</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => {setImageMode(true);setAttachedImage(null);setShowNav(false);inputRef.current?.focus();}}><ImagePlus size={18}/> Images IA</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><BookOpen size={18}/> Bibliothèque</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Folder size={18}/> Projets</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Clock3 size={18}/> Planifiées</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Compass size={18}/> Explorer</button><hr className="divider"/><b>Plugins</b>{pluginList}</div>}
       <div className="chat-main">
         <div className="chat-scroll">
           <div className="chat-inner">
@@ -337,8 +337,8 @@ export default function CodeAIPage() {
         </div>
 
         <div className="chat-composer">
-          <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={readImage} />
-          {showAttachMenu && <div className="plugin-popover" role="dialog" aria-label="Ajouter au message"><b>Ajouter au message</b><button type="button" className="btn btn-ghost" onClick={() => imageInputRef.current?.click()}><ImagePlus size={18} /> Importer une photo</button><button type="button" className="btn btn-ghost" onClick={() => { setImageMode(true); setAttachedImage(null); setShowAttachMenu(false); }}><WandSparkles size={18} /> Créer une image avec l’IA</button></div>}
+          <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={readImage} />\n          <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log" hidden onChange={readDocument} />
+          {showAttachMenu && <div className="plugin-popover" role="dialog" aria-label="Ajouter au message"><b>Ajouter au message</b><button type="button" className="btn btn-ghost" onClick={() => imageInputRef.current?.click()}><ImagePlus size={18} /> Importer une photo</button><button type="button" className="btn btn-ghost" onClick={() => fileInputRef.current?.click()}><FileText size={18} /> Importer un fichier ou du code</button><button type="button" className="btn btn-ghost" onClick={() => { setImageMode(true); setAttachedImage(null); setShowAttachMenu(false); }}><WandSparkles size={18} /> Créer une image avec l’IA</button></div>}
           {imageMode && <div className="row" style={{ padding: 8 }}><span className="grow">{attachedImage ? "Photo : " + attachedImage.name : "Mode création d’image activé"}</span><button type="button" className="btn btn-ghost btn-sm" onClick={() => { setImageMode(false); setAttachedImage(null); }}>Annuler</button></div>}
           {showPlugins && (
             <div className="plugin-popover" role="dialog" aria-label="Plugins">
@@ -350,7 +350,7 @@ export default function CodeAIPage() {
             <label htmlFor="ai-input" className="sr-only">Message</label>
             <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Décris ton application, demande une modification de dépôt ou colle une erreur…"} />
             <div className="composer-bar">
-              <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Ajouter" title="Ajouter" onClick={() => setShowAttachMenu((v) => !v)}><Plus /></button>
+
               <VoiceAssistant
                 onSend={(text) => send(text)}
                 assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}
