@@ -29,8 +29,8 @@ type GeminiResponse = {
 
 function imageFromPart(part: GeminiContentPart) {
   const inline = part.inlineData ?? part.inline_data;
-  const data = part.data ?? inline?.data;
-  const inlineRecord = inline as { mime_type?: string; mimeType?: string } | undefined;
+  const inlineRecord = inline as { data?: string; mime_type?: string; mimeType?: string } | undefined;
+  const data = part.data ?? inlineRecord?.data;
   const mimeType = part.mime_type ?? part.mimeType ?? inlineRecord?.mime_type ?? inlineRecord?.mimeType;
   if (data && (!part.type || part.type === "image" || inline)) {
     return { data, mimeType: mimeType ?? "image/png" };
@@ -84,11 +84,70 @@ function extractText(result: GeminiResponse) {
   return (stepText || candidateText).slice(0, 600);
 }
 
+
+async function generateWithPollinations(args: { prompt: string; mode: string; imageData: string; mimeType: string; apiKey: string }): Promise<{ ok: boolean; response: NextResponse }> {
+  const { prompt, mode, imageData, mimeType, apiKey } = args;
+  try {
+    let upstream: Response;
+    if (mode === "edit" && imageData) {
+      // Pollinations image edits use OpenAI-compatible multipart form data.
+      const base64 = imageData.replace(/^data:[^;]+;base64,/, "");
+      const binary = Buffer.from(base64, "base64");
+      if (binary.byteLength > MAX_IMAGE_BYTES) {
+        return { ok: false, response: NextResponse.json({ error: "Image trop volumineuse (maximum 8 Mo)." }, { status: 413 }) };
+      }
+      const form = new FormData();
+      form.set("prompt", prompt);
+      form.set("model", process.env.POLLINATIONS_IMAGE_MODEL || "google/gemini-2.5-flash-image");
+      form.set("size", "1024x1280");
+      form.set("image", new Blob([binary], { type: mimeType }), "source-image");
+      upstream = await fetch("https://gen.pollinations.ai/v1/images/edits", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: form,
+        cache: "no-store",
+        signal: AbortSignal.timeout(55_000),
+      });
+    } else {
+      const url = new URL(`https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}`);
+      url.searchParams.set("model", process.env.POLLINATIONS_IMAGE_MODEL || "flux");
+      url.searchParams.set("width", "1024");
+      url.searchParams.set("height", "1280");
+      url.searchParams.set("nologo", "true");
+      upstream = await fetch(url, {
+        headers: { Authorization: `Bearer ${apiKey}`, Accept: "image/*" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(55_000),
+      });
+    }
+
+    if (!upstream.ok) {
+      const detail = (await upstream.text().catch(() => "")).slice(0, 250);
+      console.error("Pollinations image request failed", { status: upstream.status, detail });
+      const status = upstream.status === 401 || upstream.status === 403 ? upstream.status : upstream.status === 402 ? 402 : 502;
+      return { ok: false, response: NextResponse.json({ error: status === 402 ? "Le solde ou la limite Pollinations est atteint." : status === 401 || status === 403 ? "La clé Pollinations est invalide ou n’a pas l’autorisation requise." : "Pollinations n’a pas pu générer l’image. Réessaie." }, { status }) };
+    }
+    const contentType = upstream.headers.get("content-type")?.split(";")[0] ?? "";
+    if (!/^image\/(png|jpeg|webp)$/.test(contentType)) {
+      return { ok: false, response: NextResponse.json({ error: "Pollinations a renvoyé un format inattendu." }, { status: 502 }) };
+    }
+    const bytes = Buffer.from(await upstream.arrayBuffer());
+    if (!bytes.byteLength || bytes.byteLength > 12 * 1024 * 1024) {
+      return { ok: false, response: NextResponse.json({ error: "L’image générée est vide ou trop volumineuse." }, { status: 502 }) };
+    }
+    return { ok: true, response: NextResponse.json({ image: `data:${contentType};base64,${bytes.toString("base64")}`, mimeType: contentType, model: `pollinations/${process.env.POLLINATIONS_IMAGE_MODEL || "flux"}` }) };
+  } catch (error) {
+    console.error("Pollinations image request error", error instanceof Error ? error.message : "unknown");
+    return { ok: false, response: NextResponse.json({ error: "Pollinations ne répond pas actuellement. Vérifie la clé API et réessaie." }, { status: 502 }) };
+  }
+}
+
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
-  if (!apiKey) {
+  const geminiApiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
+  const pollinationsApiKey = process.env.POLLINATIONS_API_KEY;
+  if (!geminiApiKey && !pollinationsApiKey) {
     return NextResponse.json(
-      { error: "La génération d’images n’est pas configurée. Ajoute GEMINI_API_KEY dans Vercel, puis redéploie." },
+      { error: "La génération d’images n’est pas configurée. Ajoute GEMINI_API_KEY ou POLLINATIONS_API_KEY dans Vercel." },
       { status: 503 },
     );
   }
@@ -135,6 +194,11 @@ export async function POST(request: NextRequest) {
       ? `Modifie l’image fournie en respectant cette demande : ${prompt}. Retourne l’image modifiée, pas seulement une description. Préserve les éléments qui ne doivent pas changer.`
       : `Crée une image originale de haute qualité à partir de cette description : ${prompt}. Retourne une image, pas seulement une description textuelle.`,
   });
+
+  // If Gemini is not configured, use Pollinations directly; otherwise Gemini remains primary.
+  if (!geminiApiKey && pollinationsApiKey) {
+    return generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
+  }
 
   // A trailing dot or whitespace is a common Vercel env-var typo; normalize it.
   const configuredModel = (process.env.GEMINI_IMAGE_MODEL || DEFAULT_MODEL).trim().replace(/[.\s]+$/, "");
@@ -189,6 +253,10 @@ export async function POST(request: NextRequest) {
   }
 
   if (!finalResult) {
+    if (pollinationsApiKey && (lastStatus === 400 || lastStatus === 404 || lastStatus >= 500)) {
+      const fallback = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
+      if (fallback.ok) return fallback.response;
+    }
     const message = lastStatus === 401 || lastStatus === 403
       ? "La clé Gemini est invalide ou n’a pas accès à la génération d’images. Vérifie GEMINI_API_KEY dans Vercel."
       : lastStatus === 429
