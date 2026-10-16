@@ -113,7 +113,11 @@ export async function POST(request: NextRequest) {
     input.push({ type: "image", data: base64, mime_type: mimeType });
   }
 
-  const model = (process.env.GEMINI_IMAGE_MODEL || DEFAULT_MODEL).trim();
+  const configuredModel = (process.env.GEMINI_IMAGE_MODEL || DEFAULT_MODEL).trim();
+  // Gemini 3.1 Flash Image is scheduled to shut down on 2026-10-29; migrate legacy env values automatically.
+  const model = ["gemini-3.1-flash-image", "gemini-3.1-flash-image-preview"].includes(configuredModel)
+    ? DEFAULT_MODEL
+    : configuredModel;
   let response: Response;
   try {
     response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
