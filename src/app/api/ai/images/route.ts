@@ -197,7 +197,8 @@ export async function POST(request: NextRequest) {
 
   // If Gemini is not configured, use Pollinations directly; otherwise Gemini remains primary.
   if (!geminiApiKey && pollinationsApiKey) {
-    return generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
+    const generated = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
+    return generated.response;
   }
 
   // A trailing dot or whitespace is a common Vercel env-var typo; normalize it.
