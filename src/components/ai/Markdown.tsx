@@ -20,6 +20,14 @@ export function Markdown({ children }: { children: string }) {
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ href, children: c }) => <a href={href} target="_blank" rel="noreferrer noopener">{c}</a>,
+          img: ({ src, alt }) => {
+            if (typeof src !== "string" || !/^https?:\/\//i.test(src)) return null;
+            return (
+              <a href={src} target="_blank" rel="noreferrer noopener" style={{ display: "block", maxWidth: 720, margin: "12px 0" }}>
+                <img src={src} alt={alt ?? "Illustration liée à la réponse"} loading="lazy" referrerPolicy="no-referrer" style={{ display: "block", width: "100%", height: "auto", maxHeight: 520, objectFit: "contain", borderRadius: 12, border: "1px solid var(--border, #dbe2ea)" }} />
+              </a>
+            );
+          },
           pre: ({ children: c }) => {
             const child = Array.isArray(c) ? c[0] : c;
             const className = isValidElement(child) ? String((child as ReactElement<{ className?: string }>).props.className ?? "") : "";
