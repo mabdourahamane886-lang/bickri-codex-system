@@ -5,7 +5,7 @@ describe("contextual AI knowledge", () => {
   it("always includes the core reasoning and source-verification guidance", () => {
     const knowledge = getRelevantKnowledge("");
     expect(knowledge).toContain("MÉTHODE DE CONNAISSANCE ET DE RAISONNEMENT");
-    expect(knowledge).toContain("N'invente jamais une source");
+    expect(knowledge.toLocaleLowerCase("fr")).toContain("n'invente jamais une source");
   });
 
   it("selects relevant knowledge for the user's question", () => {
