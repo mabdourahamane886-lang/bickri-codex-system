@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Fingerprint, GitBranch, Globe, Layers, Loader2, LogIn,
-  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X,
+  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Plus, ImagePlus, WandSparkles,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
@@ -72,6 +72,10 @@ export default function CodeAIPage() {
   const [account, setAccount] = useState<{ signedIn: boolean; trusted: boolean } | null>(null);
   const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
   const [showPlugins, setShowPlugins] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [imageMode, setImageMode] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<{ data: string; type: string; name: string } | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sendLockRef = useRef(false);
@@ -176,13 +180,20 @@ export default function CodeAIPage() {
     const content = text.trim();
     if (!content || loading || pending || sendLockRef.current) return;
     sendLockRef.current = true;
+    const imageTask = imageMode || Boolean(attachedImage);
     setMessages((all) => [...all, { role: "user", content }, { role: "assistant", content: "", events: [] }]);
     setPrompt(""); setLastMessage(content);
     try {
-      await runAgent({ message: content }, contents);
-    } finally {
-      sendLockRef.current = false;
-    }
+      if (imageTask) {
+        setLoading(true); setError("");
+        const response = await fetch("/api/ai/images", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: attachedImage ? "edit" : "generate", prompt: content, ...(attachedImage ? { imageData: attachedImage.data, mimeType: attachedImage.type } : {}) }) });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || typeof data.image !== "string") throw new Error(data.error || "La génération d’image a échoué.");
+        patchAssistant((m) => ({ ...m, content: "Voici le résultat de ta création.", generatedImage: data.image }));
+        setImageMode(false); setAttachedImage(null);
+      } else { await runAgent({ message: content }, contents); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Une erreur est survenue."); }
+    finally { setLoading(false); sendLockRef.current = false; }
   }
 
   async function decide(decision: "approve" | "reject") {
@@ -192,6 +203,7 @@ export default function CodeAIPage() {
   }
 
   function onSubmit(e: FormEvent) { e.preventDefault(); void send(prompt); }
+  function readImage(event: React.ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 8 * 1024 * 1024) { setError("Image JPG, PNG ou WebP de 8 Mo maximum."); return; } const reader = new FileReader(); reader.onload = () => { if (typeof reader.result === "string") { setAttachedImage({ data: reader.result, type: file.type, name: file.name }); setImageMode(true); setShowAttachMenu(false); } }; reader.readAsDataURL(file); }
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(prompt); }
   }
@@ -325,6 +337,9 @@ export default function CodeAIPage() {
         </div>
 
         <div className="chat-composer">
+          <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={readImage} />
+          {showAttachMenu && <div className="plugin-popover" role="dialog" aria-label="Ajouter au message"><b>Ajouter au message</b><button type="button" className="btn btn-ghost" onClick={() => imageInputRef.current?.click()}><ImagePlus size={18} /> Importer une photo</button><button type="button" className="btn btn-ghost" onClick={() => { setImageMode(true); setAttachedImage(null); setShowAttachMenu(false); }}><WandSparkles size={18} /> Créer une image avec l’IA</button></div>}
+          {imageMode && <div className="row" style={{ padding: 8 }}><span className="grow">{attachedImage ? "Photo : " + attachedImage.name : "Mode création d’image activé"}</span><button type="button" className="btn btn-ghost btn-sm" onClick={() => { setImageMode(false); setAttachedImage(null); }}>Annuler</button></div>}
           {showPlugins && (
             <div className="plugin-popover" role="dialog" aria-label="Plugins">
               <div className="row"><b className="grow">Plugins</b><button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowPlugins(false)} aria-label="Fermer"><X /></button></div>
@@ -335,6 +350,7 @@ export default function CodeAIPage() {
             <label htmlFor="ai-input" className="sr-only">Message</label>
             <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Décris ton application, demande une modification de dépôt ou colle une erreur…"} />
             <div className="composer-bar">
+              <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Ajouter" title="Ajouter" onClick={() => setShowAttachMenu((v) => !v)}><Plus /></button>
               <VoiceAssistant
                 onSend={(text) => send(text)}
                 assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}
