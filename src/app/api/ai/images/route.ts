@@ -16,7 +16,7 @@ type GeminiContentPart = {
   data?: string;
   mime_type?: string;
   mimeType?: string;
-  inlineData?: { data?: string; mimeType?: string };
+  inlineData?: { data?: string; mimeType?: string; mime_type?: string };
   inline_data?: { data?: string; mime_type?: string; mimeType?: string };
 };
 type GeminiStep = { content?: GeminiContentPart[] | string; output_image?: GeminiImage };
