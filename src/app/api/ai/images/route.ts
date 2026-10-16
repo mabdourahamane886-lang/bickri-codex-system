@@ -6,7 +6,7 @@ export const maxDuration = 60;
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const DEFAULT_MODEL = "gemini-3.1-flash-image";
+const DEFAULT_MODEL = "gemini-nano-banana-2.1";
 
 type InteractionContent = {
   type?: string;
