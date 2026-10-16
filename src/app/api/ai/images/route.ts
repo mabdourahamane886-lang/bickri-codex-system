@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
   if (!finalResult) {
     if (pollinationsApiKey && (lastStatus === 400 || lastStatus === 404 || lastStatus >= 500)) {
       const fallback = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
-      if (fallback.ok) return fallback.response;
+      return fallback.response;
     }
     const message = lastStatus === 401 || lastStatus === 403
       ? "La clé Gemini est invalide ou n’a pas accès à la génération d’images. Vérifie GEMINI_API_KEY dans Vercel."
