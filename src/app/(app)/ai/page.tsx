@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Fingerprint, GitBranch, Globe, Layers, Loader2, LogIn,
-  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Plus, ImagePlus, WandSparkles, Menu, BookOpen, Folder, Clock3, Compass, FileText,
+  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, BookOpen, Folder, Clock3, Compass, FileText,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
@@ -14,7 +14,7 @@ import { useConfig } from "@/hooks/useConfig";
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
 type PluginStatus = { id: string; name: string; description: string; available: boolean; reason?: string; tools: number; writeTools: number };
-type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; generatedImage?: string };
+type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string };
 type AgentResponse = {
   contents: unknown[]; events: AgentEvent[]; answer?: string; pending?: Pending[]; continue?: boolean; model?: string; error?: string;
 };
@@ -74,9 +74,6 @@ export default function CodeAIPage() {
   const [showPlugins, setShowPlugins] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showNav, setShowNav] = useState(false);
-  const [imageMode, setImageMode] = useState(false);
-  const [attachedImage, setAttachedImage] = useState<{ data: string; type: string; name: string } | null>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -131,7 +128,6 @@ export default function CodeAIPage() {
   async function runAgent(body: Record<string, unknown>, baseContents: unknown[]) {
     setLoading(true); setError("");
     let state = baseContents;
-    const shouldGenerateImage = /image|illustration|dessin|dessine|génère|genere|crée une image|cree une image|logo|affiche|visuel|maquette|diagramme|infographie|schéma|schema|visualise|visualisation|render|rendu graphique/i.test(originalPrompt);
     try {
       for (let round = 0; round <= MAX_CONTINUATIONS; round++) {
         const res = await fetch("/api/ai/agent", {
@@ -147,23 +143,6 @@ export default function CodeAIPage() {
         if (data.pending?.length) { setPending(data.pending); return; }
         if (data.answer !== undefined) {
           patchAssistant((m) => ({ ...m, content: data.answer! }));
-          if (shouldGenerateImage && originalPrompt) {
-            try {
-              const imageRes = await fetch("/api/ai/images", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ mode: "generate", prompt: `Crée une illustration visuelle de haute qualité qui accompagne cette demande et sa réponse. Demande : ${originalPrompt.slice(0, 1200)}. Réponse : ${data.answer!.slice(0, 1000)}. Produis uniquement l’image, sans texte explicatif ajouté.` }),
-              });
-              const imageData = await imageRes.json().catch(() => ({}));
-              if (imageRes.ok && typeof imageData.image === "string" && imageData.image.startsWith("data:image/")) {
-                patchAssistant((m) => ({ ...m, generatedImage: imageData.image }));
-              } else if (!imageRes.ok) {
-                console.warn("Image contextuelle indisponible:", imageData.error || imageRes.status);
-              }
-            } catch (imageError) {
-              console.warn("La génération d’image contextuelle a échoué.", imageError);
-            }
-          }
           return;
         }
         if (!data.continue) return;
@@ -181,18 +160,10 @@ export default function CodeAIPage() {
     const content = text.trim();
     if (!content || loading || pending || sendLockRef.current) return;
     sendLockRef.current = true;
-    const imageTask = imageMode || Boolean(attachedImage);
     setMessages((all) => [...all, { role: "user", content }, { role: "assistant", content: "", events: [] }]);
     setPrompt(""); setLastMessage(content);
     try {
-      if (imageTask) {
-        setLoading(true); setError("");
-        const response = await fetch("/api/ai/images", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: attachedImage ? "edit" : "generate", prompt: content, ...(attachedImage ? { imageData: attachedImage.data, mimeType: attachedImage.type } : {}) }) });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || typeof data.image !== "string") throw new Error(data.error || "La génération d’image a échoué.");
-        patchAssistant((m) => ({ ...m, content: "Voici le résultat de ta création.", generatedImage: data.image }));
-        setImageMode(false); setAttachedImage(null);
-      } else { await runAgent({ message: content }, contents); }
+      await runAgent({ message: content }, contents);
     } catch (err) { setError(err instanceof Error ? err.message : "Une erreur est survenue."); }
     finally { setLoading(false); sendLockRef.current = false; }
   }
@@ -204,7 +175,6 @@ export default function CodeAIPage() {
   }
 
   function onSubmit(e: FormEvent) { e.preventDefault(); void send(prompt); }
-  function readImage(event: React.ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 8 * 1024 * 1024) { setError("Image JPG, PNG ou WebP de 8 Mo maximum."); return; } const reader = new FileReader(); reader.onload = () => { if (typeof reader.result === "string") { setAttachedImage({ data: reader.result, type: file.type, name: file.name }); setImageMode(true); setShowAttachMenu(false); } }; reader.readAsDataURL(file); }
   async function readDocument(event: React.ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (file.size > 2 * 1024 * 1024 || !/\.(txt|md|json|csv|ts|tsx|js|jsx|py|html|css|xml|log)$/i.test(file.name)) { setError("Formats acceptés : TXT, MD, JSON, CSV et code, 2 Mo maximum."); return; } const text = await file.text(); setPrompt((old) => old + (old ? "\n\n" : "") + "Fichier joint : " + file.name + "\n\n" + text.slice(0, 30000)); setShowAttachMenu(false); inputRef.current?.focus(); }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -291,14 +261,6 @@ export default function CodeAIPage() {
                           <>
                             <ToolEvents events={m.events ?? []} />
                             {m.content && <Markdown>{m.content}</Markdown>}
-{m.generatedImage && (
-  <figure style={{ margin: "14px 0 0", maxWidth: 720 }}>
-    <a href={m.generatedImage} target="_blank" rel="noreferrer noopener" aria-label="Ouvrir l’image générée en grand">
-      <img src={m.generatedImage} alt="Illustration générée par Bickri Code AI pour accompagner cette réponse" loading="lazy" style={{ display: "block", width: "100%", height: "auto", maxHeight: 560, objectFit: "contain", borderRadius: 14, border: "1px solid var(--border, #dbe2ea)", background: "var(--surface, #fff)" }} />
-    </a>
-    <figcaption style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>Illustration générée par Bickri Code AI</figcaption>
-  </figure>
-)}
                             {isLast && loading && <span className="typing" aria-label="Réponse en cours"><i /><i /><i /></span>}
                           </>
                         )}
@@ -342,9 +304,8 @@ export default function CodeAIPage() {
         </div>
 
         <div className="chat-composer">
-          <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={readImage} />\n          <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log" hidden onChange={readDocument} />
-          {showAttachMenu && <div className="plugin-popover" role="dialog" aria-label="Ajouter au message"><b>Ajouter au message</b><button type="button" className="btn btn-ghost" onClick={() => imageInputRef.current?.click()}><ImagePlus size={18} /> Importer une photo</button><button type="button" className="btn btn-ghost" onClick={() => fileInputRef.current?.click()}><FileText size={18} /> Importer un fichier ou du code</button><button type="button" className="btn btn-ghost" onClick={() => { setImageMode(true); setAttachedImage(null); setShowAttachMenu(false); }}><WandSparkles size={18} /> Créer une image avec l’IA</button></div>}
-          {imageMode && <div className="row" style={{ padding: 8 }}><span className="grow">{attachedImage ? "Photo : " + attachedImage.name : "Mode création d’image activé"}</span><button type="button" className="btn btn-ghost btn-sm" onClick={() => { setImageMode(false); setAttachedImage(null); }}>Annuler</button></div>}
+          <input ref={fileInputRef> type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log" hidden onChange={readDocument} />
+          {showAttachMenu && <div className="plugin-popover" role="dialog" aria-label="Ajouter au message"><b>Ajouter au message</b><button type="button" className="btn btn-ghost" onClick={() => fileInputRef.current?.click()}><FileText size={18} /> Importer un fichier ou du code</button></div>}
           {showPlugins && (
             <div className="plugin-popover" role="dialog" aria-label="Plugins">
               <div className="row"><b className="grow">Plugins</b><button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowPlugins(false)} aria-label="Fermer"><X /></button></div>
