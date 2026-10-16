@@ -6,7 +6,7 @@ export const maxDuration = 60;
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const DEFAULT_MODEL = "gemini-nano-banana-2.1";
+const DEFAULT_MODEL = "gemini-3.1-flash-image";
 
 type InteractionContent = {
   type?: string;
@@ -114,10 +114,7 @@ export async function POST(request: NextRequest) {
   }
 
   const configuredModel = (process.env.GEMINI_IMAGE_MODEL || DEFAULT_MODEL).trim();
-  // Gemini 3.1 Flash Image is scheduled to shut down on 2026-10-29; migrate legacy env values automatically.
-  const model = ["gemini-3.1-flash-image", "gemini-3.1-flash-image-preview"].includes(configuredModel)
-    ? DEFAULT_MODEL
-    : configuredModel;
+  const model = configuredModel || DEFAULT_MODEL;
   let response: Response;
   try {
     response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
