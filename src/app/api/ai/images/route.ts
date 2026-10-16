@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     input.push({ type: "image", data: base64, mime_type: mimeType });
   }
 
-  const configuredModel = (process.env.GEMINI_IMAGE_MODEL || DEFAULT_MODEL).trim();
+  const configuredModel = (process.env.GEMINI_IMAGE_MODEL || DEFAULT_MODEL).trim().replace(/[.\s]+$/, "");
   const model = configuredModel || DEFAULT_MODEL;
   let response: Response;
   try {
