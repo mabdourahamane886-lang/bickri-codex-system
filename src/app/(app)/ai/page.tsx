@@ -14,7 +14,7 @@ import { useConfig } from "@/hooks/useConfig";
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
 type PluginStatus = { id: string; name: string; description: string; available: boolean; reason?: string; tools: number; writeTools: number };
-type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string };
+type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; generatedImage?: string };
 type AgentResponse = {
   contents: unknown[]; events: AgentEvent[]; answer?: string; pending?: Pending[]; continue?: boolean; model?: string; error?: string;
 };
@@ -125,6 +125,8 @@ export default function CodeAIPage() {
   async function runAgent(body: Record<string, unknown>, baseContents: unknown[]) {
     setLoading(true); setError("");
     let state = baseContents;
+    const originalPrompt = typeof body.message === "string" ? body.message : "";
+    const shouldGenerateImage = /image|illustration|dessin|dessine|génère|genere|crée une image|cree une image|logo|affiche|visuel|maquette|diagramme|infographie|schéma|schema|visualise|visualisation|render|rendu graphique/i.test(originalPrompt);
     try {
       for (let round = 0; round <= MAX_CONTINUATIONS; round++) {
         const res = await fetch("/api/ai/agent", {
@@ -138,7 +140,27 @@ export default function CodeAIPage() {
         setContents(data.contents);
         patchAssistant((m) => ({ ...m, model: data.model, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...data.events] }));
         if (data.pending?.length) { setPending(data.pending); return; }
-        if (data.answer !== undefined) { patchAssistant((m) => ({ ...m, content: data.answer! })); return; }
+        if (data.answer !== undefined) {
+          patchAssistant((m) => ({ ...m, content: data.answer! }));
+          if (shouldGenerateImage && originalPrompt) {
+            try {
+              const imageRes = await fetch("/api/ai/images", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mode: "generate", prompt: `Crée une illustration visuelle de haute qualité qui accompagne cette demande et sa réponse. Demande : ${originalPrompt.slice(0, 1200)}. Réponse : ${data.answer!.slice(0, 1000)}. Produis uniquement l’image, sans texte explicatif ajouté.` }),
+              });
+              const imageData = await imageRes.json().catch(() => ({}));
+              if (imageRes.ok && typeof imageData.image === "string" && imageData.image.startsWith("data:image/")) {
+                patchAssistant((m) => ({ ...m, generatedImage: imageData.image }));
+              } else if (!imageRes.ok) {
+                console.warn("Image contextuelle indisponible:", imageData.error || imageRes.status);
+              }
+            } catch (imageError) {
+              console.warn("La génération d’image contextuelle a échoué.", imageError);
+            }
+          }
+          return;
+        }
         if (!data.continue) return;
         body = {}; // poursuite automatique sans nouveau message
       }
@@ -252,6 +274,14 @@ export default function CodeAIPage() {
                           <>
                             <ToolEvents events={m.events ?? []} />
                             {m.content && <Markdown>{m.content}</Markdown>}
+{m.generatedImage && (
+  <figure style={{ margin: "14px 0 0", maxWidth: 720 }}>
+    <a href={m.generatedImage} target="_blank" rel="noreferrer noopener" aria-label="Ouvrir l’image générée en grand">
+      <img src={m.generatedImage} alt="Illustration générée par Bickri Code AI pour accompagner cette réponse" loading="lazy" style={{ display: "block", width: "100%", height: "auto", maxHeight: 560, objectFit: "contain", borderRadius: 14, border: "1px solid var(--border, #dbe2ea)", background: "var(--surface, #fff)" }} />
+    </a>
+    <figcaption style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>Illustration générée par Bickri Code AI</figcaption>
+  </figure>
+)}
                             {isLast && loading && <span className="typing" aria-label="Réponse en cours"><i /><i /><i /></span>}
                           </>
                         )}
