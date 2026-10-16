@@ -89,10 +89,3 @@ export async function collectPublicWebPage(input: string): Promise<{ url: string
   if (text.length < 100) throw new Error("La page ne contient pas assez de texte exploitable.");
   return { url: new URL(current).toString(), title, text: text.slice(0, 100_000) };
 }
-
-
-/** Backwards-compatible result shape used by the BCX knowledge import route. */
-export async function collectPublicWebPage(initialUrl: string): Promise<{ url: string; title: string; text: string }> {
-  const page = await fetchPublicWebPage(initialUrl);
-  return { url: page.url, title: page.title, text: page.content };
-}
