@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ChevronRight, LogIn, LogOut } from "lucide-react";
+import { AccentColorPicker } from "@/components/providers/ThemeToggle";
 import { Logo } from "@/components/brand/Logo";
 import { useSession } from "@/components/providers/SessionProvider";
 import { ALL_NAV, MOBILE_NAV, NAV_GROUPS, isActive } from "./nav";
@@ -59,6 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="breadcrumbs">
             <span>BCX</span><ChevronRight size={14} aria-hidden="true" /><b>{current?.label ?? "Page"}</b>
           </div>
+          <div className="topbar-actions"><AccentColorPicker compact /></div>
         </header>
         {children}
       </div>
