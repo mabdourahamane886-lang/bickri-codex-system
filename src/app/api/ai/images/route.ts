@@ -7,6 +7,7 @@ export const maxDuration = 60;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const DEFAULT_MODEL = "gemini-nano-banana-2.1";
+const DALL_E_MODEL = "dall-e-3";
 const FALLBACK_MODELS = ["gemini-nano-banana-2.1", "gemini-3.1-flash-image", "gemini-2.5-flash-image"] as const;
 
 type GeminiImage = { data?: string; mime_type?: string; mimeType?: string };
@@ -85,6 +86,35 @@ function extractText(result: GeminiResponse) {
 }
 
 
+async function generateWithOpenAI(prompt: string, apiKey: string): Promise<NextResponse | null> {
+  try {
+    const upstream = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: DALL_E_MODEL,
+        prompt,
+        n: 1,
+        size: "1024x1024",
+        quality: "hd",
+        style: "vivid",
+        response_format: "b64_json",
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(55_000),
+    });
+    const result = await upstream.json().catch(() => null) as { data?: Array<{ b64_json?: string }>; error?: { message?: string } } | null;
+    if (!upstream.ok || !result?.data?.[0]?.b64_json) {
+      console.error("OpenAI image request failed", { status: upstream.status, detail: result?.error?.message?.slice(0, 300) });
+      return NextResponse.json({ error: upstream.status === 429 ? "Le quota OpenAI est atteint. Vérifie ta facturation et tes limites." : "DALL·E 3 n’a pas pu générer cette image. Réessaie avec une autre description." }, { status: upstream.status === 429 ? 429 : 502 });
+    }
+    return NextResponse.json({ image: `data:image/png;base64,${result.data[0].b64_json}`, mimeType: "image/png", model: DALL_E_MODEL });
+  } catch (error) {
+    console.error("OpenAI image request error", error instanceof Error ? error.message : "unknown");
+    return NextResponse.json({ error: "DALL·E 3 ne répond pas actuellement. Réessaie dans un instant." }, { status: 502 });
+  }
+}
+
 async function generateWithPollinations(args: { prompt: string; mode: string; imageData: string; mimeType: string; apiKey: string }): Promise<{ ok: boolean; response: NextResponse }> {
   const { prompt, mode, imageData, mimeType, apiKey } = args;
   try {
@@ -144,10 +174,11 @@ async function generateWithPollinations(args: { prompt: string; mode: string; im
 
 export async function POST(request: NextRequest) {
   const geminiApiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
+  const openAiApiKey = process.env.OPENAI_API_KEY;
   const pollinationsApiKey = process.env.POLLINATIONS_API_KEY;
-  if (!geminiApiKey && !pollinationsApiKey) {
+  if (!geminiApiKey && !openAiApiKey && !pollinationsApiKey) {
     return NextResponse.json(
-      { error: "La génération d’images n’est pas configurée. Ajoute GEMINI_API_KEY ou POLLINATIONS_API_KEY dans Vercel." },
+      { error: "La génération d’images n’est pas configurée. Ajoute OPENAI_API_KEY, GEMINI_API_KEY ou POLLINATIONS_API_KEY dans Vercel." },
       { status: 503 },
     );
   }
@@ -194,6 +225,16 @@ export async function POST(request: NextRequest) {
       ? `Modifie l’image fournie en respectant cette demande : ${prompt}. Retourne l’image modifiée, pas seulement une description. Préserve les éléments qui ne doivent pas changer.`
       : `Crée une image originale de haute qualité à partir de cette description : ${prompt}. Retourne une image, pas seulement une description textuelle.`,
   });
+
+  if (mode === "edit" && !geminiApiKey && !pollinationsApiKey) {
+    return NextResponse.json({ error: "La modification de photos nécessite GEMINI_API_KEY ou POLLINATIONS_API_KEY. DALL·E 3 est disponible pour les nouvelles créations." }, { status: 503 });
+  }
+
+  // DALL·E 3 is the primary generator for new images when OpenAI is configured.
+  // Edits continue through Gemini/Pollinations because DALL·E 3 does not support image editing.
+  if (mode !== "edit" && openAiApiKey) {
+    return (await generateWithOpenAI(prompt, openAiApiKey)) ?? NextResponse.json({ error: "DALL·E 3 n’a pas retourné d’image." }, { status: 502 });
+  }
 
   // If Gemini is not configured, use Pollinations directly; otherwise Gemini remains primary.
   if (!geminiApiKey && pollinationsApiKey) {

@@ -96,7 +96,7 @@ export default function ImageStudioPage() {
 
   return (
     <main className="content">
-      <PageHeader title="Studio d’images IA" description="Crée des images originales et transforme tes propres photos avec une génération d’image réelle par IA." />
+      <PageHeader title="Studio d’images IA" description="Crée des images originales avec DALL·E 3 en qualité HD, ou transforme tes propres photos avec l’IA." />
 
       <div className="grid-2" style={{ alignItems: "start" }}>
         <section className="card card-pad stack" style={{ gap: 18 }}>
