@@ -448,6 +448,8 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
 .composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .composer textarea { width: 100%; border: 0; background: transparent; resize: none; padding: 12px 14px 4px; outline: none; min-height: 52px; max-height: 240px; line-height: 1.55; }
 .composer-bar { display: flex; align-items: center; gap: 8px; padding: 6px 8px 8px 14px; }
+/* Sur PC, garder la flèche d'envoi à droite du composeur. */
+.composer-bar .composer-send { order: 10; margin-left: auto; }
 .composer-bar small { color: var(--text-faint); font-size: var(--text-xs); }
 .composer-note { max-width: 820px; margin: 8px auto 0; font-size: 11px; color: var(--text-faint); text-align: center; }
 .starter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -840,6 +842,7 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
     min-width: 36px;
     height: 36px;
     margin-right: 2px;
+    margin-left: 0;
   }
   .main:has(.chat) .composer-bar > * {
     min-width: 0;
