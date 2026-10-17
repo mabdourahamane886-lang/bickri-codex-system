@@ -398,7 +398,7 @@ export default function CodeAIPage() {
             {messages.length === 0 ? (
               <>
                 <div className="chat-hero">
-                  <Badge tone="accent">Bickri Code AI</Badge>
+                  <Badge tone="accent">Bickri AI</Badge>
                   <h1>Que veux-tu construire aujourd&apos;hui ?</h1>
                   <p>
                     Décris une fonctionnalité, colle une erreur ou demande du code.
@@ -422,7 +422,7 @@ export default function CodeAIPage() {
                     <article key={i} className={`msg ${m.role}`}>
                       <div className="msg-avatar" aria-hidden="true">{m.role === "user" ? <User /> : <Sparkles />}</div>
                       <div style={{ minWidth: 0 }}>
-                        <div className="msg-role">{m.role === "user" ? "Toi" : "Bickri Code AI"}</div>
+                        <div className="msg-role">{m.role === "user" ? "Toi" : "Bickri AI"}</div>
                         {m.role === "user" ? <div className="msg-text">{m.content}</div> : (
                           <>
                             <ToolEvents events={m.events ?? []} />
@@ -493,7 +493,7 @@ export default function CodeAIPage() {
               <button type="button" className={`btn ${imageMode === "edit" ? "btn-primary" : ""}`} onClick={() => { setImageMode("edit"); setShowTools(false); imageFileRef.current?.click(); }}><WandSparkles size={17} /> Modifier une image</button>
               <button type="button" className="btn" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Joindre un fichier/code</button>
               <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
-              <Link className="btn" href="/publicite" onClick={() => setShowTools(false)}><Sparkles size={17} /> Créer une affiche</Link>
+              <button type="button" className="btn" onClick={() => { setImageMode("create"); setPrompt((old) => old || "Crée une affiche publicitaire professionnelle pour mon entreprise. Nom, offre, coordonnées et style souhaité : "); setShowTools(false); inputRef.current?.focus(); }}><Sparkles size={17} /> Créer une affiche</button>
               <Link className="btn" href="/registry" onClick={() => setShowTools(false)}><Fingerprint size={17} /> Registre BCX</Link>
             </div>
           </div>}
