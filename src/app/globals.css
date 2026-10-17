@@ -710,3 +710,106 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .main:has(.chat) .composer-bar .btn-plugins-on,
   .main:has(.chat) .composer-bar button[aria-label="Ouvrir le Studio d’images"] { max-width: 82px; }
 }
+
+
+/* Correctif layout mobile: limiter chaque zone à sa vraie ligne de grille. */
+@media (max-width: 900px) {
+  .main:has(.chat) {
+    height: calc(100dvh - 60px);
+    min-height: 0;
+    padding-bottom: 0 !important;
+    overflow: hidden;
+  }
+  .main:has(.chat) .chat {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 52px minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .main:has(.chat) .chat > .row:first-child {
+    position: relative;
+    top: auto;
+    min-height: 52px;
+    padding: 8px 12px;
+    padding-top: 8px;
+  }
+  .main:has(.chat) .chat-main {
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .main:has(.chat) .chat-scroll {
+    min-height: 0;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .main:has(.chat) .chat-inner {
+    min-height: 100%;
+    align-content: start;
+    padding: 14px 16px 20px;
+    gap: 18px;
+  }
+  .main:has(.chat) .chat-hero {
+    padding-top: clamp(14px, 3vh, 28px);
+    gap: 8px;
+  }
+  .main:has(.chat) .chat-hero h1 {
+    max-width: 18ch;
+    font-size: clamp(1.55rem, 6.4vw, 1.9rem);
+    line-height: 1.18;
+    text-wrap: balance;
+  }
+  .main:has(.chat) .chat-hero p {
+    font-size: .92rem;
+    line-height: 1.55;
+  }
+  .main:has(.chat) .starter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+  .main:has(.chat) .starter {
+    min-width: 0;
+    min-height: 90px;
+    overflow-wrap: anywhere;
+  }
+  .main:has(.chat) .chat-composer {
+    position: relative;
+    bottom: auto;
+    z-index: 12;
+    padding: 8px 10px max(8px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .main:has(.chat) .composer {
+    width: 100%;
+    max-width: none;
+    border-radius: 20px;
+  }
+  .main:has(.chat) .composer textarea {
+    min-height: 48px;
+    max-height: 160px;
+    font-size: 16px;
+  }
+  .main:has(.chat) .composer-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 6px;
+  }
+  .main:has(.chat) .composer-note {
+    padding: 0 8px;
+    margin-top: 6px;
+  }
+}
+@media (max-width: 420px) {
+  .main:has(.chat) .chat-inner { padding: 12px 12px 18px; gap: 16px; }
+  .main:has(.chat) .starter-grid { grid-template-columns: 1fr; }
+  .main:has(.chat) .starter { min-height: 68px; }
+  .main:has(.chat) .composer-bar .select { max-width: 140px; }
+}
