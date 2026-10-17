@@ -304,7 +304,7 @@ export default function CodeAIPage() {
         </div>
 
         <div className="chat-composer">
-          <input ref={fileInputRef> type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log" hidden onChange={readDocument} />
+          <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log" hidden onChange={readDocument} />
           {showAttachMenu && <div className="plugin-popover" role="dialog" aria-label="Ajouter au message"><b>Ajouter au message</b><button type="button" className="btn btn-ghost" onClick={() => fileInputRef.current?.click()}><FileText size={18} /> Importer un fichier ou du code</button></div>}
           {showPlugins && (
             <div className="plugin-popover" role="dialog" aria-label="Plugins">
