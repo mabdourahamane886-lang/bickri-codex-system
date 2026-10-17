@@ -28,6 +28,48 @@ const PLUGINS_KEY = "bcx_ai_plugins_v1";
 const MAX_CONTINUATIONS = 4;
 const LANGUAGES = ["TypeScript / Next.js", "JavaScript", "HTML / CSS", "Python", "Python / Django", "Dart / Flutter", "Kotlin / Android", "Java", "C / C++", "Rust", "PHP", "SQL / Supabase", "Autre langage"];
 const PLUGIN_ICONS: Record<string, typeof GitBranch> = { github: GitBranch, registry: Fingerprint, web: Globe };
+type FeatureAction = "prompt" | "image" | "edit" | "file" | "studio" | "registry" | "plugins";
+type FeatureItem = { label: string; description: string; action: FeatureAction; prompt?: string };
+type FeatureGroup = { id: string; letter: string; title: string; description: string; icon: typeof Layers; items: FeatureItem[] };
+const FEATURE_GROUPS: FeatureGroup[] = [
+  { id: "a", letter: "A", title: "Assistant IA", description: "Discuter, rédiger, analyser et apprendre", icon: Sparkles, items: [
+    { label: "Poser une question", description: "Obtenir une réponse ou une explication", action: "prompt", prompt: "Aide-moi sur le sujet suivant : " },
+    { label: "Rédiger ou analyser", description: "Préparer un contenu ou analyser une idée", action: "prompt", prompt: "Aide-moi à rédiger ou analyser ceci : " },
+  ]},
+  { id: "b", letter: "B", title: "Programmation & code", description: "Créer, expliquer et corriger du code", icon: Bug, items: [
+    { label: "Générer du code", description: "Décris le programme ou la fonctionnalité", action: "prompt", prompt: "Génère du code pour : " },
+    { label: "Corriger une erreur", description: "Colle le message d’erreur et le code concerné", action: "prompt", prompt: "Diagnostique et corrige cette erreur sans modifier les clés API : " },
+    { label: "Ouvrir l’éditeur", description: "Continuer dans le Studio BCX", action: "studio" },
+  ]},
+  { id: "c", letter: "C", title: "Images & visuels", description: "Créer une image ou modifier une image importée", icon: ImagePlus, items: [
+    { label: "Créer une image", description: "Décrire le visuel souhaité", action: "image" },
+    { label: "Modifier une image", description: "Importer une image puis décrire les changements", action: "edit" },
+    { label: "Créer une affiche", description: "Préparer un prompt d’affiche publicitaire", action: "prompt", prompt: "Prépare une affiche publicitaire professionnelle. Marque, texte, couleurs, format et style : " },
+  ]},
+  { id: "d", letter: "D", title: "Documents & fichiers", description: "Joindre et analyser des documents ou du code", icon: FileText, items: [
+    { label: "Joindre un fichier", description: "Importer un document ou un fichier de code pris en charge", action: "file" },
+    { label: "Analyser un document", description: "Joindre le fichier puis préciser les points à examiner", action: "prompt", prompt: "Analyse le document joint et résume les points importants : " },
+  ]},
+  { id: "e", letter: "E", title: "Sites & applications", description: "Concevoir des interfaces et des projets", icon: Globe, items: [
+    { label: "Créer un site web", description: "Décrire les pages, le design et les fonctions", action: "prompt", prompt: "Conçois un site web responsive. Objectif, pages, style et fonctionnalités : " },
+    { label: "Créer une application", description: "Décrire la plateforme et les besoins", action: "prompt", prompt: "Conçois l’architecture d’une application. Plateforme, fonctionnalités et contraintes : " },
+    { label: "Ouvrir le Studio", description: "Accéder à l’espace de création existant", action: "studio" },
+  ]},
+  { id: "f", letter: "F", title: "GitHub & déploiement", description: "Préparer des actions et diagnostiquer les déploiements", icon: GitBranch, items: [
+    { label: "Analyser un dépôt", description: "Demander une analyse du dépôt connecté", action: "prompt", prompt: "Analyse le dépôt GitHub connecté : structure, erreurs, tests et améliorations possibles. Ne modifie aucune clé ni variable d’environnement." },
+    { label: "Diagnostiquer Vercel", description: "Examiner un échec de build ou de déploiement", action: "prompt", prompt: "Aide-moi à diagnostiquer ce déploiement Vercel. Voici le lien ou les logs : " },
+  ]},
+  { id: "g", letter: "G", title: "Terminal, compilation & tests", description: "Préparer des commandes et des plans de vérification", icon: Bug, items: [
+    { label: "Préparer les commandes", description: "Obtenir les commandes adaptées au projet", action: "prompt", prompt: "Prépare les commandes de terminal adaptées à mon projet pour installer les dépendances et lancer les vérifications. Explique chaque commande avant toute action : " },
+    { label: "Plan de tests", description: "Définir les tests à exécuter avant mise en production", action: "prompt", prompt: "Prépare un plan de tests et de validation pour ce projet : " },
+  ]},
+  { id: "h", letter: "H", title: "Projets, paramètres & sécurité", description: "Gérer les outils actifs et protéger la configuration", icon: Fingerprint, items: [
+    { label: "Gérer les plugins", description: "Voir les intégrations disponibles et leur état", action: "plugins" },
+    { label: "Conseils de sécurité", description: "Vérifier les risques sans exposer les secrets", action: "prompt", prompt: "Fais une revue de sécurité de ce projet. Ne demande pas et n’affiche pas les secrets, clés API ou variables d’environnement : " },
+    { label: "Registre BCX", description: "Ouvrir le registre disponible", action: "registry" },
+  ]},
+];
+
 const STARTERS = [
   { icon: Layers, text: "Crée une application web responsive en Next.js avec authentification Supabase." },
   { icon: Bug, text: "Explique et corrige cette erreur TypeScript : " },
@@ -88,6 +130,7 @@ export default function CodeAIPage() {
   const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
   const [showPlugins, setShowPlugins] = useState(false);
   const [showTools, setShowTools] = useState(false);
+  const [selectedToolGroup, setSelectedToolGroup] = useState<string | null>(null);
   const [showNav, setShowNav] = useState(false);
   const [imageMode, setImageMode] = useState<"create" | "edit">("create");
   const [imageSource, setImageSource] = useState<{ file: File; preview: string; data: string } | null>(null);
@@ -196,6 +239,30 @@ export default function CodeAIPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function activateFeature(item: FeatureItem) {
+    setError("");
+    if (item.action === "image") {
+      setImageMode("create"); setShowTools(false); setSelectedToolGroup(null); inputRef.current?.focus(); return;
+    }
+    if (item.action === "edit") {
+      setImageMode("edit"); setShowTools(false); setSelectedToolGroup(null); imageFileRef.current?.click(); return;
+    }
+    if (item.action === "file") {
+      setShowTools(false); setSelectedToolGroup(null); fileInputRef.current?.click(); return;
+    }
+    if (item.action === "studio" || item.action === "registry") {
+      setShowTools(false); setSelectedToolGroup(null);
+      window.location.href = item.action === "studio" ? "/studio" : "/registry";
+      return;
+    }
+    if (item.action === "plugins") {
+      setShowTools(false); setSelectedToolGroup(null); setShowPlugins(true); return;
+    }
+    setPrompt((old) => old ? old + "\n\n" + (item.prompt ?? "") : (item.prompt ?? ""));
+    setShowTools(false); setSelectedToolGroup(null);
+    window.setTimeout(() => inputRef.current?.focus(), 0);
   }
 
   function handleImageAction() {
@@ -488,16 +555,19 @@ export default function CodeAIPage() {
         <div className="chat-composer">
           <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log" hidden onChange={readDocument} />
           <input ref={imageFileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={chooseImage} />
-          {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Outils de la conversation">
-            <div className="row"><b className="grow">Que veux-tu faire ?</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
-            <div className="bcx-tool-grid">
-              <button type="button" className={`btn ${imageMode === "create" ? "btn-primary" : ""}`} onClick={() => { setImageMode("create"); setShowTools(false); inputRef.current?.focus(); }}><ImagePlus size={17} /> Créer une image</button>
-              <button type="button" className={`btn ${imageMode === "edit" ? "btn-primary" : ""}`} onClick={() => { setImageMode("edit"); setShowTools(false); imageFileRef.current?.click(); }}><WandSparkles size={17} /> Modifier une image</button>
-              <button type="button" className="btn" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Joindre un fichier/code</button>
-              <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
-              <button type="button" className="btn" onClick={() => { setImageMode("create"); setPrompt((old) => old || "Crée une affiche publicitaire professionnelle pour mon entreprise. Nom, offre, coordonnées et style souhaité : "); setShowTools(false); inputRef.current?.focus(); }}><Sparkles size={17} /> Créer une affiche</button>
-              <Link className="btn" href="/registry" onClick={() => setShowTools(false)}><Fingerprint size={17} /> Registre BCX</Link>
-            </div>
+          {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Fonctionnalités BCX A à H">
+            <div className="row"><div className="grow"><b>Fonctionnalités BCX</b><p className="muted" style={{fontSize:12,marginTop:3}}>Choisis une catégorie A à H.</p></div><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les fonctionnalités" onClick={() => { setShowTools(false); setSelectedToolGroup(null); }}><X size={16} /></button></div>
+            {selectedToolGroup ? (
+              <>
+                <button type="button" className="btn btn-ghost btn-sm" style={{marginTop:10}} onClick={() => setSelectedToolGroup(null)}>← Toutes les catégories</button>
+                {FEATURE_GROUPS.filter((group) => group.id === selectedToolGroup).map((group) => <section key={group.id} style={{marginTop:10}}>
+                  <div className="row" style={{marginBottom:8}}><span className="bcx-feature-letter">{group.letter}</span><div><b>{group.title}</b><p className="muted" style={{fontSize:12}}>{group.description}</p></div></div>
+                  <div className="bcx-feature-items">{group.items.map((item) => <button type="button" className="bcx-feature-item" key={item.label} onClick={() => activateFeature(item)}><b>{item.label}</b><small>{item.description}</small></button>)}</div>
+                </section>)}
+              </>
+            ) : (
+              <div className="bcx-feature-groups">{FEATURE_GROUPS.map((group) => { const Icon = group.icon; return <button type="button" className="bcx-feature-group" key={group.id} onClick={() => setSelectedToolGroup(group.id)}><span className="bcx-feature-letter">{group.letter}</span><span className="bcx-feature-icon"><Icon size={18}/></span><span className="bcx-feature-copy"><b>{group.title}</b><small>{group.description}</small></span><span className="bcx-feature-chevron">›</span></button>; })}</div>
+            )}
           </div>}
           {imageSource && <div className="bcx-image-attachment"><img src={imageSource.preview} alt="Image à modifier" /><div className="grow"><b>Image à modifier</b><small>{imageSource.file.name}</small></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => { setImageSource(null); setImageMode("create"); }} aria-label="Retirer l’image"><X size={16} /></button></div>}
           {showPlugins && (
