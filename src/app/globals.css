@@ -836,13 +836,13 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
     gap: 6px;
   }
   .main:has(.chat) .composer-bar .composer-send {
-    order: -1;
+    order: 99;
     flex: 0 0 36px;
     width: 36px;
     min-width: 36px;
     height: 36px;
-    margin-right: 2px;
-    margin-left: 0;
+    margin-right: 0;
+    margin-left: auto;
   }
   .main:has(.chat) .composer-bar > * {
     min-width: 0;
