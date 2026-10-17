@@ -552,7 +552,7 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .breadcrumbs { display: none; }
   .content { padding: 20px 16px; }
   .mobile-nav {
-    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
     position: fixed; z-index: 40; left: 0; right: 0; bottom: 0;
     height: 60px; padding-bottom: env(safe-area-inset-bottom);
     background: color-mix(in srgb, var(--surface) 92%, transparent);
