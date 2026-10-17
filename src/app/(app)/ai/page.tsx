@@ -16,11 +16,14 @@ type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | 
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
 type PluginStatus = { id: string; name: string; description: string; available: boolean; reason?: string; tools: number; writeTools: number };
 type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string };
+type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
+function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
 type AgentResponse = {
   contents: unknown[]; events: AgentEvent[]; answer?: string; pending?: Pending[]; continue?: boolean; model?: string; error?: string;
 };
 
 const CHAT_KEY = "bcx_ai_chat_v2";
+const HISTORY_KEY = "bcx_ai_conversations_v1";
 const PLUGINS_KEY = "bcx_ai_plugins_v1";
 const MAX_CONTINUATIONS = 4;
 const LANGUAGES = ["TypeScript / Next.js", "JavaScript", "HTML / CSS", "Python", "Python / Django", "Dart / Flutter", "Kotlin / Android", "Java", "C / C++", "Rust", "PHP", "SQL / Supabase", "Autre langage"];
@@ -72,6 +75,8 @@ export default function CodeAIPage() {
   const { config } = useConfig();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contents, setContents] = useState<unknown[]>([]);
+  const [history, setHistory] = useState<SavedConversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState("");
   const [pending, setPending] = useState<Pending[] | null>(null);
   const [prompt, setPrompt] = useState("");
   const [language, setLanguage] = useState(LANGUAGES[0]);
@@ -102,14 +107,35 @@ export default function CodeAIPage() {
       if (Array.isArray(saved?.contents)) setContents(saved.contents);
       if (saved?.pending) setPending(saved.pending);
       if (saved?.language) setLanguage(saved.language);
+      setActiveConversationId(typeof saved?.activeConversationId === "string" ? saved.activeConversationId : createConversationId());
+      const storedHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+      if (Array.isArray(storedHistory)) setHistory(storedHistory.filter((item) => item && typeof item.id === "string" && Array.isArray(item.messages)));
       const p = JSON.parse(localStorage.getItem(PLUGINS_KEY) || "null");
       if (Array.isArray(p)) setEnabled(p);
     } catch { /* ignoré */ }
   }, []);
   useEffect(() => {
-    try { sessionStorage.setItem(CHAT_KEY, JSON.stringify({ messages, contents, pending, language })); } catch { /* quota : ignoré */ }
+    try { sessionStorage.setItem(CHAT_KEY, JSON.stringify({ messages, contents, pending, language, activeConversationId })); } catch { /* quota : ignoré */ }
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, contents, pending, language, loading]);
+  }, [messages, contents, pending, language, loading, activeConversationId]);
+
+  useEffect(() => {
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch { /* quota : ignoré */ }
+  }, [history]);
+
+  useEffect(() => {
+    if (!activeConversationId || messages.length === 0) return;
+    const firstUserMessage = messages.find((message) => message.role === "user")?.content ?? "Nouvelle conversation";
+    const item: SavedConversation = {
+      id: activeConversationId,
+      title: firstUserMessage.replace(/\\s+/g, " ").slice(0, 56) || "Nouvelle conversation",
+      updatedAt: new Date().toISOString(),
+      messages,
+      contents,
+      language,
+    };
+    setHistory((all) => [item, ...all.filter((entry) => entry.id !== activeConversationId)].slice(0, 40));
+  }, [activeConversationId, messages, contents, language]);
   useEffect(() => { try { localStorage.setItem(PLUGINS_KEY, JSON.stringify(enabled)); } catch { /* ignoré */ } }, [enabled]);
 
   const loadPlugins = useCallback(async () => {
@@ -276,7 +302,36 @@ export default function CodeAIPage() {
     setError("");
     setTimeout(() => void send(lastMessage), 0);
   }
-  function newChat() { setMessages([]); setContents([]); setPending(null); setError(""); inputRef.current?.focus(); }
+  function newChat() {
+    setMessages([]);
+    setContents([]);
+    setPending(null);
+    setError("");
+    setImageResult(null);
+    setImageSource(null);
+    setImageMode("create");
+    setActiveConversationId(createConversationId());
+    setShowHistory(false);
+    inputRef.current?.focus();
+  }
+
+  function openConversation(item: SavedConversation) {
+    setActiveConversationId(item.id);
+    setMessages(item.messages);
+    setContents(item.contents ?? []);
+    setLanguage(item.language || LANGUAGES[0]);
+    setPending(null);
+    setError("");
+    setImageResult(null);
+    setShowHistory(false);
+    setShowNav(false);
+  }
+
+  function deleteConversation(id: string) {
+    setHistory((all) => all.filter((item) => item.id !== id));
+    if (id === activeConversationId) newChat();
+  }
+
   function toggle(id: string) { setEnabled((all) => (all.includes(id) ? all.filter((x) => x !== id) : [...all, id])); }
 
   const pluginList = (
@@ -302,7 +357,7 @@ export default function CodeAIPage() {
   return (
     <main className="chat">
       <div className="row bcx-chat-toolbar" style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", justifyContent: "space-between" }}><button type="button" className="btn btn-ghost btn-icon" aria-label="Ouvrir le menu" onClick={() => setShowNav((v) => !v)}><Menu /></button><strong>Bickri Chat</strong><ThemeToggle /><button type="button" className="btn btn-ghost btn-icon" aria-label="Nouvelle conversation" onClick={newChat}><SquarePen /></button></div>
-      {showNav && <div className="plugin-popover" role="dialog" aria-label="Navigation Bickri" style={{ position: "fixed", zIndex: 100, top: 72, left: 12, width: "min(320px, calc(100vw - 24px))", maxHeight: "75vh", overflowY: "auto", boxShadow: "0 12px 36px #0002" }}><div className="row"><b className="grow">Bickri Codex System</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Sparkles size={18}/> Chat</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><BookOpen size={18}/> Bibliothèque</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Folder size={18}/> Projets</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Clock3 size={18}/> Planifiées</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Compass size={18}/> Explorer</button><hr className="divider"/><b>Plugins</b>{pluginList}</div>}
+      {showNav && <div className="plugin-popover bcx-nav-popover" role="dialog" aria-label="Navigation et historique Bickri"><div className="row"><b className="grow">Bickri Codex System</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={newChat}><SquarePen size={18}/> Nouveau chat</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); setShowTools(true); }}><Layers size={18}/> Outils</button><hr className="divider"/><div className="row"><b className="grow">Historique</b><span className="muted">{history.length}</span></div>{history.length ? <div className="bcx-history-list">{history.map((item) => <div className={`bcx-history-item ${item.id === activeConversationId ? "active" : ""}`} key={item.id}><button type="button" className="bcx-history-open" title={item.title} onClick={() => openConversation(item)}>{item.title}</button><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={`Supprimer ${item.title}`} title="Supprimer" onClick={() => deleteConversation(item.id)}><X size={14}/></button></div>)}</div> : <p className="muted" style={{fontSize:12}}>Tes conversations apparaîtront ici.</p>}<hr className="divider"/><b>Plugins</b>{pluginList}</div>}
       <div className="chat-main">
         <div className="chat-scroll">
           <div className="chat-inner">
