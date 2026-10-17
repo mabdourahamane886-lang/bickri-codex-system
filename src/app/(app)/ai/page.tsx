@@ -4,14 +4,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn,
+  ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn, WandSparkles,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, BookOpen, Folder, Clock3, Compass, FileText, ImageIcon,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
 import { Badge } from "@/components/ui/Badge";
 import { useConfig } from "@/hooks/useConfig";
-import Link from "next/link";
 
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
