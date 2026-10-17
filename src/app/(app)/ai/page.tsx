@@ -332,6 +332,38 @@ export default function CodeAIPage() {
     if (id === activeConversationId) newChat();
   }
 
+  function transferToStudio(answer: string) {
+    const blocks = [...answer.matchAll(/```(html|css|javascript|js)\\s*\\n([\\s\\S]*?)```/gi)];
+    if (!blocks.length) return;
+    const base = {
+      name: "Projet depuis Bickri Chat",
+      html: "<main></main>",
+      css: "",
+      js: "",
+      updatedAt: new Date().toISOString(),
+    };
+    let workspace = base;
+    try {
+      const saved = JSON.parse(localStorage.getItem("bcx_studio_workspace_v1") || "null");
+      if (saved && typeof saved === "object") workspace = { ...base, ...saved, updatedAt: new Date().toISOString() };
+    } catch { /* nouveau projet si les données sont invalides */ }
+    const languages = new Set(blocks.map((block) => block[1].toLowerCase()));
+    if (languages.has("html") && !languages.has("css")) workspace.css = "";
+    if (languages.has("html") && !languages.has("js") && !languages.has("javascript")) workspace.js = "";
+    for (const block of blocks) {
+      const language = block[1].toLowerCase();
+      const code = block[2].replace(/\\n$/, "");
+      if (language === "html") workspace.html = code;
+      else if (language === "css") workspace.css = code;
+      else workspace.js = code;
+    }
+    try { localStorage.setItem("bcx_studio_workspace_v1", JSON.stringify(workspace)); } catch { setError("Impossible de transférer le code : stockage local indisponible."); }
+  }
+
+  function hasStudioCode(answer: string) {
+    return /```(html|css|javascript|js)\\s*\\n[\\s\\S]*?```/i.test(answer);
+  }
+
   function toggle(id: string) { setEnabled((all) => (all.includes(id) ? all.filter((x) => x !== id) : [...all, id])); }
 
   const pluginList = (
@@ -400,6 +432,7 @@ export default function CodeAIPage() {
                             {m.content && (
                               <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: "wrap" }} aria-label="Actions sur la réponse">
                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => { void navigator.clipboard.writeText(m.content).catch(() => setError("Impossible de copier la réponse sur cet appareil.")); }} aria-label="Copier la réponse" title="Copier la réponse"><Copy size={15} /> Copier</button>
+                                {hasStudioCode(m.content) && <Link href="/studio" className="btn btn-ghost btn-sm" onClick={() => transferToStudio(m.content)}><Layers size={15} /> Ouvrir dans le Studio</Link>}
                                 {isLast && !loading && <button type="button" className="btn btn-ghost btn-sm" onClick={retry} disabled={!lastMessage || Boolean(pending)} aria-label="Régénérer la réponse" title="Régénérer la réponse"><RefreshCw size={15} /> Régénérer</button>}
                               </div>
                             )}
