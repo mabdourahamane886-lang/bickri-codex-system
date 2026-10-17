@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Fingerprint, GitBranch, Globe, Layers, Loader2, LogIn,
-  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, BookOpen, Folder, Clock3, Compass, FileText,
+  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, BookOpen, Folder, Clock3, Compass, FileText, ImageIcon, Wand2,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
@@ -74,6 +74,8 @@ export default function CodeAIPage() {
   const [showPlugins, setShowPlugins] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showNav, setShowNav] = useState(false);
+  const [imageResult, setImageResult] = useState<{ image: string; model?: string } | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -154,6 +156,20 @@ export default function CodeAIPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function generateImage() {
+    const content = prompt.trim();
+    if (!content || imageLoading || loading || pending) return;
+    setImageLoading(true); setError(""); setImageResult(null);
+    try {
+      const response = await fetch("/api/ai/images", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: content, mode: "create" }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || typeof data.image !== "string") throw new Error(data.error || "Impossible de générer cette image.");
+      setImageResult({ image: data.image, model: data.model });
+      setPrompt("");
+    } catch (err) { setError(err instanceof Error ? err.message : "Impossible de générer cette image."); }
+    finally { setImageLoading(false); }
   }
 
   async function send(text: string) {
@@ -271,6 +287,13 @@ export default function CodeAIPage() {
               </div>
             )}
 
+            {imageResult && (
+              <section className="approval" aria-label="Image générée" style={{ overflow: "hidden" }}>
+                <header className="row"><ImageIcon aria-hidden="true" /><div className="grow"><h2>Image générée</h2><p>{imageResult.model ? `Modèle : ${imageResult.model}` : "Création terminée"}</p></div><a className="btn btn-sm" href={imageResult.image} download="bickri-image.png">Télécharger</a></header>
+                <img src={imageResult.image} alt="Image générée à partir du prompt" style={{ display: "block", width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 12, background: "var(--surface-muted)" }} />
+              </section>
+            )}
+
             {pending && (
               <section className="approval" aria-label="Validation requise">
                 <header className="row">
@@ -326,6 +349,9 @@ export default function CodeAIPage() {
               <select className="select" style={{ width: "auto", height: 28, fontSize: "var(--text-xs)" }} value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Langage de travail">
                 {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
               </select>
+              <button type="button" className="btn btn-sm" onClick={() => void generateImage()} disabled={imageLoading || loading || !prompt.trim() || Boolean(pending)} aria-label="Générer une image avec le prompt" title="Générer une image avec le prompt" style={{ height: 28 }}>
+                {imageLoading ? <Loader2 className="spin" /> : <Wand2 />} <span className="hide-sm">Image</span>
+              </button>
               <button type="button" className={`btn btn-sm ${activePlugins.length ? "btn-plugins-on" : ""}`} onClick={() => setShowPlugins((v) => !v)} aria-expanded={showPlugins} style={{ height: 28 }}>
                 <Plug /> Plugins{activePlugins.length ? ` · ${activePlugins.length}` : ""}
               </button>
