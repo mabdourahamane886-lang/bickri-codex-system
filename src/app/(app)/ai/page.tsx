@@ -311,7 +311,6 @@ export default function CodeAIPage() {
     setImageSource(null);
     setImageMode("create");
     setActiveConversationId(createConversationId());
-    setShowHistory(false);
     inputRef.current?.focus();
   }
 
@@ -323,7 +322,6 @@ export default function CodeAIPage() {
     setPending(null);
     setError("");
     setImageResult(null);
-    setShowHistory(false);
     setShowNav(false);
   }
 
