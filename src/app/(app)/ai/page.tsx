@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { useRouter } from "next/navigation";
 import {
   ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn, WandSparkles,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, BookOpen, Folder, Clock3, Compass, FileText, ImageIcon,
@@ -11,6 +10,7 @@ import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
 import { Badge } from "@/components/ui/Badge";
 import { useConfig } from "@/hooks/useConfig";
+import { ThemeToggle } from "@/components/providers/ThemeToggle";
 
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
@@ -69,7 +69,6 @@ function ToolEvents({ events }: { events: AgentEvent[] }) {
 }
 
 export default function CodeAIPage() {
-  const router = useRouter();
   const { config } = useConfig();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contents, setContents] = useState<unknown[]>([]);
@@ -302,7 +301,7 @@ export default function CodeAIPage() {
 
   return (
     <main className="chat">
-      <div className="row bcx-chat-toolbar" style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", justifyContent: "space-between" }}><button type="button" className="btn btn-ghost btn-icon" aria-label="Ouvrir le menu" onClick={() => setShowNav((v) => !v)}><Menu /></button><strong>Bickri Chat</strong><button type="button" className="btn btn-ghost btn-icon" aria-label="Nouvelle conversation" onClick={newChat}><SquarePen /></button></div>
+      <div className="row bcx-chat-toolbar" style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", justifyContent: "space-between" }}><button type="button" className="btn btn-ghost btn-icon" aria-label="Ouvrir le menu" onClick={() => setShowNav((v) => !v)}><Menu /></button><strong>Bickri Chat</strong><ThemeToggle /><button type="button" className="btn btn-ghost btn-icon" aria-label="Nouvelle conversation" onClick={newChat}><SquarePen /></button></div>
       {showNav && <div className="plugin-popover" role="dialog" aria-label="Navigation Bickri" style={{ position: "fixed", zIndex: 100, top: 72, left: 12, width: "min(320px, calc(100vw - 24px))", maxHeight: "75vh", overflowY: "auto", boxShadow: "0 12px 36px #0002" }}><div className="row"><b className="grow">Bickri Codex System</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Sparkles size={18}/> Chat</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><BookOpen size={18}/> Bibliothèque</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Folder size={18}/> Projets</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Clock3 size={18}/> Planifiées</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Compass size={18}/> Explorer</button><hr className="divider"/><b>Plugins</b>{pluginList}</div>}
       <div className="chat-main">
         <div className="chat-scroll">
