@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Fingerprint, GitBranch, Globe, Layers, Loader2, LogIn,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, BookOpen, Folder, Clock3, Compass, FileText, ImageIcon, Wand2,
@@ -59,6 +60,7 @@ function ToolEvents({ events }: { events: AgentEvent[] }) {
 }
 
 export default function CodeAIPage() {
+  const router = useRouter();
   const { config } = useConfig();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contents, setContents] = useState<unknown[]>([]);
@@ -156,6 +158,14 @@ export default function CodeAIPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleImageAction() {
+    if (!prompt.trim()) {
+      router.push("/images");
+      return;
+    }
+    void generateImage();
   }
 
   async function generateImage() {
@@ -349,7 +359,7 @@ export default function CodeAIPage() {
               <select className="select" style={{ width: "auto", height: 28, fontSize: "var(--text-xs)" }} value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Langage de travail">
                 {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
               </select>
-              <button type="button" className="btn btn-sm" onClick={() => void generateImage()} disabled={imageLoading || loading || !prompt.trim() || Boolean(pending)} aria-label="Générer une image avec le prompt" title="Générer une image avec le prompt" style={{ height: 28 }}>
+              <button type="button" className="btn btn-sm" onClick={handleImageAction} disabled={imageLoading || loading || Boolean(pending)} aria-label={prompt.trim() ? "Générer une image avec le prompt" : "Ouvrir le Studio d’images"} title={prompt.trim() ? "Générer une image avec le prompt" : "Ouvrir le Studio d’images"} style={{ height: 28 }}>
                 {imageLoading ? <Loader2 className="spin" /> : <Wand2 />} <span className="hide-sm">Image</span>
               </button>
               <button type="button" className={`btn btn-sm ${activePlugins.length ? "btn-plugins-on" : ""}`} onClick={() => setShowPlugins((v) => !v)} aria-expanded={showPlugins} style={{ height: 28 }}>
