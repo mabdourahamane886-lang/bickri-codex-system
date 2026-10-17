@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Fingerprint, GitBranch, Globe, Layers, Loader2, LogIn,
+  ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, Layers, Loader2, LogIn,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, BookOpen, Folder, Clock3, Compass, FileText, ImageIcon, Wand2,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
@@ -287,6 +287,12 @@ export default function CodeAIPage() {
                           <>
                             <ToolEvents events={m.events ?? []} />
                             {m.content && <Markdown>{m.content}</Markdown>}
+                            {m.content && (
+                              <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: "wrap" }} aria-label="Actions sur la réponse">
+                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { void navigator.clipboard.writeText(m.content).catch(() => setError("Impossible de copier la réponse sur cet appareil.")); }} aria-label="Copier la réponse" title="Copier la réponse"><Copy size={15} /> Copier</button>
+                                {isLast && !loading && <button type="button" className="btn btn-ghost btn-sm" onClick={retry} disabled={!lastMessage || Boolean(pending)} aria-label="Régénérer la réponse" title="Régénérer la réponse"><RefreshCw size={15} /> Régénérer</button>}
+                              </div>
+                            )}
                             {isLast && loading && <span className="typing" aria-label="Réponse en cours"><i /><i /><i /></span>}
                           </>
                         )}
