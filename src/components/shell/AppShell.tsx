@@ -33,6 +33,7 @@ function AccountCard() {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const current = ALL_NAV.find((i) => isActive(pathname, i.href));
+  const currentLabel = current?.label ?? (pathname === "/ai" ? "Bickri Chat" : "Page");
 
   return (
     <div className="shell">
@@ -58,7 +59,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="topbar">
           <Link href="/" className="topbar-mobile-brand" aria-label="Bickri Codex System — Accueil"><span className="theta-mark" aria-hidden="true">Θ</span></Link>
           <div className="breadcrumbs">
-            <span>BCX</span><ChevronRight size={14} aria-hidden="true" /><b>{current?.label ?? "Page"}</b>
+            <span>BCX</span><ChevronRight size={14} aria-hidden="true" /><b>{currentLabel}</b>
           </div>
           <div className="topbar-actions"><ThemeToggle /></div>
         </header>
