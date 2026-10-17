@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, Layers, Loader2, LogIn,
+  ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, BookOpen, Folder, Clock3, Compass, FileText, ImageIcon, Wand2,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
@@ -344,7 +344,7 @@ export default function CodeAIPage() {
 
         <div className="chat-composer">
           <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log" hidden onChange={readDocument} />
-          {showAttachMenu && <div className="plugin-popover" role="dialog" aria-label="Ajouter au message"><b>Ajouter au message</b><button type="button" className="btn btn-ghost" onClick={() => fileInputRef.current?.click()}><FileText size={18} /> Importer un fichier ou du code</button></div>}
+          {showAttachMenu && <div className="plugin-popover" role="dialog" aria-label="Ajouter au message"><div className="row"><b className="grow">Ajouter au message</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer" onClick={() => setShowAttachMenu(false)}><X size={16} /></button></div><button type="button" className="btn btn-ghost" onClick={() => fileInputRef.current?.click()}><FileText size={18} /> Importer un fichier ou du code</button></div>}
           {showPlugins && (
             <div className="plugin-popover" role="dialog" aria-label="Plugins">
               <div className="row"><b className="grow">Plugins</b><button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowPlugins(false)} aria-label="Fermer"><X /></button></div>
@@ -365,8 +365,11 @@ export default function CodeAIPage() {
               <select className="select" style={{ width: "auto", height: 28, fontSize: "var(--text-xs)" }} value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Langage de travail">
                 {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
               </select>
+              <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowAttachMenu((v) => !v)} aria-expanded={showAttachMenu} aria-label="Joindre un fichier" title="Joindre un fichier" style={{ height: 28, width: 32 }}>
+                <FileText size={17} />
+              </button>
               <button type="button" className="btn btn-sm" onClick={handleImageAction} disabled={imageLoading || loading || Boolean(pending)} aria-label={prompt.trim() ? "Générer une image avec le prompt" : "Ouvrir le Studio d’images"} title={prompt.trim() ? "Générer une image avec le prompt" : "Ouvrir le Studio d’images"} style={{ height: 28 }}>
-                {imageLoading ? <Loader2 className="spin" /> : <Wand2 />} <span className="hide-sm">Image</span>
+                {imageLoading ? <Loader2 className="spin" /> : <ImagePlus size={17} />} <span className="hide-sm">Image</span>
               </button>
               <button type="button" className={`btn btn-sm ${activePlugins.length ? "btn-plugins-on" : ""}`} onClick={() => setShowPlugins((v) => !v)} aria-expanded={showPlugins} style={{ height: 28 }}>
                 <Plug /> Plugins{activePlugins.length ? ` · ${activePlugins.length}` : ""}
