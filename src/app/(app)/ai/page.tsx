@@ -11,7 +11,7 @@ import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
 import { Badge } from "@/components/ui/Badge";
 import { useConfig } from "@/hooks/useConfig";
-import { ThemeToggle } from "@/components/providers/ThemeToggle";
+import Link from "next/link";
 
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
@@ -27,11 +27,20 @@ const MAX_CONTINUATIONS = 4;
 const LANGUAGES = ["TypeScript / Next.js", "JavaScript", "HTML / CSS", "Python", "Python / Django", "Dart / Flutter", "Kotlin / Android", "Java", "C / C++", "Rust", "PHP", "SQL / Supabase", "Autre langage"];
 const PLUGIN_ICONS: Record<string, typeof GitBranch> = { github: GitBranch, registry: Fingerprint, web: Globe };
 const STARTERS = [
-  { icon: GitBranch, text: "Liste les branches et les derniers commits de mabdourahamane886-lang/bickri-codex-system." },
   { icon: Layers, text: "Crée une application web responsive en Next.js avec authentification Supabase." },
   { icon: Bug, text: "Explique et corrige cette erreur TypeScript : " },
-  { icon: Fingerprint, text: "Quel serait le prochain identifiant BCX libre pour la catégorie AI en série THETA ?" },
+  { icon: ImagePlus, text: "Prépare une affiche publicitaire premium pour mon entreprise." },
+  { icon: GitBranch, text: "Analyse le dépôt mabdourahamane886-lang/bickri-codex-system." },
 ];
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Lecture du fichier impossible."));
+    reader.onerror = () => reject(new Error("Lecture du fichier impossible."));
+    reader.readAsDataURL(file);
+  });
+}
 
 function argsPreview(args: Record<string, unknown>): string {
   const copy: Record<string, unknown> = { ...args };
@@ -76,10 +85,14 @@ export default function CodeAIPage() {
   const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
   const [showPlugins, setShowPlugins] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [showTools, setShowTools] = useState(false);
   const [showNav, setShowNav] = useState(false);
+  const [imageMode, setImageMode] = useState<"create" | "edit">("create");
+  const [imageSource, setImageSource] = useState<{ file: File; preview: string; data: string } | null>(null);
   const [imageResult, setImageResult] = useState<{ image: string; model?: string } | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageFileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sendLockRef = useRef(false);
@@ -163,22 +176,65 @@ export default function CodeAIPage() {
 
   function handleImageAction() {
     if (!prompt.trim()) {
-      router.push("/images");
+      setShowTools((value) => !value);
+      setError("");
       return;
     }
     void generateImage();
   }
 
+  async function chooseImage(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Formats image acceptés : JPG, PNG et WebP.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("L’image doit faire 8 Mo maximum.");
+      return;
+    }
+    try {
+      const data = await fileToDataUrl(file);
+      setImageSource({ file, preview: URL.createObjectURL(file), data });
+      setImageMode("edit");
+      setShowTools(false);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de lire cette image.");
+    }
+  }
+
   async function generateImage() {
     const content = prompt.trim();
-    if (!content || imageLoading || loading || pending) return;
+    if (!content || imageLoading || loading || pending) {
+      if (!content) setError("Décris l’image que tu veux créer ou la modification souhaitée.");
+      return;
+    }
+    if (imageMode === "edit" && !imageSource) {
+      setError("Importe d’abord une image à modifier depuis le menu +.");
+      setShowTools(true);
+      return;
+    }
     setImageLoading(true); setError(""); setImageResult(null);
     try {
-      const response = await fetch("/api/ai/images", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: content, mode: "create" }) });
+      const response = await fetch("/api/ai/images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: content,
+          mode: imageMode,
+          ...(imageMode === "edit" && imageSource ? { imageData: imageSource.data, mimeType: imageSource.file.type } : {}),
+        }),
+      });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || typeof data.image !== "string") throw new Error(data.error || "Impossible de générer cette image.");
       setImageResult({ image: data.image, model: data.model });
+      setMessages((all) => [...all, { role: "user", content: (imageMode === "edit" ? "Modifier l’image : " : "Créer une image : ") + content }, { role: "assistant", content: imageMode === "edit" ? "Voici l’image modifiée." : "Voici l’image générée." }]);
       setPrompt("");
+      setImageSource(null);
+      setImageMode("create");
     } catch (err) { setError(err instanceof Error ? err.message : "Impossible de générer cette image."); }
     finally { setImageLoading(false); }
   }
@@ -247,7 +303,7 @@ export default function CodeAIPage() {
 
   return (
     <main className="chat">
-      <div className="row" style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", justifyContent: "space-between" }}><button type="button" className="btn btn-ghost btn-icon" aria-label="Ouvrir le menu" onClick={() => setShowNav((v) => !v)}><Menu /></button><strong>Bickri Code AI</strong><ThemeToggle /><button type="button" className="btn btn-ghost btn-icon" aria-label="Nouvelle conversation" onClick={newChat}><SquarePen /></button></div>
+      <div className="row bcx-chat-toolbar" style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", justifyContent: "space-between" }}><button type="button" className="btn btn-ghost btn-icon" aria-label="Ouvrir le menu" onClick={() => setShowNav((v) => !v)}><Menu /></button><strong>Bickri Chat</strong><button type="button" className="btn btn-ghost btn-icon" aria-label="Nouvelle conversation" onClick={newChat}><SquarePen /></button></div>
       {showNav && <div className="plugin-popover" role="dialog" aria-label="Navigation Bickri" style={{ position: "fixed", zIndex: 100, top: 72, left: 12, width: "min(320px, calc(100vw - 24px))", maxHeight: "75vh", overflowY: "auto", boxShadow: "0 12px 36px #0002" }}><div className="row"><b className="grow">Bickri Codex System</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Sparkles size={18}/> Chat</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><BookOpen size={18}/> Bibliothèque</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Folder size={18}/> Projets</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Clock3 size={18}/> Planifiées</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Compass size={18}/> Explorer</button><hr className="divider"/><b>Plugins</b>{pluginList}</div>}
       <div className="chat-main">
         <div className="chat-scroll">
@@ -345,7 +401,20 @@ export default function CodeAIPage() {
 
         <div className="chat-composer">
           <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log" hidden onChange={readDocument} />
+          <input ref={imageFileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={chooseImage} />
+          {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Outils de la conversation">
+            <div className="row"><b className="grow">Que veux-tu faire ?</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
+            <div className="bcx-tool-grid">
+              <button type="button" className={`btn ${imageMode === "create" ? "btn-primary" : ""}`} onClick={() => { setImageMode("create"); setShowTools(false); inputRef.current?.focus(); }}><ImagePlus size={17} /> Créer une image</button>
+              <button type="button" className={`btn ${imageMode === "edit" ? "btn-primary" : ""}`} onClick={() => { setImageMode("edit"); setShowTools(false); imageFileRef.current?.click(); }}><WandSparkles size={17} /> Modifier une image</button>
+              <button type="button" className="btn" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Joindre un fichier/code</button>
+              <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
+              <Link className="btn" href="/publicite" onClick={() => setShowTools(false)}><Sparkles size={17} /> Créer une affiche</Link>
+              <Link className="btn" href="/registry" onClick={() => setShowTools(false)}><Fingerprint size={17} /> Registre BCX</Link>
+            </div>
+          </div>}
           {showAttachMenu && <div className="plugin-popover" role="dialog" aria-label="Ajouter au message"><div className="row"><b className="grow">Ajouter au message</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer" onClick={() => setShowAttachMenu(false)}><X size={16} /></button></div><button type="button" className="btn btn-ghost" onClick={() => fileInputRef.current?.click()}><FileText size={18} /> Importer un fichier ou du code</button></div>}
+          {imageSource && <div className="bcx-image-attachment"><img src={imageSource.preview} alt="Image à modifier" /><div className="grow"><b>Image à modifier</b><small>{imageSource.file.name}</small></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => { setImageSource(null); setImageMode("create"); }} aria-label="Retirer l’image"><X size={16} /></button></div>}
           {showPlugins && (
             <div className="plugin-popover" role="dialog" aria-label="Plugins">
               <div className="row"><b className="grow">Plugins</b><button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowPlugins(false)} aria-label="Fermer"><X /></button></div>
@@ -366,11 +435,11 @@ export default function CodeAIPage() {
               <select className="select" style={{ width: "auto", height: 28, fontSize: "var(--text-xs)" }} value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Langage de travail">
                 {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
               </select>
-              <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowAttachMenu((v) => !v)} aria-expanded={showAttachMenu} aria-label="Joindre un fichier" title="Joindre un fichier" style={{ height: 28, width: 32 }}>
-                <FileText size={17} />
+              <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowTools((v) => !v)} aria-expanded={showTools} aria-label="Ouvrir les outils" title="Ouvrir les outils" style={{ height: 32, width: 34 }}>
+                <Layers size={17} />
               </button>
-              <button type="button" className="btn btn-sm" onClick={handleImageAction} disabled={imageLoading || loading || Boolean(pending)} aria-label={prompt.trim() ? "Générer une image avec le prompt" : "Ouvrir le Studio d’images"} title={prompt.trim() ? "Générer une image avec le prompt" : "Ouvrir le Studio d’images"} style={{ height: 28 }}>
-                {imageLoading ? <Loader2 className="spin" /> : <ImagePlus size={17} />} <span className="hide-sm">Image</span>
+              <button type="button" className={`btn btn-sm ${imageMode !== "create" || imageSource ? "btn-plugins-on" : ""}`} onClick={handleImageAction} disabled={imageLoading || loading || Boolean(pending)} aria-label={imageMode === "edit" ? "Modifier l’image jointe" : "Générer une image"} title={imageMode === "edit" ? "Modifier l’image jointe" : "Générer une image"} style={{ height: 32 }}>
+                {imageLoading ? <Loader2 className="spin" /> : imageMode === "edit" ? <WandSparkles size={17} /> : <ImagePlus size={17} />} <span className="hide-sm">{imageMode === "edit" ? "Modifier" : "Image"}</span>
               </button>
               <button type="button" className={`btn btn-sm ${activePlugins.length ? "btn-plugins-on" : ""}`} onClick={() => setShowPlugins((v) => !v)} aria-expanded={showPlugins} style={{ height: 28 }}>
                 <Plug /> Plugins{activePlugins.length ? ` · ${activePlugins.length}` : ""}
