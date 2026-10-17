@@ -928,5 +928,7 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
     height: calc(100dvh - 60px - env(safe-area-inset-bottom));
   }
   .bcx-tool-grid { grid-template-columns: 1fr; }
+  .bcx-feature-groups { grid-template-columns: 1fr; }
+  .bcx-feature-group { padding: 10px; }
   .main:has(.chat) .bcx-chat-toolbar { display: flex; }
 }
