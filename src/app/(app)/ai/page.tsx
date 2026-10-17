@@ -333,7 +333,7 @@ export default function CodeAIPage() {
   }
 
   function transferToStudio(answer: string) {
-    const blocks = [...answer.matchAll(/```(html|css|javascript|js)\\s*\\n([\\s\\S]*?)```/gi)];
+    const blocks = [...answer.matchAll(/```(html|css|javascript|js)\s*\n([\s\S]*?)```/gi)];
     if (!blocks.length) return;
     const base = {
       name: "Projet depuis Bickri Chat",
@@ -352,7 +352,7 @@ export default function CodeAIPage() {
     if (languages.has("html") && !languages.has("js") && !languages.has("javascript")) workspace.js = "";
     for (const block of blocks) {
       const language = block[1].toLowerCase();
-      const code = block[2].replace(/\\n$/, "");
+      const code = block[2].replace(/\n$/, "");
       if (language === "html") workspace.html = code;
       else if (language === "css") workspace.css = code;
       else workspace.js = code;
@@ -361,7 +361,7 @@ export default function CodeAIPage() {
   }
 
   function hasStudioCode(answer: string) {
-    return /```(html|css|javascript|js)\\s*\\n[\\s\\S]*?```/i.test(answer);
+    return /```(html|css|javascript|js)\s*\n[\s\S]*?```/i.test(answer);
   }
 
   function toggle(id: string) { setEnabled((all) => (all.includes(id) ? all.filter((x) => x !== id) : [...all, id])); }
