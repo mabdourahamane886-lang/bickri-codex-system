@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn, WandSparkles,
-  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, BookOpen, Folder, Clock3, Compass, FileText, ImageIcon,
+  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
@@ -87,7 +87,6 @@ export default function CodeAIPage() {
   const [account, setAccount] = useState<{ signedIn: boolean; trusted: boolean } | null>(null);
   const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
   const [showPlugins, setShowPlugins] = useState(false);
-  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showTools, setShowTools] = useState(false);
   const [showNav, setShowNav] = useState(false);
   const [imageMode, setImageMode] = useState<"create" | "edit">("create");
@@ -128,7 +127,7 @@ export default function CodeAIPage() {
     const firstUserMessage = messages.find((message) => message.role === "user")?.content ?? "Nouvelle conversation";
     const item: SavedConversation = {
       id: activeConversationId,
-      title: firstUserMessage.replace(/\\s+/g, " ").slice(0, 56) || "Nouvelle conversation",
+      title: firstUserMessage.replaceAll(String.fromCharCode(10), " ").slice(0, 56) || "Nouvelle conversation",
       updatedAt: new Date().toISOString(),
       messages,
       contents,
@@ -137,6 +136,7 @@ export default function CodeAIPage() {
     setHistory((all) => [item, ...all.filter((entry) => entry.id !== activeConversationId)].slice(0, 40));
   }, [activeConversationId, messages, contents, language]);
   useEffect(() => { try { localStorage.setItem(PLUGINS_KEY, JSON.stringify(enabled)); } catch { /* ignoré */ } }, [enabled]);
+  useEffect(() => () => { if (imageSource?.preview) URL.revokeObjectURL(imageSource.preview); }, [imageSource?.preview]);
 
   const loadPlugins = useCallback(async () => {
     try {
@@ -282,7 +282,7 @@ export default function CodeAIPage() {
   }
 
   function onSubmit(e: FormEvent) { e.preventDefault(); void send(prompt); }
-  async function readDocument(event: React.ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (file.size > 2 * 1024 * 1024 || !/\.(txt|md|json|csv|ts|tsx|js|jsx|py|html|css|xml|log)$/i.test(file.name)) { setError("Formats acceptés : TXT, MD, JSON, CSV et code, 2 Mo maximum."); return; } const text = await file.text(); setPrompt((old) => old + (old ? "\n\n" : "") + "Fichier joint : " + file.name + "\n\n" + text.slice(0, 30000)); setShowAttachMenu(false); inputRef.current?.focus(); }
+  async function readDocument(event: React.ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (file.size > 2 * 1024 * 1024 || !/\.(txt|md|json|csv|ts|tsx|js|jsx|py|html|css|xml|log)$/i.test(file.name)) { setError("Formats acceptés : TXT, MD, JSON, CSV et code, 2 Mo maximum."); return; } const text = await file.text(); setPrompt((old) => old + (old ? "\n\n" : "") + "Fichier joint : " + file.name + "\n\n" + text.slice(0, 30000)); inputRef.current?.focus(); }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(prompt); }
@@ -466,7 +466,6 @@ export default function CodeAIPage() {
               <Link className="btn" href="/registry" onClick={() => setShowTools(false)}><Fingerprint size={17} /> Registre BCX</Link>
             </div>
           </div>}
-          {showAttachMenu && <div className="plugin-popover" role="dialog" aria-label="Ajouter au message"><div className="row"><b className="grow">Ajouter au message</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer" onClick={() => setShowAttachMenu(false)}><X size={16} /></button></div><button type="button" className="btn btn-ghost" onClick={() => fileInputRef.current?.click()}><FileText size={18} /> Importer un fichier ou du code</button></div>}
           {imageSource && <div className="bcx-image-attachment"><img src={imageSource.preview} alt="Image à modifier" /><div className="grow"><b>Image à modifier</b><small>{imageSource.file.name}</small></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => { setImageSource(null); setImageMode("create"); }} aria-label="Retirer l’image"><X size={16} /></button></div>}
           {showPlugins && (
             <div className="plugin-popover" role="dialog" aria-label="Plugins">
