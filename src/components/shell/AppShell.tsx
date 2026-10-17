@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ChevronRight, LogIn, LogOut } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
-import { ThemeToggle } from "@/components/providers/ThemeToggle";
 import { useSession } from "@/components/providers/SessionProvider";
 import { ALL_NAV, MOBILE_NAV, NAV_GROUPS, isActive } from "./nav";
 
@@ -56,11 +55,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="main">
         <header className="topbar">
-          <Link href="/" className="topbar-mobile-brand"><Logo withText={false} /></Link>
           <div className="breadcrumbs">
             <span>BCX</span><ChevronRight size={14} aria-hidden="true" /><b>{current?.label ?? "Page"}</b>
           </div>
-          <div className="topbar-actions"><ThemeToggle /></div>
         </header>
         {children}
       </div>
