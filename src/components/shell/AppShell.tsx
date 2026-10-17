@@ -55,6 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="main">
         <header className="topbar">
+          <Link href="/" className="topbar-mobile-brand" aria-label="Bickri Codex System — Accueil"><span className="theta-mark" aria-hidden="true">Θ</span></Link>
           <div className="breadcrumbs">
             <span>BCX</span><ChevronRight size={14} aria-hidden="true" /><b>{current?.label ?? "Page"}</b>
           </div>
