@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type Keyboard
 import { useRouter } from "next/navigation";
 import {
   ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn,
-  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, BookOpen, Folder, Clock3, Compass, FileText, ImageIcon, Wand2,
+  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, BookOpen, Folder, Clock3, Compass, FileText, ImageIcon,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
