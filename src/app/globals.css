@@ -676,3 +676,37 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .main:has(.chat) .starter { min-height: 76px; }
   .main:has(.chat) .composer-bar .select { max-width: 145px; }
 }
+
+
+/* Mobile chat: une seule barre d'en-tête, sans logo/contrôle de thème du shell. */
+@media (max-width: 900px) {
+  .main:has(.chat) > .topbar { display: none; }
+  .main:has(.chat) { padding-top: 0; }
+  .main:has(.chat) .chat {
+    height: calc(100dvh - 60px - env(safe-area-inset-bottom));
+    min-height: 0;
+  }
+  .main:has(.chat) .chat > .row:first-child {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    min-height: 52px;
+    background: var(--bg);
+    padding: 8px 12px;
+    padding-top: max(8px, env(safe-area-inset-top));
+    border-bottom: 1px solid var(--border);
+  }
+  .main:has(.chat) .chat-scroll { overscroll-behavior: contain; }
+  .main:has(.chat) .chat-composer {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, transparent, var(--bg) 14%);
+  }
+  .main:has(.chat) .composer-bar { align-items: center; }
+  .main:has(.chat) .composer-bar > button { min-height: 34px; }
+}
+@media (max-width: 420px) {
+  .main:has(.chat) .composer-bar { gap: 5px; }
+  .main:has(.chat) .composer-bar .select { max-width: 132px; font-size: 11px !important; }
+  .main:has(.chat) .composer-bar .btn-plugins-on,
+  .main:has(.chat) .composer-bar button[aria-label="Ouvrir le Studio d’images"] { max-width: 82px; }
+}
