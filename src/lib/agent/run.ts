@@ -1,6 +1,7 @@
 import "server-only";
 import { generateContent, type GeminiContent, type GeminiPart } from "@/lib/ai/gemini-raw";
-import { buildSystemInstruction } from "@/lib/ai/prompt";\nimport { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
+import { buildSystemInstruction } from "@/lib/ai/prompt";
+import { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
 import { PLUGINS } from "./plugins";
 import type { AgentContext, PluginStatus, Tool } from "./types";
 
