@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn, WandSparkles,
-  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon,
+  Plug, Plus, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
@@ -591,7 +591,7 @@ export default function CodeAIPage() {
                 {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
               </select>
               <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowTools((v) => !v)} aria-expanded={showTools} aria-label="Ouvrir les outils" title="Ouvrir les outils" style={{ height: 32, width: 34 }}>
-                <Layers size={17} />
+                <Plus size={18} />
               </button>
               <button type="button" className={`btn btn-sm ${imageMode !== "create" || imageSource ? "btn-plugins-on" : ""}`} onClick={handleImageAction} disabled={imageLoading || loading || Boolean(pending)} aria-label={imageMode === "edit" ? "Modifier l’image jointe" : "Générer une image"} title={imageMode === "edit" ? "Modifier l’image jointe" : "Générer une image"} style={{ height: 32 }}>
                 {imageLoading ? <Loader2 className="spin" /> : imageMode === "edit" ? <WandSparkles size={17} /> : <ImagePlus size={17} />} <span className="hide-sm">{imageMode === "edit" ? "Modifier" : "Image"}</span>
