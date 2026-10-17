@@ -311,6 +311,8 @@ export default function CodeAIPage() {
     setImageSource(null);
     setImageMode("create");
     setActiveConversationId(createConversationId());
+    setShowNav(false);
+    setShowTools(false);
     inputRef.current?.focus();
   }
 
