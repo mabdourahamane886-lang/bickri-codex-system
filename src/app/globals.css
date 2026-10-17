@@ -813,3 +813,35 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .main:has(.chat) .starter { min-height: 68px; }
   .main:has(.chat) .composer-bar .select { max-width: 140px; }
 }
+
+
+/* Header du chat aligné en haut; bouton Envoyer à gauche des options. */
+@media (max-width: 900px) {
+  .main:has(.chat) .chat > .row:first-child {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    z-index: 30;
+    min-height: 52px;
+    padding: 8px 12px !important;
+    margin-top: 0;
+    background: var(--bg);
+  }
+  .main:has(.chat) .composer-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .main:has(.chat) .composer-bar .composer-send {
+    order: -1;
+    flex: 0 0 36px;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    margin-right: 2px;
+  }
+  .main:has(.chat) .composer-bar > * {
+    min-width: 0;
+  }
+}
