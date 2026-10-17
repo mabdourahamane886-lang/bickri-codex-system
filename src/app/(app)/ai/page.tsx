@@ -355,7 +355,7 @@ export default function CodeAIPage() {
             <label htmlFor="ai-input" className="sr-only">Message</label>
             <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Décris ton application, demande une modification de dépôt ou colle une erreur…"} />
             <div className="composer-bar">
-
+              <button className="btn btn-primary btn-icon btn-sm composer-send" type="submit" disabled={loading || !prompt.trim() || Boolean(pending)} aria-label="Envoyer"><ArrowUp /></button>
               <VoiceAssistant
                 onSend={(text) => send(text)}
                 assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}
@@ -376,7 +376,7 @@ export default function CodeAIPage() {
               </button>
               <small className="grow hide-sm"><span className="kbd">Entrée</span> envoyer · <span className="kbd">Maj + Entrée</span> nouvelle ligne</small>
               {messages.length > 0 && <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={newChat} aria-label="Nouvelle conversation" title="Nouvelle conversation"><SquarePen /></button>}
-              <button className="btn btn-primary btn-icon btn-sm" type="submit" disabled={loading || !prompt.trim() || Boolean(pending)} aria-label="Envoyer"><ArrowUp /></button>
+
             </div>
           </form>
           <p className="composer-note">Les réponses sont générées par IA : vérifie le code avant une mise en production. Les actions d&apos;écriture demandent toujours ta validation.</p>
