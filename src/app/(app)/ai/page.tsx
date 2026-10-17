@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-  ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Fingerprint, GitBranch, Globe, Layers, Loader2, LogIn,
+  ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
@@ -305,6 +305,7 @@ export default function CodeAIPage() {
             <label htmlFor="ai-input" className="sr-only">Message</label>
             <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Décris ton application, demande une modification de dépôt ou colle une erreur…"} />
             <div className="composer-bar">
+              <Link href="/images" className="btn btn-sm" title="Créer ou modifier une image" aria-label="Créer ou modifier une image" style={{ height: 28 }}><ImagePlus size={16} /><span className="hide-sm">Image</span></Link>
               <VoiceAssistant
                 onSend={(text) => send(text)}
                 assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}
