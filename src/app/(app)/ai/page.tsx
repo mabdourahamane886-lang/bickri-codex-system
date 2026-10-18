@@ -91,6 +91,7 @@ export default function CodeAIPage() {
   const [showTools, setShowTools] = useState(false);
   const [showNav, setShowNav] = useState(false);
   const [imageMode, setImageMode] = useState<"create" | "edit">("create");
+  const [imageIntent, setImageIntent] = useState(false);
   const [imageSource, setImageSource] = useState<{ file: File; preview: string; data: string } | null>(null);
   const [imageResult, setImageResult] = useState<{ image: string; model?: string } | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
@@ -261,12 +262,13 @@ export default function CodeAIPage() {
       setPrompt("");
       setImageSource(null);
       setImageMode("create");
+      setImageIntent(false);
     } catch (err) { setError(err instanceof Error ? err.message : "Impossible de générer cette image."); }
     finally { setImageLoading(false); }
   }
 
   function isImageRequest(text: string) {
-    return /\b(crée|creer|créer|génère|generer|générer|dessine|dessiner|fabrique|produis|produire|make|create|generate|draw)\b.{0,70}\b(image|images|affiche|affiches|logo|logos|illustration|illustrations|visuel|visuels|photo|photos|poster|banner|bannière|banniere)\b|\b(image|affiche|logo|illustration|visuel|photo|poster|bannière|banniere)\b.{0,70}\b(crée|creer|créer|génère|generer|générer|dessine|dessiner|make|create|generate|draw)\b/i.test(text);
+    return /\b(crée|creer|créer|prépare|preparer|préparer|conçois|concevoir|génère|generer|générer|dessine|dessiner|fabrique|produis|produire|make|create|generate|draw)\b.{0,70}\b(image|images|affiche|affiches|logo|logos|illustration|illustrations|visuel|visuels|photo|photos|poster|banner|bannière|banniere)\b|\b(image|affiche|logo|illustration|visuel|photo|poster|bannière|banniere)\b.{0,70}\b(crée|creer|créer|prépare|preparer|préparer|conçois|concevoir|génère|generer|générer|dessine|dessiner|make|create|generate|draw)\b/i.test(text);
   }
 
   async function send(text: string) {
@@ -276,7 +278,7 @@ export default function CodeAIPage() {
     const attachment = chatAttachment;
     // Image prompts typed directly in the main composer use the image API automatically.
     // Normal coding/chat prompts continue to the agent as before.
-    if (!attachment && (imageMode === "edit" || isImageRequest(content))) {
+    if (!attachment && (imageIntent || imageMode === "edit" || isImageRequest(content))) {
       try {
         await generateImage(content);
       } finally {
@@ -351,6 +353,7 @@ export default function CodeAIPage() {
     setImageSource(null);
     setChatAttachment(null);
     setImageMode("create");
+    setImageIntent(false);
     setActiveConversationId(createConversationId());
     setShowNav(false);
     setShowTools(false);
@@ -540,11 +543,11 @@ export default function CodeAIPage() {
           {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Outils de la conversation">
             <div className="row"><b className="grow">Que veux-tu faire ?</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
             <div className="bcx-tool-grid">
-              <button type="button" className={`btn ${imageMode === "create" ? "btn-primary" : ""}`} onClick={() => { setImageMode("create"); setShowTools(false); inputRef.current?.focus(); }}><ImagePlus size={17} /> Créer une image</button>
+              <button type="button" className={`btn ${imageMode === "create" ? "btn-primary" : ""}`} onClick={() => { setImageMode("create"); setImageIntent(true); setShowTools(false); inputRef.current?.focus(); }}><ImagePlus size={17} /> Créer une image</button>
               <button type="button" className={`btn ${imageMode === "edit" ? "btn-primary" : ""}`} onClick={() => { setImageMode("edit"); setShowTools(false); imageFileRef.current?.click(); }}><WandSparkles size={17} /> Modifier une image</button>
               <button type="button" className="btn" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Joindre un fichier/code</button>
               <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
-              <button type="button" className="btn" onClick={() => { setImageMode("create"); setPrompt((old) => old || "Crée une affiche publicitaire professionnelle pour mon entreprise. Nom, offre, coordonnées et style souhaité : "); setShowTools(false); inputRef.current?.focus(); }}><Sparkles size={17} /> Créer une affiche</button>
+              <button type="button" className="btn" onClick={() => { setImageMode("create"); setImageIntent(true); setPrompt((old) => old || "Crée une affiche publicitaire professionnelle pour mon entreprise. Nom, offre, coordonnées et style souhaité : "); setShowTools(false); inputRef.current?.focus(); }}><Sparkles size={17} /> Créer une affiche</button>
               <Link className="btn" href="/registry" onClick={() => setShowTools(false)}><Fingerprint size={17} /> Registre BCX</Link>
             </div>
           </div>}
