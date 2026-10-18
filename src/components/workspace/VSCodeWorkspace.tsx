@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  Activity, Bot, Braces, ChevronDown, ChevronRight, Circle, Code2, Command,
-  FileCode2, Files, Folder, GitBranch, Globe, Hammer, LayoutDashboard,
-  PanelBottom, Play, Search, Settings2, ShieldCheck, Sparkles, Terminal,
+  Activity, Bot, Braces, ChevronDown, ChevronRight, Circle, Code2,
+  FileCode2, Files, Folder, GitBranch, Globe, Hammer,
+  PanelBottom, Play, Search, Settings2, ShieldCheck, Sparkles,
   WandSparkles, X,
 } from "lucide-react";
 
@@ -16,20 +16,38 @@ const files = [
   { name: "route.ts", path: "src/app/api/ai/route.ts", color: "#e2bf6d", icon: FileCode2 },
 ];
 
-const sampleCode = [
-  { n: "1", text: 'import { Sparkles } from "lucide-react";', color: "code-purple" },
-  { n: "2", text: 'import { Button } from "@/components/ui/button";', color: "code-purple" },
-  { n: "3", text: "", color: "" },
-  { n: "4", text: "export default function Workspace() {", color: "code-blue" },
-  { n: "5", text: "  return (", color: "" },
-  { n: "6", text: '    <main className="workspace">', color: "code-green" },
-  { n: "7", text: "      <Sparkles aria-hidden />", color: "code-green" },
-  { n: "8", text: '      <h1>Construis sans limites</h1>', color: "code-green" },
-  { n: "9", text: "      <Button>Commencer</Button>", color: "code-green" },
-  { n: "10", text: "    </main>", color: "code-green" },
-  { n: "11", text: "  );", color: "" },
-  { n: "12", text: "}", color: "code-blue" },
-];
+const codeByFile: Record<string, { n: string; text: string; color: string }[]> = {
+  "page.tsx": [
+    { n: "1", text: 'import { Sparkles } from "lucide-react";', color: "code-purple" },
+    { n: "2", text: 'import { Button } from "@/components/ui/button";', color: "code-purple" },
+    { n: "3", text: "", color: "" },
+    { n: "4", text: "export default function Workspace() {", color: "code-blue" },
+    { n: "5", text: "  return (", color: "" },
+    { n: "6", text: '    <main className="workspace">', color: "code-green" },
+    { n: "7", text: "      <Sparkles aria-hidden />", color: "code-green" },
+    { n: "8", text: '      <h1>Construis sans limites</h1>', color: "code-green" },
+    { n: "9", text: "      <Button>Commencer</Button>", color: "code-green" },
+    { n: "10", text: "    </main>", color: "code-green" },
+    { n: "11", text: "  );", color: "" },
+    { n: "12", text: "}", color: "code-blue" },
+  ],
+  "layout.tsx": [
+    { n: "1", text: 'import type { Metadata } from "next";', color: "code-purple" },
+    { n: "2", text: 'import "./globals.css";', color: "code-purple" },
+    { n: "3", text: "", color: "" },
+    { n: "4", text: "export const metadata: Metadata = {", color: "code-blue" },
+    { n: "5", text: '  title: "Bickri Codex System",', color: "code-green" },
+    { n: "6", text: '  description: "Votre espace de développement.",', color: "code-green" },
+    { n: "7", text: "};", color: "code-blue" },
+  ],
+  "globals.css": [
+    { n: "1", text: ":root {", color: "code-blue" },
+    { n: "2", text: "  --bg: #0a0d13;", color: "code-green" },
+    { n: "3", text: "  --accent: #5ad8e6;", color: "code-green" },
+    { n: "4", text: "  --font-mono: ui-monospace, monospace;", color: "code-green" },
+    { n: "5", text: "}", color: "code-blue" },
+  ],
+};
 
 export function VSCodeWorkspace() {
   const [activeFile, setActiveFile] = useState("page.tsx");
@@ -37,6 +55,7 @@ export function VSCodeWorkspace() {
   const [sidebarMode, setSidebarMode] = useState<"files" | "search" | "git" | "extensions">("files");
   const [showWelcome, setShowWelcome] = useState(true);
   const selected = files.find((file) => file.name === activeFile) ?? files[0];
+  const activeCode = codeByFile[activeFile] ?? codeByFile["page.tsx"];
 
   return (
     <main className="vscode-workspace">
@@ -81,8 +100,8 @@ export function VSCodeWorkspace() {
           <div className="vscode-breadcrumb"><span>src</span><ChevronRight size={12} /><span>app</span><ChevronRight size={12} /><b>{selected.name}</b><span className="vscode-breadcrumb-right"><Code2 size={13} /> {selected.name.endsWith(".css") ? "CSS" : "TypeScript React"}</span></div>
 
           <div className="vscode-editor-content">
-            <div className="vscode-line-numbers">{sampleCode.map((line) => <span key={line.n}>{line.n}</span>)}</div>
-            <pre className="vscode-code">{sampleCode.map((line) => <span key={line.n} className={line.color}>{line.text || " "}{ "\n" }</span>)}</pre>
+            <div className="vscode-line-numbers">{activeCode.map((line) => <span key={line.n}>{line.n}</span>)}</div>
+            <pre className="vscode-code">{activeCode.map((line) => <span key={line.n} className={line.color}>{line.text || " "}{ "\n" }</span>)}</pre>
             <div className="vscode-editor-watermark"><span className="vscode-watermark-logo">B</span><p>Un espace pour construire vos idées.</p><small>BCX · Environnement de développement</small></div>
           </div>
 
