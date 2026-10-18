@@ -1094,3 +1094,42 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
  .bcx-classic-chat .chat-composer .composer-send { border-radius:50%; }
  .bcx-classic-chat .msg.user .msg-text { background:#f0efed; color:#252525; border-radius:14px; padding:10px 12px; }
 }
+
+
+/* User-requested: white conversation history and consistent white composer on desktop */
+.bcx-classic-chat > .classic-chat-sidebar {
+  background:#ffffff !important;
+  color:#202123 !important;
+  border-right:1px solid #e5e7eb !important;
+}
+.bcx-classic-chat .classic-sidebar-brand,
+.bcx-classic-chat .classic-history-row > button:first-child,
+.bcx-classic-chat .classic-sidebar-bottom button,
+.bcx-classic-chat .classic-sidebar-bottom a { color:#343541 !important; }
+.bcx-classic-chat .classic-history-heading,
+.bcx-classic-chat .classic-history-empty { color:#6b7280 !important; }
+.bcx-classic-chat .classic-new-chat { color:#343541 !important; border-color:#d1d5db !important; background:#fff !important; }
+.bcx-classic-chat .classic-new-chat:hover,
+.bcx-classic-chat .classic-history-row:hover,
+.bcx-classic-chat .classic-history-row.active,
+.bcx-classic-chat .classic-sidebar-bottom button:hover,
+.bcx-classic-chat .classic-sidebar-bottom a:hover { background:#f3f4f6 !important; }
+.bcx-classic-chat .classic-delete-chat { color:#6b7280 !important; }
+.bcx-classic-chat .classic-sidebar-bottom { border-top-color:#e5e7eb !important; }
+.bcx-classic-chat .chat-composer {
+  background:#ffffff !important;
+  border:1px solid #e5e7eb !important;
+  border-radius:18px !important;
+  box-shadow:0 2px 12px rgba(0,0,0,.06) !important;
+}
+.bcx-classic-chat .chat-composer textarea { background:transparent !important; color:#202123 !important; }
+.bcx-classic-chat .chat-composer textarea::placeholder { color:#8b8b95 !important; }
+@media (min-width:761px) {
+  .bcx-classic-chat { background:#f7f7f8 !important; color:#202123 !important; }
+  .bcx-classic-chat > .chat-main { background:#f7f7f8 !important; }
+  .bcx-classic-chat .chat-composer { width:min(calc(100% - 48px), 850px) !important; }
+  .bcx-classic-chat .chat-composer .composer-send { background:#202123 !important; color:#fff !important; }
+}
+@media (max-width:760px) {
+  .bcx-classic-chat .chat-composer { background:#fff !important; }
+}
