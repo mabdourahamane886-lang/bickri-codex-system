@@ -530,6 +530,18 @@ export default function CodeAIPage() {
                 <Plug /> Plugins{activePlugins.length ? ` · ${activePlugins.length}` : ""}
               </button>
               <small className="grow hide-sm"><span className="kbd">Entrée</span> envoyer · <span className="kbd">Maj + Entrée</span> nouvelle ligne</small>
+              {messages.length > 0 && <button type="button" className="btn btn-ghost btn-sm bcx-export-chat" onClick={() => {
+                const payload = { app: "BICKRI CODEX SYSTEM", exportedAt: new Date().toISOString(), language, messages };
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const anchor = document.createElement("a");
+                anchor.href = url;
+                anchor.download = `bcx-conversation-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+                URL.revokeObjectURL(url);
+              }} aria-label="Exporter la conversation" title="Exporter la conversation"><FileText size={15} /><span className="hide-sm">Exporter</span></button>}
               {messages.length > 0 && <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={newChat} aria-label="Nouvelle conversation" title="Nouvelle conversation"><SquarePen /></button>}
 
             </div>
