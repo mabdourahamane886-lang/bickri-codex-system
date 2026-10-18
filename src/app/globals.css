@@ -990,3 +990,28 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .main:has(.chat) .bcx-chat-toolbar .btn-icon,
   .main:has(.chat) .composer { transition: none; }
 }
+
+
+/* BCX chat cleanup: remove the secondary context layer entirely */
+.main:has(.chat) .chat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) !important;
+  background: var(--bg);
+}
+.main:has(.chat) .chat-side { display: none !important; }
+.main:has(.chat) .chat-main { min-width: 0; width: 100%; }
+.main:has(.chat) .chat-scroll { background: var(--bg); }
+.main:has(.chat) .chat-composer {
+  width: 100%;
+  background: linear-gradient(180deg, transparent 0%, var(--bg) 20%) !important;
+}
+.main:has(.chat) .bcx-nav-popover,
+.main:has(.chat) .bcx-tools-popover,
+.main:has(.chat) .plugin-popover[role="dialog"] {
+  position: relative;
+  z-index: 35;
+}
+@media (min-width: 901px) {
+  .main:has(.chat) .chat { height: 100dvh; }
+  .main:has(.chat) .chat-composer { padding-bottom: 28px; }
+}
