@@ -230,13 +230,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "La modification de photos nécessite GEMINI_API_KEY ou POLLINATIONS_API_KEY. DALL·E 3 est disponible pour les nouvelles créations." }, { status: 503 });
   }
 
-  // DALL·E 3 is the primary generator for new images when OpenAI is configured.
-  // Edits continue through Gemini/Pollinations because DALL·E 3 does not support image editing.
-  if (mode !== "edit" && openAiApiKey) {
-    return (await generateWithOpenAI(prompt, openAiApiKey)) ?? NextResponse.json({ error: "DALL·E 3 n’a pas retourné d’image." }, { status: 502 });
-  }
-
-  // If Gemini is not configured, use Pollinations directly; otherwise Gemini remains primary.
+  // Gemini is the primary image provider. OpenAI remains configured for other features,
+  // but must not override the user's selected Gemini image workflow.
+  // If Gemini is not configured, use Pollinations directly as the fallback.
   if (!geminiApiKey && pollinationsApiKey) {
     const generated = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
     return generated.response;
@@ -274,10 +270,10 @@ export async function POST(request: NextRequest) {
         signal: AbortSignal.timeout(55_000),
       });
     } catch {
-      return NextResponse.json(
-        { error: "Gemini ne répond pas actuellement. Vérifie la connexion puis réessaie." },
-        { status: 502 },
-      );
+      lastStatus = 502;
+      lastDetail = "Gemini request timed out or could not connect.";
+      console.error("Gemini image request failed", { model, status: lastStatus, detail: lastDetail });
+      break;
     }
 
     const result = await response.json().catch(() => null) as GeminiResponse | null;
@@ -295,8 +291,11 @@ export async function POST(request: NextRequest) {
   }
 
   if (!finalResult) {
-    if (pollinationsApiKey && (lastStatus === 400 || lastStatus === 404 || lastStatus >= 500)) {
+    // Pollinations is the automatic fallback when Gemini fails, including auth/quota/network errors.
+    if (pollinationsApiKey) {
       const fallback = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
+      if (fallback.ok) return fallback.response;
+      console.error("Both Gemini and Pollinations image generation failed", { geminiStatus: lastStatus });
       return fallback.response;
     }
     const message = lastStatus === 401 || lastStatus === 403
@@ -323,6 +322,10 @@ export async function POST(request: NextRequest) {
 
   const text = extractText(finalResult);
   console.error("Gemini image response contained no image", { model: lastModel, text });
+  if (pollinationsApiKey) {
+    const fallback = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
+    return fallback.response;
+  }
   return NextResponse.json(
     { error: text || "Gemini n’a renvoyé aucune image. Essaie une description plus précise.", model: lastModel },
     { status: 502 },
