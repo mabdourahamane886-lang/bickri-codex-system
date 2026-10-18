@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-  ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn, WandSparkles,
+  ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn, Plus, WandSparkles,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
@@ -489,11 +489,11 @@ export default function CodeAIPage() {
           <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log" hidden onChange={readDocument} />
           <input ref={imageFileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={chooseImage} />
           {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Outils de la conversation">
-            <div className="row"><b className="grow">Que veux-tu faire ?</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
+            <div className="row"><b className="grow">Joindre ou créer</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
             <div className="bcx-tool-grid">
               <button type="button" className={`btn ${imageMode === "create" ? "btn-primary" : ""}`} onClick={() => { setImageMode("create"); setShowTools(false); inputRef.current?.focus(); }}><ImagePlus size={17} /> Créer une image</button>
-              <button type="button" className={`btn ${imageMode === "edit" ? "btn-primary" : ""}`} onClick={() => { setImageMode("edit"); setShowTools(false); imageFileRef.current?.click(); }}><WandSparkles size={17} /> Modifier une image</button>
-              <button type="button" className="btn" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Joindre un fichier/code</button>
+              <button type="button" className={`btn bcx-attach-action ${imageMode === "edit" ? "btn-primary" : ""}`} onClick={() => { setImageMode("edit"); setShowTools(false); imageFileRef.current?.click(); }}><ImagePlus size={17} /> Importer une photo à modifier</button>
+              <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Importer un fichier ou du code</button>
               <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
               <button type="button" className="btn" onClick={() => { setImageMode("create"); setPrompt((old) => old || "Crée une affiche publicitaire professionnelle pour mon entreprise. Nom, offre, coordonnées et style souhaité : "); setShowTools(false); inputRef.current?.focus(); }}><Sparkles size={17} /> Créer une affiche</button>
               <Link className="btn" href="/registry" onClick={() => setShowTools(false)}><Fingerprint size={17} /> Registre BCX</Link>
@@ -520,8 +520,8 @@ export default function CodeAIPage() {
               <select className="select" style={{ width: "auto", height: 28, fontSize: "var(--text-xs)" }} value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Langage de travail">
                 {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
               </select>
-              <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowTools((v) => !v)} aria-expanded={showTools} aria-label="Ouvrir les outils" title="Ouvrir les outils" style={{ height: 32, width: 34 }}>
-                <Layers size={17} />
+              <button type="button" className="btn btn-ghost btn-icon btn-sm bcx-attach-button" onClick={() => setShowTools((v) => !v)} aria-expanded={showTools} aria-label="Joindre des fichiers, des photos ou ouvrir les outils" title="Joindre des fichiers, des photos ou ouvrir les outils" style={{ height: 34, width: 36 }}>
+                <Plus size={19} />
               </button>
               <button type="button" className={`btn btn-sm ${imageMode !== "create" || imageSource ? "btn-plugins-on" : ""}`} onClick={handleImageAction} disabled={imageLoading || loading || Boolean(pending)} aria-label={imageMode === "edit" ? "Modifier l’image jointe" : "Générer une image"} title={imageMode === "edit" ? "Modifier l’image jointe" : "Générer une image"} style={{ height: 32 }}>
                 {imageLoading ? <Loader2 className="spin" /> : imageMode === "edit" ? <WandSparkles size={17} /> : <ImagePlus size={17} />} <span className="hide-sm">{imageMode === "edit" ? "Modifier" : "Image"}</span>
