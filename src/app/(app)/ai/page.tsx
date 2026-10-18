@@ -581,7 +581,8 @@ export default function CodeAIPage() {
               />
               <button
                 className="btn btn-primary btn-icon btn-sm composer-send"
-                type="submit"
+                type="button"
+                onClick={() => { void send(prompt); }}
                 disabled={loading || (!prompt.trim() && !chatAttachment) || Boolean(pending)}
                 aria-label="Envoyer"
                 title="Envoyer"
