@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  Activity, Bot, Braces, ChevronDown, ChevronRight, Circle, Code2,
-  FileCode2, Folder, GitBranch, Hammer,
+  Bot, Braces, ChevronDown, ChevronRight, Circle, Code2,
+  FileCode2, Folder, GitBranch,
   PanelBottom, Play, Search, Settings2, ShieldCheck, Sparkles,
-  Smartphone, X,
+  X, Paperclip, Send,
 } from "lucide-react";
 
 const files = [
@@ -53,8 +53,37 @@ export function VSCodeWorkspace() {
   const [activeFile, setActiveFile] = useState("page.tsx");
   const [panel, setPanel] = useState<"terminal" | "problems" | "output">("terminal");
   const [sidebarMode, setSidebarMode] = useState<"files" | "search" | "git" | "extensions">("files");
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [assistantPrompt, setAssistantPrompt] = useState("");
+  const [assistantMessages, setAssistantMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([
+    { role: "assistant", content: "Bonjour. Je peux expliquer votre code, préparer un diff ou vous aider à corriger une erreur. Les modifications ne sont jamais appliquées sans votre confirmation." },
+  ]);
+  const [assistantLoading, setAssistantLoading] = useState(false);
+  const [assistantError, setAssistantError] = useState("");
   const selected = files.find((file) => file.name === activeFile) ?? files[0];
+
+  async function askAssistant(event: React.FormEvent) {
+    event.preventDefault();
+    const content = assistantPrompt.trim();
+    if (!content || assistantLoading) return;
+    setAssistantPrompt("");
+    setAssistantError("");
+    setAssistantMessages((messages) => [...messages, { role: "user", content }]);
+    setAssistantLoading(true);
+    try {
+      const response = await fetch("/api/ai/code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [...assistantMessages, { role: "user", content }], language: "TypeScript / Next.js", projectContext: activeCode.map((line) => line.text).join("\\n") }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "La réponse IA est indisponible.");
+      setAssistantMessages((messages) => [...messages, { role: "assistant", content: data.answer || "Je n’ai pas trouvé de réponse." }]);
+    } catch (error) {
+      setAssistantError(error instanceof Error ? error.message : "Une erreur est survenue.");
+    } finally {
+      setAssistantLoading(false);
+    }
+  }
   const activeCode = codeByFile[activeFile] ?? codeByFile["page.tsx"];
 
   return (
@@ -66,6 +95,14 @@ export function VSCodeWorkspace() {
       </header>
 
       <div className="vscode-workarea">
+        <nav className="vscode-activitybar" aria-label="Outils de l’espace de travail">
+          <button className={sidebarMode === "files" ? "active" : ""} onClick={() => setSidebarMode("files")} aria-label="Explorateur"><Folder /></button>
+          <button className={sidebarMode === "search" ? "active" : ""} onClick={() => setSidebarMode("search")} aria-label="Recherche"><Search /></button>
+          <button className={sidebarMode === "git" ? "active" : ""} onClick={() => setSidebarMode("git")} aria-label="Contrôle de code source"><GitBranch /></button>
+          <button className="active" aria-label="Assistant BCX AI"><Bot /></button>
+          <span className="vscode-activity-spacer" />
+          <Link href="/settings" aria-label="Paramètres"><Settings2 /></Link>
+        </nav>
         <aside className="vscode-explorer">
           <div className="vscode-side-heading"><span>{sidebarMode === "files" ? "EXPLORATEUR" : sidebarMode === "search" ? "RECHERCHE" : sidebarMode === "git" ? "CONTRÔLE DE CODE SOURCE" : "EXTENSIONS"}</span><MoreDots /></div>
           {sidebarMode === "files" ? <>
@@ -108,21 +145,16 @@ export function VSCodeWorkspace() {
           <footer className="vscode-statusbar"><span><GitBranch size={12} /> main</span><span><Circle size={8} fill="currentColor" /> Connecté à BCX</span><span className="status-spacer" /><span>Ln 8, Col 18</span><span>UTF-8</span><span>TypeScript React</span><span><ShieldCheck size={12} /> Protégé</span></footer>
         </section>
 
-        <aside className="vscode-preview-panel">
-          <div className="vscode-preview-heading"><span><Smartphone size={15} /> APERÇU</span><span className="vscode-preview-live"><Circle size={7} fill="currentColor" /> LIVE</span></div>
-          <div className="vscode-device-wrap">
-            <div className="vscode-device">
-              <div className="vscode-device-notch" />
-              <div className="vscode-device-toolbar"><span>9:41</span><span>● ● ●</span></div>
-              <div className="vscode-device-screen">
-                <div className="vscode-preview-appbar"><span className="vscode-preview-logo">B</span><b>Bickri</b><span>•••</span></div>
-                <div className="vscode-preview-hero"><small>VOTRE ESPACE CRÉATIF</small><h2>Construis sans limites.</h2><p>Une interface pensée pour donner vie à vos idées.</p><button type="button">Commencer</button></div>
-                <div className="vscode-preview-cards"><div><Code2 size={14} /><span>Code rapide</span></div><div><Sparkles size={14} /><span>IA intégrée</span></div></div>
-              </div>
-              <div className="vscode-device-home" />
-            </div>
+        <aside className="vscode-ai-panel" aria-label="Assistant Bickri Codex AI">
+          <div className="vscode-ai-heading"><span><Bot size={15} /> BICKRI CODEX AI</span><span className="vscode-ai-status"><Circle size={7} fill="currentColor" /> PRÊT</span></div>
+          <div className="vscode-ai-context"><FileCode2 size={13} /> Contexte : <b>{selected.name}</b><span>·</span><span>1 fichier sélectionné</span></div>
+          <div className="vscode-ai-messages">
+            {assistantMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`vscode-ai-message ${message.role}`}><span className="vscode-ai-avatar">{message.role === "assistant" ? <Sparkles size={13} /> : "M"}</span><div><small>{message.role === "assistant" ? "BCX AI" : "Vous"}</small><p>{message.content}</p></div></div>)}
+            {assistantLoading && <div className="vscode-ai-message assistant"><span className="vscode-ai-avatar"><Sparkles size={13} /></span><div><small>BCX AI</small><p className="vscode-ai-thinking">Analyse du contexte en cours…</p></div></div>}
           </div>
-          <div className="vscode-preview-footer"><span><Circle size={7} fill="currentColor" /> localhost:3000</span><button type="button" title="Ouvrir le studio"><Play size={13} /></button><button type="button" title="Actualiser l’aperçu"><Activity size={13} /></button></div>
+          <div className="vscode-ai-suggestions"><button type="button" onClick={() => setAssistantPrompt("Explique ce fichier")}>Expliquer le fichier</button><button type="button" onClick={() => setAssistantPrompt("Trouve les erreurs possibles")}>Détecter les erreurs</button></div>
+          {assistantError && <p className="vscode-ai-error" role="alert">{assistantError}</p>}
+          <form className="vscode-ai-composer" onSubmit={askAssistant}><textarea value={assistantPrompt} onChange={(event) => setAssistantPrompt(event.target.value)} placeholder="Demandez à BCX AI…" rows={2} aria-label="Message à BCX AI" /><div><button type="button" className="vscode-ai-tool" aria-label="Joindre un fichier"><Paperclip size={15} /></button><span className="vscode-ai-hint">Entrée pour envoyer</span><button type="submit" className="vscode-ai-send" aria-label="Envoyer" disabled={assistantLoading || !assistantPrompt.trim()}><Send size={15} /></button></div></form>
         </aside>
       </div>
       <div className="vscode-mobile-launcher"><Link href="/studio"><Code2 size={16} /> Studio</Link><Link href="/ai"><Bot size={16} /> BCX AI</Link><Link href="/registry"><Folder size={16} /> Projets</Link></div>
@@ -130,9 +162,6 @@ export function VSCodeWorkspace() {
   );
 }
 
-function BlocksIcon() {
-  return <Hammer size={19} />;
-}
 function MoreDots() {
   return <span className="vscode-more-dots" aria-hidden="true">•••</span>;
 }
