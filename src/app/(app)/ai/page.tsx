@@ -232,8 +232,8 @@ export default function CodeAIPage() {
     }
   }
 
-  async function generateImage() {
-    const content = prompt.trim();
+  async function generateImage(promptOverride?: string) {
+    const content = (promptOverride ?? prompt).trim();
     if (!content || imageLoading || loading || pending) {
       if (!content) setError("Décris l’image que tu veux créer ou la modification souhaitée.");
       return;
@@ -265,11 +265,25 @@ export default function CodeAIPage() {
     finally { setImageLoading(false); }
   }
 
+  function isImageRequest(text: string) {
+    return /\b(crée|creer|créer|génère|generer|générer|dessine|dessiner|fabrique|produis|produire|make|create|generate|draw)\b.{0,70}\b(image|images|affiche|affiches|logo|logos|illustration|illustrations|visuel|visuels|photo|photos|poster|banner|bannière|banniere)\b|\b(image|affiche|logo|illustration|visuel|photo|poster|bannière|banniere)\b.{0,70}\b(crée|creer|créer|génère|generer|générer|dessine|dessiner|make|create|generate|draw)\b/i.test(text);
+  }
+
   async function send(text: string) {
     const content = text.trim();
     if ((!content && !chatAttachment) || loading || pending || sendLockRef.current) return;
     sendLockRef.current = true;
     const attachment = chatAttachment;
+    // Image prompts typed directly in the main composer use the image API automatically.
+    // Normal coding/chat prompts continue to the agent as before.
+    if (!attachment && (imageMode === "edit" || isImageRequest(content))) {
+      try {
+        await generateImage(content);
+      } finally {
+        sendLockRef.current = false;
+      }
+      return;
+    }
     const visibleContent = attachment ? `${content || "Analyse cette pièce jointe."}\n\nPièce jointe : ${attachment.name}` : content;
     const baseContents = attachment
       ? [...contents, { role: "user", parts: [{ inlineData: { mimeType: attachment.mimeType, data: attachment.data } }] }]
