@@ -1133,3 +1133,72 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
 @media (max-width:760px) {
   .bcx-classic-chat .chat-composer { background:#fff !important; }
 }
+
+
+/* BCX: barre de saisie simple, centrée sur le message */
+.bcx-classic-chat .chat-composer {
+  width: min(calc(100% - 28px), 820px);
+  padding: 10px 12px;
+  border: 1px solid #dededb !important;
+  border-radius: 20px !important;
+  background: #fff !important;
+  box-shadow: 0 3px 14px rgba(0,0,0,.045) !important;
+}
+.bcx-classic-chat .chat-composer .composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bcx-classic-chat .chat-composer textarea {
+  width: 100%;
+  min-height: 30px;
+  max-height: 180px;
+  padding: 5px 2px;
+  border: 0 !important;
+  outline: none;
+  resize: none;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: #202123 !important;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.bcx-classic-chat .bcx-simple-composer-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+}
+.bcx-classic-chat .bcx-composer-plus,
+.bcx-classic-chat .bcx-simple-composer-bar .composer-send {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50% !important;
+}
+.bcx-classic-chat .bcx-composer-plus {
+  border: 1px solid #e5e7eb;
+  color: #343541;
+  background: #f7f7f8;
+}
+.bcx-classic-chat .bcx-simple-composer-bar .composer-send {
+  margin-left: auto;
+  background: #202123 !important;
+  color: #fff !important;
+}
+.bcx-classic-chat .bcx-simple-composer-bar .composer-send:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+.bcx-classic-chat .bcx-simple-composer-bar > *:not(.composer-send):not(.bcx-composer-plus) {
+  flex-shrink: 0;
+}
+@media (max-width: 760px) {
+  .bcx-classic-chat .chat-composer {
+    width: calc(100% - 20px);
+    margin-bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 9px 10px;
+    border-radius: 18px !important;
+  }
+  .bcx-classic-chat .chat-composer textarea { font-size: 16px; }
+}
