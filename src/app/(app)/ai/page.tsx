@@ -16,6 +16,7 @@ type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | 
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
 type PluginStatus = { id: string; name: string; description: string; available: boolean; reason?: string; tools: number; writeTools: number };
 type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string };
+type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
 type AgentResponse = {
@@ -93,6 +94,7 @@ export default function CodeAIPage() {
   const [imageSource, setImageSource] = useState<{ file: File; preview: string; data: string } | null>(null);
   const [imageResult, setImageResult] = useState<{ image: string; model?: string } | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
+  const [chatAttachment, setChatAttachment] = useState<ChatAttachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -265,12 +267,18 @@ export default function CodeAIPage() {
 
   async function send(text: string) {
     const content = text.trim();
-    if (!content || loading || pending || sendLockRef.current) return;
+    if ((!content && !chatAttachment) || loading || pending || sendLockRef.current) return;
     sendLockRef.current = true;
-    setMessages((all) => [...all, { role: "user", content }, { role: "assistant", content: "", events: [] }]);
-    setPrompt(""); setLastMessage(content);
+    const attachment = chatAttachment;
+    const visibleContent = attachment ? `${content || "Analyse cette pièce jointe."}\n\nPièce jointe : ${attachment.name}` : content;
+    const baseContents = attachment
+      ? [...contents, { role: "user", parts: [{ inlineData: { mimeType: attachment.mimeType, data: attachment.data } }] }]
+      : contents;
+    setMessages((all) => [...all, { role: "user", content: visibleContent }, { role: "assistant", content: "", events: [] }]);
+    setPrompt(""); setLastMessage(content || `Analyse la pièce jointe ${attachment?.name ?? ""}`);
+    setChatAttachment(null);
     try {
-      await runAgent({ message: content }, contents);
+      await runAgent({ message: content || `Analyse la pièce jointe ${attachment?.name ?? ""} et explique son contenu.` }, baseContents);
     } catch (err) { setError(err instanceof Error ? err.message : "Une erreur est survenue."); }
     finally { setLoading(false); sendLockRef.current = false; }
   }
@@ -282,7 +290,25 @@ export default function CodeAIPage() {
   }
 
   function onSubmit(e: FormEvent) { e.preventDefault(); void send(prompt); }
-  async function readDocument(event: React.ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (file.size > 2 * 1024 * 1024 || !/\.(txt|md|json|csv|ts|tsx|js|jsx|py|html|css|xml|log)$/i.test(file.name)) { setError("Formats acceptés : TXT, MD, JSON, CSV et code, 2 Mo maximum."); return; } const text = await file.text(); setPrompt((old) => old + (old ? "\n\n" : "") + "Fichier joint : " + file.name + "\n\n" + text.slice(0, 30000)); inputRef.current?.focus(); }
+  async function readDocument(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
+    const supportedText = /\.(txt|md|json|csv|ts|tsx|js|jsx|py|html|css|xml|log)$/i.test(file.name);
+    const supportedMime = ["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type);
+    if (file.size > 4 * 1024 * 1024) { setError("La pièce jointe doit faire 4 Mo maximum."); return; }
+    if (supportedText) {
+      const text = await file.text();
+      setPrompt((old) => old + (old ? "\n\n" : "") + "Fichier joint : " + file.name + "\n\n" + text.slice(0, 30000));
+      inputRef.current?.focus(); return;
+    }
+    if (!supportedMime) { setError("Formats acceptés : images JPG/PNG/WebP, PDF, TXT, MD, JSON, CSV et fichiers de code."); return; }
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const data = dataUrl.split(",")[1];
+      if (!data) throw new Error("Lecture du fichier impossible.");
+      setChatAttachment({ name: file.name, mimeType: file.type, data, ...(file.type.startsWith("image/") ? { preview: dataUrl } : {}) });
+      setError(""); inputRef.current?.focus();
+    } catch (err) { setError(err instanceof Error ? err.message : "Lecture du fichier impossible."); }
+  }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(prompt); }
@@ -309,6 +335,7 @@ export default function CodeAIPage() {
     setError("");
     setImageResult(null);
     setImageSource(null);
+    setChatAttachment(null);
     setImageMode("create");
     setActiveConversationId(createConversationId());
     setShowNav(false);
@@ -494,7 +521,7 @@ export default function CodeAIPage() {
         </div>
 
         <div className="chat-composer">
-          <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log" hidden onChange={readDocument} />
+          <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log,.pdf,image/jpeg,image/png,image/webp" hidden onChange={readDocument} />
           <input ref={imageFileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={chooseImage} />
           {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Outils de la conversation">
             <div className="row"><b className="grow">Que veux-tu faire ?</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
@@ -507,6 +534,7 @@ export default function CodeAIPage() {
               <Link className="btn" href="/registry" onClick={() => setShowTools(false)}><Fingerprint size={17} /> Registre BCX</Link>
             </div>
           </div>}
+          {chatAttachment && <div className="bcx-image-attachment"><span className="attachment-preview-icon">{chatAttachment.preview ? <img src={chatAttachment.preview} alt="" /> : <FileText size={22} />}</span><div className="grow"><b>Pièce jointe prête</b><small>{chatAttachment.name} · {chatAttachment.mimeType}</small></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setChatAttachment(null)} aria-label="Retirer la pièce jointe"><X size={16} /></button></div>}
           {imageSource && <div className="bcx-image-attachment"><img src={imageSource.preview} alt="Image à modifier" /><div className="grow"><b>Image à modifier</b><small>{imageSource.file.name}</small></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => { setImageSource(null); setImageMode("create"); }} aria-label="Retirer l’image"><X size={16} /></button></div>}
           {showPlugins && (
             <div className="plugin-popover" role="dialog" aria-label="Plugins">
@@ -538,7 +566,7 @@ export default function CodeAIPage() {
               </button>
               <small className="grow hide-sm"><span className="kbd">Entrée</span> envoyer · <span className="kbd">Maj + Entrée</span> nouvelle ligne</small>
               {messages.length > 0 && <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={newChat} aria-label="Nouvelle conversation" title="Nouvelle conversation"><SquarePen /></button>}
-              <button className="btn btn-primary btn-icon btn-sm composer-send" type="submit" disabled={loading || !prompt.trim() || Boolean(pending)} aria-label="Envoyer" title="Envoyer"><ArrowUp /></button>
+              <button className="btn btn-primary btn-icon btn-sm composer-send" type="submit" disabled={loading || (!prompt.trim() && !chatAttachment) || Boolean(pending)} aria-label="Envoyer" title="Envoyer"><ArrowUp /></button>
 
             </div>
           </form>
