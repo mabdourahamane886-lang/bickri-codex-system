@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-  ArrowUp, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn, WandSparkles,
+  ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn, WandSparkles,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
@@ -545,29 +545,32 @@ export default function CodeAIPage() {
           <form className="composer" onSubmit={onSubmit}>
             <label htmlFor="ai-input" className="sr-only">Message</label>
             <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Décris ton application, demande une modification de dépôt ou colle une erreur…"} />
-            <div className="composer-bar">
+            <div className="composer-bar bcx-simple-composer-bar">
+              <button
+                type="button"
+                className="btn btn-ghost btn-icon btn-sm bcx-composer-plus"
+                onClick={() => setShowTools((v) => !v)}
+                aria-expanded={showTools}
+                aria-label="Ajouter un fichier ou ouvrir les outils"
+                title="Ajouter"
+              >
+                <Plus size={20} />
+              </button>
               <VoiceAssistant
                 onSend={(text) => send(text)}
                 assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}
                 busy={loading}
                 blocked={Boolean(pending)}
               />
-              <select className="select" style={{ width: "auto", height: 28, fontSize: "var(--text-xs)" }} value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Langage de travail">
-                {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
-              </select>
-              <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowTools((v) => !v)} aria-expanded={showTools} aria-label="Ouvrir les outils" title="Ouvrir les outils" style={{ height: 32, width: 34 }}>
-                <Layers size={17} />
+              <button
+                className="btn btn-primary btn-icon btn-sm composer-send"
+                type="submit"
+                disabled={loading || (!prompt.trim() && !chatAttachment) || Boolean(pending)}
+                aria-label="Envoyer"
+                title="Envoyer"
+              >
+                <ArrowUp size={19} />
               </button>
-              <button type="button" className={`btn btn-sm ${imageMode !== "create" || imageSource ? "btn-plugins-on" : ""}`} onClick={handleImageAction} disabled={imageLoading || loading || Boolean(pending)} aria-label={imageMode === "edit" ? "Modifier l’image jointe" : "Générer une image"} title={imageMode === "edit" ? "Modifier l’image jointe" : "Générer une image"} style={{ height: 32 }}>
-                {imageLoading ? <Loader2 className="spin" /> : imageMode === "edit" ? <WandSparkles size={17} /> : <ImagePlus size={17} />} <span className="hide-sm">{imageMode === "edit" ? "Modifier" : "Image"}</span>
-              </button>
-              <button type="button" className={`btn btn-sm ${activePlugins.length ? "btn-plugins-on" : ""}`} onClick={() => setShowPlugins((v) => !v)} aria-expanded={showPlugins} style={{ height: 28 }}>
-                <Plug /> Plugins{activePlugins.length ? ` · ${activePlugins.length}` : ""}
-              </button>
-              <small className="grow hide-sm"><span className="kbd">Entrée</span> envoyer · <span className="kbd">Maj + Entrée</span> nouvelle ligne</small>
-              {messages.length > 0 && <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={newChat} aria-label="Nouvelle conversation" title="Nouvelle conversation"><SquarePen /></button>}
-              <button className="btn btn-primary btn-icon btn-sm composer-send" type="submit" disabled={loading || (!prompt.trim() && !chatAttachment) || Boolean(pending)} aria-label="Envoyer" title="Envoyer"><ArrowUp /></button>
-
             </div>
           </form>
           <p className="composer-note">Les réponses sont générées par IA : vérifie le code avant une mise en production. Les actions d&apos;écriture demandent toujours ta validation.</p>
