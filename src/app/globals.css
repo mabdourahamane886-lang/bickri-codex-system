@@ -1015,3 +1015,37 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .main:has(.chat) .chat { height: 100dvh; }
   .main:has(.chat) .chat-composer { padding-bottom: 28px; }
 }
+
+
+/* BCX attachment menu: familiar plus button and clear import actions */
+.main:has(.chat) .bcx-attach-button {
+  flex: 0 0 36px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+}
+.main:has(.chat) .bcx-attach-button:hover,
+.main:has(.chat) .bcx-attach-button[aria-expanded="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+.main:has(.chat) .bcx-tools-popover {
+  width: min(520px, calc(100% - 20px));
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--surface);
+  border-color: var(--border-strong);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .22);
+}
+.main:has(.chat) .bcx-tool-grid .bcx-attach-action {
+  min-height: 46px;
+  border-radius: 12px;
+}
+.main:has(.chat) .bcx-tool-grid .bcx-attach-action svg {
+  color: var(--accent);
+}
+@media (max-width: 560px) {
+  .main:has(.chat) .bcx-tools-popover { width: calc(100% - 8px); }
+}
