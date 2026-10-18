@@ -1216,3 +1216,31 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   order: 0;
   min-width: 0;
 }
+
+
+/* Ajustement BCX : barre de saisie stable, sans voile coloré parasite en bas. */
+.bcx-classic-chat .chat-main { min-height: 0; }
+.bcx-classic-chat .chat-composer {
+  position: relative !important;
+  bottom: auto !important;
+  margin-top: 8px !important;
+  margin-bottom: 18px !important;
+  padding-bottom: 10px !important;
+  background: #fff !important;
+  background-image: none !important;
+  border-color: #e5e7eb !important;
+  box-shadow: 0 3px 14px rgba(0,0,0,.045) !important;
+}
+.bcx-classic-chat .chat-composer::before,
+.bcx-classic-chat .chat-composer::after { content: none !important; display: none !important; }
+.bcx-classic-chat .chat-composer .composer { background: transparent !important; }
+.bcx-classic-chat .chat-composer textarea { background: transparent !important; }
+@media (max-width: 760px) {
+  .bcx-classic-chat .chat-composer {
+    width: calc(100% - 24px) !important;
+    margin-top: 8px !important;
+    margin-bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px)) !important;
+    padding: 10px 11px !important;
+  }
+  .bcx-classic-chat .chat-main { padding-bottom: 10px !important; }
+}
