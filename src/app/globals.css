@@ -919,3 +919,30 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .bcx-tool-grid { grid-template-columns: 1fr; }
   .main:has(.chat) .bcx-chat-toolbar { display: flex; }
 }
+
+
+/* BCX Chat — interface unifiée, sans seconde couche latérale */
+.main:has(.chat) .chat {
+  grid-template-columns: minmax(0, 1fr);
+  background: var(--bg);
+}
+.main:has(.chat) .chat-side { display: none; }
+.main:has(.chat) .chat-main,
+.main:has(.chat) .chat-scroll,
+.main:has(.chat) .chat-composer {
+  background: transparent;
+}
+.main:has(.chat) .chat-inner { width: 100%; }
+.main:has(.chat) .chat-composer {
+  border-top: 0;
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
+}
+.main:has(.chat) .composer {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .12);
+}
+.bcx-export-chat { flex: 0 0 auto; }
+@media (max-width: 900px) {
+  .main:has(.chat) .chat { grid-template-columns: minmax(0, 1fr); }
+  .main:has(.chat) .chat-inner { padding: 22px 16px; }
+  .main:has(.chat) .chat-composer { padding-left: 12px; padding-right: 12px; }
+}
