@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   Activity, Bot, Braces, ChevronDown, ChevronRight, Circle, Code2,
-  FileCode2, Files, Folder, GitBranch, Globe, Hammer,
+  FileCode2, Folder, GitBranch, Hammer,
   PanelBottom, Play, Search, Settings2, ShieldCheck, Sparkles,
-  WandSparkles, X,
+  Smartphone, X,
 } from "lucide-react";
 
 const files = [
@@ -66,15 +66,6 @@ export function VSCodeWorkspace() {
       </header>
 
       <div className="vscode-workarea">
-        <aside className="vscode-activitybar" aria-label="Activités">
-          <button className={sidebarMode === "files" ? "active" : ""} onClick={() => setSidebarMode("files")} title="Explorateur"><Files /></button>
-          <button className={sidebarMode === "search" ? "active" : ""} onClick={() => setSidebarMode("search")} title="Recherche"><Search /></button>
-          <button className={sidebarMode === "git" ? "active" : ""} onClick={() => setSidebarMode("git")} title="Contrôle de code source"><GitBranch /></button>
-          <button onClick={() => setSidebarMode("extensions")} className={sidebarMode === "extensions" ? "active" : ""} title="Extensions"><BlocksIcon /></button>
-          <div className="vscode-activity-spacer" />
-          <Link href="/settings" title="Paramètres"><Settings2 /></Link>
-        </aside>
-
         <aside className="vscode-explorer">
           <div className="vscode-side-heading"><span>{sidebarMode === "files" ? "EXPLORATEUR" : sidebarMode === "search" ? "RECHERCHE" : sidebarMode === "git" ? "CONTRÔLE DE CODE SOURCE" : "EXTENSIONS"}</span><MoreDots /></div>
           {sidebarMode === "files" ? <>
@@ -117,16 +108,21 @@ export function VSCodeWorkspace() {
           <footer className="vscode-statusbar"><span><GitBranch size={12} /> main</span><span><Circle size={8} fill="currentColor" /> Connecté à BCX</span><span className="status-spacer" /><span>Ln 8, Col 18</span><span>UTF-8</span><span>TypeScript React</span><span><ShieldCheck size={12} /> Protégé</span></footer>
         </section>
 
-        <aside className="vscode-ai-panel">
-          <div className="vscode-ai-heading"><span><Sparkles size={15} /> BCX AI</span><span className="vscode-ai-pill">ASSISTANT</span></div>
-          <div className="vscode-ai-welcome"><div className="vscode-ai-icon"><WandSparkles size={20} /></div><h2>Que construisons-nous ?</h2><p>Un assistant de code pour comprendre, créer et améliorer tes projets.</p></div>
-          <div className="vscode-ai-actions">
-            <Link href="/ai"><Bot size={16} /><span><b>Discuter avec BCX AI</b><small>Code, architecture et débogage</small></span><ChevronRight size={15} /></Link>
-            <Link href="/studio"><Code2 size={16} /><span><b>Éditer et prévisualiser</b><small>HTML, CSS et JavaScript</small></span><ChevronRight size={15} /></Link>
-            <Link href="/registry"><Globe size={16} /><span><b>Registre de projets</b><small>Retrouver les projets enregistrés</small></span><ChevronRight size={15} /></Link>
+        <aside className="vscode-preview-panel">
+          <div className="vscode-preview-heading"><span><Smartphone size={15} /> APERÇU</span><span className="vscode-preview-live"><Circle size={7} fill="currentColor" /> LIVE</span></div>
+          <div className="vscode-device-wrap">
+            <div className="vscode-device">
+              <div className="vscode-device-notch" />
+              <div className="vscode-device-toolbar"><span>9:41</span><span>● ● ●</span></div>
+              <div className="vscode-device-screen">
+                <div className="vscode-preview-appbar"><span className="vscode-preview-logo">B</span><b>Bickri</b><span>•••</span></div>
+                <div className="vscode-preview-hero"><small>VOTRE ESPACE CRÉATIF</small><h2>Construis sans limites.</h2><p>Une interface pensée pour donner vie à vos idées.</p><button type="button">Commencer</button></div>
+                <div className="vscode-preview-cards"><div><Code2 size={14} /><span>Code rapide</span></div><div><Sparkles size={14} /><span>IA intégrée</span></div></div>
+              </div>
+              <div className="vscode-device-home" />
+            </div>
           </div>
-          <div className="vscode-ai-context"><div><Activity size={14} /> CONTEXTE DU PROJET</div><p><Folder size={13} /> bickri-codex-system</p><p><GitBranch size={13} /> branche main</p><p><ShieldCheck size={13} /> Actions sensibles avec validation</p></div>
-          <Link href="/ai" className="vscode-ai-cta"><Sparkles size={15} /> Lancer BCX AI <ChevronRight size={15} /></Link>
+          <div className="vscode-preview-footer"><span><Circle size={7} fill="currentColor" /> localhost:3000</span><button type="button" title="Ouvrir le studio"><Play size={13} /></button><button type="button" title="Actualiser l’aperçu"><Activity size={13} /></button></div>
         </aside>
       </div>
       <div className="vscode-mobile-launcher"><Link href="/studio"><Code2 size={16} /> Studio</Link><Link href="/ai"><Bot size={16} /> BCX AI</Link><Link href="/registry"><Folder size={16} /> Projets</Link></div>

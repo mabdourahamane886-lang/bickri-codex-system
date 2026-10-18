@@ -34,6 +34,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const current = ALL_NAV.find((i) => isActive(pathname, i.href));
   const currentLabel = current?.label ?? (pathname === "/ai" ? "Bickri Chat" : "Page");
+  const isWorkspace = pathname === "/";
+
+  if (isWorkspace) return <>{children}</>;
 
   return (
     <div className="shell">

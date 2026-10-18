@@ -932,7 +932,7 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
 .vscode-title-actions { display: flex; align-items: center; gap: 13px; color: var(--text-muted); }
 .vscode-connection { display: flex; align-items: center; gap: 6px; font-size: 10px; white-space: nowrap; }
 .vscode-connection svg { color: var(--success); }
-.vscode-workarea { flex: 1; min-height: 0; display: grid; grid-template-columns: 46px 220px minmax(280px,1fr) 286px; }
+.vscode-workarea { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px minmax(320px,1fr) 300px; }
 .vscode-activitybar { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 9px 0; border-right: 1px solid var(--border); background: var(--surface); }
 .vscode-activitybar button,.vscode-activitybar a { display: grid; place-items: center; width: 42px; height: 42px; border: 0; border-left: 2px solid transparent; background: transparent; color: var(--text-faint); }
 .vscode-activitybar button svg,.vscode-activitybar a svg { width: 20px; height: 20px; stroke-width: 1.7; }
@@ -982,32 +982,24 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
 .vscode-statusbar { display: flex; align-items: center; gap: 13px; padding: 0 10px; background: #176b82; color: white; font-size: 9px; overflow: hidden; white-space: nowrap; }
 .vscode-statusbar span { display: inline-flex; align-items: center; gap: 4px; }
 .vscode-statusbar .status-spacer { flex: 1; }
-.vscode-ai-panel { display: flex; flex-direction: column; min-width: 0; border-left: 1px solid var(--border); background: var(--surface); }
-.vscode-ai-heading { height: 38px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 13px; border-bottom: 1px solid var(--border); font-size: 11px; }
-.vscode-ai-heading > span:first-child { display: flex; align-items: center; gap: 7px; font-weight: 600; }
-.vscode-ai-heading svg { color: var(--accent); }
-.vscode-ai-pill { font-size: 8px; letter-spacing: .08em; color: var(--accent); border: 1px solid var(--accent-ring); border-radius: 4px; padding: 3px 5px; }
-.vscode-ai-welcome { padding: 24px 18px 20px; text-align: center; border-bottom: 1px solid var(--border); }
-.vscode-ai-icon { display: grid; place-items: center; width: 44px; height: 44px; margin: 0 auto 13px; border: 1px solid var(--accent-ring); border-radius: 13px; background: var(--accent-soft); color: var(--accent); }
-.vscode-ai-welcome h2 { font-size: 14px; }.vscode-ai-welcome p { margin-top: 7px; font-size: 11px; line-height: 1.6; color: var(--text-muted); }
-.vscode-ai-actions { display: grid; gap: 7px; padding: 14px 10px; }
-.vscode-ai-actions a { display: flex; align-items: center; gap: 10px; padding: 11px 9px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); }
-.vscode-ai-actions a:hover { border-color: var(--border-strong); background: var(--surface-2); color: var(--text); }
-.vscode-ai-actions a > svg:first-child { flex: none; color: var(--accent); }
-.vscode-ai-actions a > svg:last-child { flex: none; margin-left: auto; }
-.vscode-ai-actions a span { display: grid; gap: 3px; min-width: 0; }.vscode-ai-actions b { font-size: 10px; font-weight: 600; color: var(--text); }.vscode-ai-actions small { font-size: 9px; color: var(--text-faint); }
-.vscode-ai-context { margin: auto 12px 12px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; }
-.vscode-ai-context > div { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; color: var(--text-muted); font-size: 9px; letter-spacing: .06em; }
-.vscode-ai-context > div svg { color: var(--accent); }.vscode-ai-context p { display: flex; align-items: center; gap: 7px; margin-top: 8px; color: var(--text-faint); font-size: 9px; }
-.vscode-ai-cta { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 12px 14px; height: 36px; border-radius: 7px; background: var(--accent); color: var(--accent-fg); font-size: 11px; font-weight: 600; }
+.vscode-preview-panel { display: flex; flex-direction: column; min-width: 0; border-left: 1px solid var(--border); background: var(--surface); }
+.vscode-preview-heading { height: 38px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 13px; border-bottom: 1px solid var(--border); font-size: 10px; letter-spacing: .08em; color: var(--text-muted); }
+.vscode-preview-heading > span:first-child { display: flex; align-items: center; gap: 7px; font-weight: 600; }.vscode-preview-heading svg { color: var(--accent); }
+.vscode-preview-live { display: flex; align-items: center; gap: 5px; color: var(--success); font-size: 8px; letter-spacing: .08em; }
+.vscode-device-wrap { flex: 1; display: grid; place-items: center; padding: 18px 12px; overflow: auto; background: radial-gradient(circle at center, var(--accent-soft), transparent 62%); }
+.vscode-device { position: relative; width: 190px; height: 380px; padding: 8px; border: 2px solid var(--border-strong); border-radius: 28px; background: #111720; box-shadow: 0 18px 42px rgb(0 0 0 / .28), inset 0 0 0 1px rgb(255 255 255 / .08); }
+.vscode-device-notch { position: absolute; z-index: 2; top: 13px; left: 50%; width: 62px; height: 16px; transform: translateX(-50%); border-radius: 10px; background: #111720; }.vscode-device-toolbar { display: flex; justify-content: space-between; height: 25px; padding: 3px 10px 0; color: #eff6f8; font-size: 7px; }
+.vscode-device-screen { height: 329px; overflow: hidden; border-radius: 20px; background: #f4fbfb; color: #13252c; }.vscode-preview-appbar { display: flex; align-items: center; gap: 7px; padding: 13px 13px 10px; font-size: 10px; }.vscode-preview-appbar > span:last-child { margin-left: auto; color: #88a0a7; }.vscode-preview-logo { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: #d8f5f4; color: #1596a1; font-size: 12px; font-weight: 800; }
+.vscode-preview-hero { margin: 6px 10px; padding: 18px 13px; border-radius: 15px; background: linear-gradient(145deg,#d8f6f2,#b9e7ed); }.vscode-preview-hero small { color: #25848c; font-size: 6px; letter-spacing: .12em; font-weight: 700; }.vscode-preview-hero h2 { max-width: 130px; margin-top: 10px; font-size: 22px; line-height: 1.02; letter-spacing: -.06em; }.vscode-preview-hero p { margin-top: 10px; color: #54747b; font-size: 8px; line-height: 1.5; }.vscode-preview-hero button { margin-top: 15px; padding: 7px 10px; border: 0; border-radius: 6px; background: #142c33; color: white; font-size: 8px; }
+.vscode-preview-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 12px 10px; }.vscode-preview-cards div { display: grid; gap: 6px; padding: 10px; border: 1px solid #dcebed; border-radius: 10px; background: white; color: #557179; font-size: 7px; }.vscode-preview-cards svg { color: #1596a1; }.vscode-device-home { width: 45px; height: 3px; margin: 7px auto 0; border-radius: 5px; background: #8b969d; }
+.vscode-preview-footer { display: flex; align-items: center; gap: 8px; height: 35px; padding: 0 10px; border-top: 1px solid var(--border); color: var(--text-faint); font-size: 8px; }.vscode-preview-footer span { display: flex; align-items: center; gap: 5px; color: var(--success); }.vscode-preview-footer button { display: grid; place-items: center; width: 22px; height: 22px; margin-left: auto; border: 1px solid var(--border); border-radius: 5px; background: transparent; color: var(--text-muted); }.vscode-preview-footer button + button { margin-left: 0; }
 .vscode-mobile-launcher { display: none; }
-@media (max-width: 1120px) { .vscode-workarea { grid-template-columns: 44px 190px minmax(260px,1fr); }.vscode-ai-panel { display: none; } }
+@media (max-width: 1120px) { .vscode-workarea { grid-template-columns: 190px minmax(260px,1fr); }.vscode-preview-panel { display: none; } }
 @media (max-width: 760px) {
   .vscode-workspace { height: 100dvh; min-height: 0; padding-bottom: 58px; }
   .vscode-titlebar { height: 44px; padding: 0 10px; gap: 8px; }.vscode-brand { min-width: 0; font-size: 9px; }.vscode-brand-mark { width: 23px; height: 23px; }.vscode-command { width: auto; flex: 1; max-width: 300px; font-size: 0; justify-content: center; margin: 0; }.vscode-command span { display: none; }.vscode-command kbd { margin: 0; }.vscode-connection { display: none; }
-  .vscode-workarea { grid-template-columns: 40px minmax(0,1fr); }
-  .vscode-activitybar { padding-top: 6px; }.vscode-activitybar button,.vscode-activitybar a { width: 36px; height: 38px; }.vscode-activitybar button svg,.vscode-activitybar a svg { width: 18px; height: 18px; }
-  .vscode-explorer { display: none; }.vscode-editor-area { grid-column: 2; grid-template-rows: 38px 28px minmax(120px,1fr) 145px 22px; }
+  .vscode-workarea { grid-template-columns: minmax(0,1fr); }
+  .vscode-explorer { display: none; }.vscode-editor-area { grid-column: 1; grid-template-rows: 38px 28px minmax(120px,1fr) 145px 22px; }
   .vscode-tab { padding: 0 8px; font-size: 10px; }.vscode-run { font-size: 0; padding: 0 8px; }.vscode-run svg { width: 17px; height: 17px; }
   .vscode-editor-content { font-size: 10px; }.vscode-line-numbers { width: 32px; padding-right: 9px; }.vscode-code { padding: 0 10px; }
   .vscode-editor-watermark { display: none; }.vscode-panel-tabs { gap: 13px; padding: 0 9px; }.vscode-panel-tabs button { font-size: 9px; }.vscode-terminal-content { padding: 10px; font-size: 9px; }.vscode-statusbar { gap: 8px; font-size: 8px; }.vscode-statusbar span:nth-child(2),.vscode-statusbar span:nth-last-child(2) { display: none; }
