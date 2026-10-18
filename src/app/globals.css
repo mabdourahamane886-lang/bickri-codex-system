@@ -1014,3 +1014,47 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .vscode-mobile-launcher a { display: flex; justify-content: center; align-items: center; gap: 6px; color: var(--text-muted); font-size: 11px; }.vscode-mobile-launcher a svg { color: var(--accent); }
 }
 @media (prefers-color-scheme: light) { }
+
+
+/* BCX unified ChatGPT-style experience */
+.shell:has(.bcx-classic-chat) { display:block; min-height:100dvh; height:100dvh; overflow:hidden; }
+.shell:has(.bcx-classic-chat) > .sidebar,
+.shell:has(.bcx-classic-chat) > .mobile-nav,
+.shell:has(.bcx-classic-chat) > .main > .topbar { display:none !important; }
+.shell:has(.bcx-classic-chat) > .main { height:100dvh; min-height:0; width:100%; max-width:none; margin:0; padding:0; overflow:hidden; }
+.bcx-classic-chat { display:grid !important; grid-template-columns:260px minmax(0,1fr); width:100%; height:100dvh; min-height:0; overflow:hidden; background:var(--background, #343541); color:var(--text, #ececf1); }
+.bcx-classic-chat > .bcx-chat-toolbar { display:none !important; }
+.bcx-classic-chat > .classic-chat-sidebar { grid-column:1; grid-row:1; display:flex; flex-direction:column; min-width:0; min-height:0; padding:12px; gap:12px; background:#202123; color:#ececf1; border-right:1px solid rgba(255,255,255,.08); }
+.classic-sidebar-brand { display:flex; align-items:center; gap:10px; padding:8px 5px 14px; font-size:16px; }
+.classic-brand-mark { display:grid; place-items:center; width:28px; height:28px; border-radius:9px; background:#10a37f; color:white; font-weight:800; }
+.classic-new-chat { display:flex; align-items:center; gap:10px; width:100%; padding:12px; border:1px solid #565869; border-radius:9px; background:transparent; color:#fff; text-align:left; cursor:pointer; font-size:14px; }
+.classic-new-chat:hover,.classic-history-row:hover { background:#2b2c2f; }
+.classic-history-heading { padding:12px 7px 2px; color:#a7a7b0; font-size:12px; font-weight:600; }
+.classic-history-list { flex:1; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:3px; }
+.classic-history-row { display:flex; align-items:center; gap:4px; border-radius:7px; padding:2px 4px; }
+.classic-history-row.active { background:#343541; }
+.classic-history-row > button:first-child { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; padding:9px 5px; border:0; background:transparent; color:#ececf1; text-align:left; cursor:pointer; font-size:13px; }
+.classic-delete-chat { display:grid; place-items:center; border:0; border-radius:5px; padding:5px; background:transparent; color:#a7a7b0; cursor:pointer; }
+.classic-history-empty { color:#a7a7b0; font-size:12px; padding:8px; }
+.classic-sidebar-bottom { display:grid; gap:3px; padding-top:10px; border-top:1px solid #44454a; }
+.classic-sidebar-bottom button,.classic-sidebar-bottom a { display:flex; align-items:center; padding:10px 8px; border:0; border-radius:7px; background:transparent; color:#d9d9e3; text-decoration:none; text-align:left; cursor:pointer; font-size:13px; }
+.classic-sidebar-bottom button:hover,.classic-sidebar-bottom a:hover { background:#2b2c2f; }
+.bcx-classic-chat > .chat-main { grid-column:2; grid-row:1; display:flex; flex-direction:column; min-width:0; min-height:0; height:100%; }
+.bcx-classic-chat .chat-scroll { flex:1; min-height:0; overflow:auto; }
+.bcx-classic-chat .chat-inner { width:min(100%, 850px); margin:0 auto; padding:34px 24px 24px; }
+.bcx-classic-chat .chat-hero { padding-top:9vh; text-align:center; }
+.bcx-classic-chat .chat-hero h1 { font-size:clamp(26px,3vw,36px); letter-spacing:-.035em; }
+.bcx-classic-chat .starter-grid { margin-top:34px; }
+.bcx-classic-chat .chat-composer { position:relative; width:min(calc(100% - 40px), 850px); margin:0 auto 18px; padding:12px 14px 8px; border:1px solid var(--border-strong, #565869); border-radius:16px; background:var(--surface, #40414f); box-shadow:0 8px 30px rgba(0,0,0,.12); }
+.bcx-classic-chat .composer,.bcx-classic-chat .chat-composer form { border:0; box-shadow:none; }
+.bcx-classic-chat .composer textarea,.bcx-classic-chat .chat-composer textarea { min-height:42px; max-height:180px; background:transparent; }
+.bcx-classic-chat .composer-note { font-size:11px; text-align:center; }
+@media (max-width:760px) {
+ .bcx-classic-chat { grid-template-columns:minmax(0,1fr); padding-bottom:0; }
+ .bcx-classic-chat > .classic-chat-sidebar { display:none; }
+ .bcx-classic-chat > .bcx-chat-toolbar { display:flex !important; grid-column:1; grid-row:1; height:52px; flex:none; }
+ .bcx-classic-chat > .chat-main { grid-column:1; grid-row:2; min-height:0; height:calc(100dvh - 52px); }
+ .bcx-classic-chat .chat-inner { padding:22px 14px; }
+ .bcx-classic-chat .chat-hero { padding-top:5vh; }
+ .bcx-classic-chat .chat-composer { width:calc(100% - 20px); margin-bottom:10px; padding:9px; }
+}
