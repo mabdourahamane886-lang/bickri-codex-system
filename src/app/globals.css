@@ -1202,3 +1202,17 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   }
   .bcx-classic-chat .chat-composer textarea { font-size: 16px; }
 }
+
+
+/* Fix: la flèche d’envoi reste à droite malgré les règles globales du composer. */
+.bcx-classic-chat .bcx-simple-composer-bar .composer-send {
+  order: 1 !important;
+  margin-left: auto !important;
+}
+.bcx-classic-chat .bcx-simple-composer-bar .bcx-composer-plus {
+  order: 0;
+}
+.bcx-classic-chat .bcx-simple-composer-bar > .row {
+  order: 0;
+  min-width: 0;
+}
