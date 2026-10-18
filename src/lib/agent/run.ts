@@ -32,6 +32,14 @@ export function sanitizeContents(input: unknown): GeminiContent[] {
       if (!p || typeof p !== "object") return [];
       const out: GeminiPart = {};
       if (typeof p.text === "string") out.text = p.text.slice(0, 40_000);
+      // Les pièces jointes sont limitées aux types nécessaires à l'analyse multimodale.
+      if (p.inlineData && typeof p.inlineData === "object") {
+        const mimeType = typeof p.inlineData.mimeType === "string" ? p.inlineData.mimeType : "";
+        const data = typeof p.inlineData.data === "string" ? p.inlineData.data : "";
+        if (["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(mimeType) && data.length > 0 && data.length <= 6_000_000) {
+          out.inlineData = { mimeType, data };
+        }
+      }
       if (p.thought === true) out.thought = true;
       if (typeof p.thoughtSignature === "string") out.thoughtSignature = p.thoughtSignature;
       if (p.functionCall && typeof p.functionCall.name === "string") out.functionCall = { ...(p.functionCall.id ? { id: String(p.functionCall.id) } : {}), name: p.functionCall.name, args: typeof p.functionCall.args === "object" && p.functionCall.args ? p.functionCall.args : {} };
