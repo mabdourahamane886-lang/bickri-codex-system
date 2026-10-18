@@ -4,6 +4,7 @@ import { AIError } from "./gemini";
 /** Contenu Gemini brut (conservé tel quel, y compris les thoughtSignature). */
 export type GeminiPart = {
   text?: string;
+  inlineData?: { mimeType: string; data: string };
   thought?: boolean;
   thoughtSignature?: string;
   functionCall?: { id?: string; name: string; args?: Record<string, unknown> };
