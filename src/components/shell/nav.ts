@@ -6,7 +6,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Conversation",
     items: [
-      { href: "/", label: "Bickri Chat", short: "Chat", icon: MessageSquare },
+      { href: "/ai", label: "Bickri Chat", short: "Chat", icon: MessageSquare },
     ],
   },
   {
@@ -27,7 +27,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
 ];
 
 export const ALL_NAV = NAV_GROUPS.flatMap((g) => g.items);
-export const MOBILE_NAV = ["/", "/studio", "/publicite", "/registry", "/settings"].map((h) => ALL_NAV.find((i) => i.href === h)!);
+export const MOBILE_NAV = ["/ai", "/studio", "/publicite", "/registry", "/settings"].map((h) => ALL_NAV.find((i) => i.href === h)!);
 
 export function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
