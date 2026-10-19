@@ -541,11 +541,11 @@ export default function CodeAIPage() {
           <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log,.pdf,image/jpeg,image/png,image/webp" hidden onChange={readDocument} />
           <input ref={imageFileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={chooseImage} />
           {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Outils de la conversation">
-            <div className="row"><b className="grow">Que veux-tu faire ?</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
+            <div className="row"><b className="grow">Joindre ou créer</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
             <div className="bcx-tool-grid">
               <button type="button" className={`btn ${imageMode === "create" ? "btn-primary" : ""}`} onClick={() => { setImageMode("create"); setImageIntent(true); setShowTools(false); inputRef.current?.focus(); }}><ImagePlus size={17} /> Créer une image</button>
-              <button type="button" className={`btn ${imageMode === "edit" ? "btn-primary" : ""}`} onClick={() => { setImageMode("edit"); setShowTools(false); imageFileRef.current?.click(); }}><WandSparkles size={17} /> Modifier une image</button>
-              <button type="button" className="btn" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Joindre un fichier/code</button>
+              <button type="button" className={`btn bcx-attach-action ${imageMode === "edit" ? "btn-primary" : ""}`} onClick={() => { setImageMode("edit"); setShowTools(false); imageFileRef.current?.click(); }}><ImagePlus size={17} /> Importer une photo à modifier</button>
+              <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Importer un fichier ou du code</button>
               <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
               <button type="button" className="btn" onClick={() => { setImageMode("create"); setImageIntent(true); setPrompt((old) => old || "Crée une affiche publicitaire professionnelle pour mon entreprise. Nom, offre, coordonnées et style souhaité : "); setShowTools(false); inputRef.current?.focus(); }}><Sparkles size={17} /> Créer une affiche</button>
               <Link className="btn" href="/registry" onClick={() => setShowTools(false)}><Fingerprint size={17} /> Registre BCX</Link>
@@ -579,6 +579,18 @@ export default function CodeAIPage() {
                 busy={loading}
                 blocked={Boolean(pending)}
               />
+              {messages.length > 0 && <button type="button" className="btn btn-ghost btn-sm bcx-export-chat" onClick={() => {
+                const payload = { app: "BICKRI CODEX SYSTEM", exportedAt: new Date().toISOString(), language, messages };
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const anchor = document.createElement("a");
+                anchor.href = url;
+                anchor.download = `bcx-conversation-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+                URL.revokeObjectURL(url);
+              }} aria-label="Exporter la conversation" title="Exporter la conversation"><FileText size={15} /><span className="hide-sm">Exporter</span></button>}
               <button
                 className="btn btn-primary btn-icon btn-sm composer-send"
                 type="button"
@@ -595,38 +607,7 @@ export default function CodeAIPage() {
         </div>
       </div>
 
-      <aside className="chat-side" aria-label="Contexte">
-        <div>
-          <h3>Conversation</h3>
-          <p>{messages.length ? `${messages.filter((m) => m.role === "user").length} question(s) dans cette session.` : "Aucun message pour l'instant."}</p>
-          <button className="btn btn-sm" style={{ marginTop: 10 }} onClick={newChat} disabled={!messages.length}><SquarePen /> Nouvelle conversation</button>
-        </div>
-        <hr className="divider" />
-        <div className="stack" style={{ gap: 10 }}>
-          <div className="row">
-            <h3 className="row grow" style={{ marginBottom: 0 }}><Plug size={14} /> Plugins</h3>
-            <button className="btn btn-ghost btn-icon btn-sm" onClick={() => void loadPlugins()} aria-label="Actualiser les plugins" title="Actualiser"><RefreshCw /></button>
-          </div>
-          {account && !account.signedIn && (
-            <div className="alert alert-info" style={{ fontSize: "var(--text-xs)" }}>
-              <LogIn />
-              <span>Les plugins demandent un compte. <Link href="/login?next=/ai" className="link">Se connecter</Link></span>
-            </div>
-          )}
-          {account?.signedIn && !account.trusted && (
-            <div className="alert alert-warning" style={{ fontSize: "var(--text-xs)" }}>
-              <ShieldAlert />
-              <span>GitHub est réservé aux comptes administrateurs, car il agit avec le jeton du propriétaire.</span>
-            </div>
-          )}
-          {pluginList}
-        </div>
-        <hr className="divider" />
-        <div>
-          <h3>Modèle</h3>
-          <p>{config ? `${config.aiModel} (repli : ${config.aiFallbackModel})` : "Chargement…"}</p>
-        </div>
-      </aside>
+      
     </main>
   );
 }
