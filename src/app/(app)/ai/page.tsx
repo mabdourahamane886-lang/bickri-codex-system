@@ -81,6 +81,7 @@ export default function CodeAIPage() {
   const [prompt, setPrompt] = useState("");
   const [language, setLanguage] = useState(LANGUAGES[0]);
   const [loading, setLoading] = useState(false);
+  const [thinkingStep, setThinkingStep] = useState(0);
   const [error, setError] = useState("");
   const [lastMessage, setLastMessage] = useState("");
   const [plugins, setPlugins] = useState<PluginStatus[] | null>(null);
@@ -149,6 +150,12 @@ export default function CodeAIPage() {
     } catch { setPlugins([]); }
   }, []);
   useEffect(() => { void loadPlugins(); }, [loadPlugins]);
+
+  useEffect(() => {
+    if (!loading) { setThinkingStep(0); return; }
+    const timer = setInterval(() => setThinkingStep((step) => (step + 1) % 4), 1900);
+    return () => clearInterval(timer);
+  }, [loading]);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -487,7 +494,7 @@ export default function CodeAIPage() {
                                 {isLast && !loading && <button type="button" className="btn btn-ghost btn-sm" onClick={retry} disabled={!lastMessage || Boolean(pending)} aria-label="Régénérer la réponse" title="Régénérer la réponse"><RefreshCw size={15} /> Régénérer</button>}
                               </div>
                             )}
-                            {isLast && loading && <span className="typing" aria-label="Réponse en cours"><i /><i /><i /></span>}
+                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-orbit" aria-hidden="true"><Sparkles size={16} /></span><span key={thinkingStep} className="bcx-thinking-label">{["Réfléchit…", "Analyse ta demande…", "Organise les idées…", "Prépare la réponse…"][thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
                           </>
                         )}
                       </div>
