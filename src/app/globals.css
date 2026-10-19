@@ -1244,3 +1244,34 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   }
   .bcx-classic-chat .chat-main { padding-bottom: 10px !important; }
 }
+
+
+/* BCX chat improvements rebased from PR #35 */
+.bcx-export-chat { flex: 0 0 auto; white-space: nowrap; }
+.bcx-tools-popover {
+  width: min(520px, calc(100% - 20px));
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--surface);
+  border-color: var(--border-strong);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .22);
+  z-index: 35;
+}
+.bcx-tool-grid .bcx-attach-action { min-height: 46px; border-radius: 12px; }
+.bcx-tool-grid .bcx-attach-action svg { color: var(--accent); }
+.bcx-composer-plus {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-2);
+}
+.bcx-composer-plus:hover,
+.bcx-composer-plus[aria-expanded="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+@media (max-width: 560px) {
+  .bcx-tools-popover { width: calc(100% - 8px); }
+  .bcx-export-chat { padding-inline: 7px; }
+}
