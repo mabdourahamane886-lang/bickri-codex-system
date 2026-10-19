@@ -1449,3 +1449,51 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
     padding: 9px 0;
   }
 }
+
+
+/* BCX: ChatGPT/Claude-inspired animated thinking status */
+.bcx-classic-chat .bcx-thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  margin-top: 10px;
+  color: #666875;
+  font-size: 13px;
+  font-weight: 500;
+}
+.bcx-classic-chat .bcx-thinking-orbit {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  color: #10a37f;
+  border: 1px solid rgba(16,163,127,.22);
+  border-radius: 50%;
+  background: rgba(16,163,127,.07);
+  animation: bcx-thinking-pulse 1.8s ease-in-out infinite;
+}
+.bcx-classic-chat .bcx-thinking-label {
+  animation: bcx-thinking-fade .28s ease both;
+}
+.bcx-classic-chat .bcx-thinking-caret {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #10a37f;
+  animation: bcx-thinking-pulse 1s ease-in-out infinite;
+}
+@keyframes bcx-thinking-pulse {
+  0%, 100% { opacity: .5; transform: scale(.92); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+@keyframes bcx-thinking-fade {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bcx-classic-chat .bcx-thinking-orbit,
+  .bcx-classic-chat .bcx-thinking-caret,
+  .bcx-classic-chat .bcx-thinking-label { animation: none !important; }
+}
