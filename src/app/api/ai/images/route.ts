@@ -230,12 +230,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "La modification de photos nécessite GEMINI_API_KEY ou POLLINATIONS_API_KEY. DALL·E 3 est disponible pour les nouvelles créations." }, { status: 503 });
   }
 
-  // Gemini is the primary image provider. OpenAI remains configured for other features,
-  // but must not override the user's selected Gemini image workflow.
-  // If Gemini is not configured, use Pollinations directly as the fallback.
-  if (!geminiApiKey && pollinationsApiKey) {
-    const generated = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
-    return generated.response;
+  // Provider order: Gemini first, then Pollinations, then OpenAI for new image generation.
+  // OpenAI's Images API here supports generation, not the photo-edit workflow.
+  if (!geminiApiKey) {
+    if (pollinationsApiKey) {
+      const generated = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
+      if (generated.ok) return generated.response;
+      if (mode === "generate" && openAiApiKey) {
+        const openAiFallback = await generateWithOpenAI(prompt, openAiApiKey);
+        if (openAiFallback) return openAiFallback;
+      }
+      return generated.response;
+    }
+    if (mode === "generate" && openAiApiKey) {
+      const openAiFallback = await generateWithOpenAI(prompt, openAiApiKey);
+      if (openAiFallback) return openAiFallback;
+    }
   }
 
   // A trailing dot or whitespace is a common Vercel env-var typo; normalize it.
@@ -291,12 +301,20 @@ export async function POST(request: NextRequest) {
   }
 
   if (!finalResult) {
-    // Pollinations is the automatic fallback when Gemini fails, including auth/quota/network errors.
+    // Automatic fallback chain: Pollinations first, then OpenAI for new image generation.
     if (pollinationsApiKey) {
       const fallback = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
       if (fallback.ok) return fallback.response;
-      console.error("Both Gemini and Pollinations image generation failed", { geminiStatus: lastStatus });
+      console.error("Pollinations image fallback failed", { geminiStatus: lastStatus });
+      if (mode === "generate" && openAiApiKey) {
+        const openAiFallback = await generateWithOpenAI(prompt, openAiApiKey);
+        if (openAiFallback) return openAiFallback;
+      }
       return fallback.response;
+    }
+    if (mode === "generate" && openAiApiKey) {
+      const openAiFallback = await generateWithOpenAI(prompt, openAiApiKey);
+      if (openAiFallback) return openAiFallback;
     }
     const message = lastStatus === 401 || lastStatus === 403
       ? "La clé Gemini est invalide ou n’a pas accès à la génération d’images. Vérifie GEMINI_API_KEY dans Vercel."
@@ -324,7 +342,16 @@ export async function POST(request: NextRequest) {
   console.error("Gemini image response contained no image", { model: lastModel, text });
   if (pollinationsApiKey) {
     const fallback = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
+    if (fallback.ok) return fallback.response;
+    if (mode === "generate" && openAiApiKey) {
+      const openAiFallback = await generateWithOpenAI(prompt, openAiApiKey);
+      if (openAiFallback) return openAiFallback;
+    }
     return fallback.response;
+  }
+  if (mode === "generate" && openAiApiKey) {
+    const openAiFallback = await generateWithOpenAI(prompt, openAiApiKey);
+    if (openAiFallback) return openAiFallback;
   }
   return NextResponse.json(
     { error: text || "Gemini n’a renvoyé aucune image. Essaie une description plus précise.", model: lastModel },
