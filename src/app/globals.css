@@ -1322,3 +1322,42 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
     margin-bottom: max(8px, env(safe-area-inset-bottom)) !important;
   }
 }
+
+
+/* BCX mobile: keep the history/navigation menu above the chat viewport. */
+@media (max-width: 760px) {
+  .bcx-classic-chat > .bcx-nav-popover {
+    position: fixed !important;
+    z-index: 100 !important;
+    top: 64px !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: calc(100dvh - 80px) !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    background: #fff !important;
+    color: #202123 !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 12px 36px rgba(0,0,0,.18) !important;
+  }
+  .bcx-classic-chat > .bcx-nav-popover button,
+  .bcx-classic-chat > .bcx-nav-popover a,
+  .bcx-classic-chat > .bcx-nav-popover b,
+  .bcx-classic-chat > .bcx-nav-popover span,
+  .bcx-classic-chat > .bcx-nav-popover .muted {
+    color: #202123;
+  }
+  .bcx-classic-chat > .bcx-nav-popover .bcx-history-item {
+    min-height: 42px;
+  }
+  .bcx-classic-chat > .bcx-nav-popover .bcx-history-open {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
