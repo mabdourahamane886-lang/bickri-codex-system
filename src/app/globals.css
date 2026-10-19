@@ -1275,3 +1275,14 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .bcx-tools-popover { width: calc(100% - 8px); }
   .bcx-export-chat { padding-inline: 7px; }
 }
+
+
+/* BCX mobile: move the composer slightly closer to the bottom edge. */
+@media (max-width: 760px) {
+  .bcx-classic-chat .chat-composer {
+    margin-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+  }
+  .bcx-classic-chat .chat-main {
+    padding-bottom: 0 !important;
+  }
+}
