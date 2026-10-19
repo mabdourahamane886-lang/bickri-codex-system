@@ -7,7 +7,7 @@ export const maxDuration = 60;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const DEFAULT_MODEL = "gemini-nano-banana-2.1";
-const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-sunburst";
+const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
 const FALLBACK_MODELS = ["gemini-nano-banana-2.1", "gemini-3.1-flash-image", "gemini-2.5-flash-image"] as const;
 
 type GeminiImage = { data?: string; mime_type?: string; mimeType?: string };
@@ -96,9 +96,8 @@ async function generateWithOpenAI(prompt: string, apiKey: string): Promise<NextR
         prompt,
         n: 1,
         size: "1024x1024",
-        quality: "hd",
-        style: "vivid",
-        response_format: "b64_json",
+        quality: "high",
+        output_format: "png",
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(55_000),
@@ -106,12 +105,12 @@ async function generateWithOpenAI(prompt: string, apiKey: string): Promise<NextR
     const result = await upstream.json().catch(() => null) as { data?: Array<{ b64_json?: string }>; error?: { message?: string } } | null;
     if (!upstream.ok || !result?.data?.[0]?.b64_json) {
       console.error("OpenAI image request failed", { status: upstream.status, detail: result?.error?.message?.slice(0, 300) });
-      return NextResponse.json({ error: upstream.status === 429 ? "Le quota OpenAI est atteint. Vérifie ta facturation et tes limites." : "DALL·E 3 n’a pas pu générer cette image. Réessaie avec une autre description." }, { status: upstream.status === 429 ? 429 : 502 });
+      return NextResponse.json({ error: upstream.status === 429 ? "Le quota OpenAI est atteint. Vérifie ta facturation et tes limites." : "Le modèle OpenAI GPT Image n’a pas pu générer cette image. Vérifie la clé API, les crédits et l’accès au modèle, puis réessaie." }, { status: upstream.status === 429 ? 429 : 502 });
     }
     return NextResponse.json({ image: `data:image/png;base64,${result.data[0].b64_json}`, mimeType: "image/png", model: OPENAI_IMAGE_MODEL });
   } catch (error) {
     console.error("OpenAI image request error", error instanceof Error ? error.message : "unknown");
-    return NextResponse.json({ error: "DALL·E 3 ne répond pas actuellement. Réessaie dans un instant." }, { status: 502 });
+    return NextResponse.json({ error: "Le service OpenAI GPT Image ne répond pas actuellement. Réessaie dans un instant." }, { status: 502 });
   }
 }
 
