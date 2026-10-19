@@ -1286,3 +1286,39 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
     padding-bottom: 0 !important;
   }
 }
+
+
+/* BCX mobile: keep the message timeline scrollable and the composer near the bottom. */
+@media (max-width: 760px) {
+  .bcx-classic-chat {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+  .bcx-classic-chat > .chat-main {
+    display: flex !important;
+    flex-direction: column !important;
+    height: calc(100dvh - 56px) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding-bottom: 0 !important;
+  }
+  .bcx-classic-chat .chat-scroll {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+  .bcx-classic-chat .chat-inner {
+    min-height: min-content;
+    padding-bottom: 18px !important;
+  }
+  .bcx-classic-chat .chat-composer {
+    flex: 0 0 auto !important;
+    margin-top: 6px !important;
+    margin-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+  }
+}
