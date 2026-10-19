@@ -7,7 +7,7 @@ export const maxDuration = 60;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const DEFAULT_MODEL = "gemini-nano-banana-2.1";
-const DALL_E_MODEL = "dall-e-3";
+const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-sunburst";
 const FALLBACK_MODELS = ["gemini-nano-banana-2.1", "gemini-3.1-flash-image", "gemini-2.5-flash-image"] as const;
 
 type GeminiImage = { data?: string; mime_type?: string; mimeType?: string };
@@ -92,7 +92,7 @@ async function generateWithOpenAI(prompt: string, apiKey: string): Promise<NextR
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: DALL_E_MODEL,
+        model: OPENAI_IMAGE_MODEL,
         prompt,
         n: 1,
         size: "1024x1024",
@@ -108,7 +108,7 @@ async function generateWithOpenAI(prompt: string, apiKey: string): Promise<NextR
       console.error("OpenAI image request failed", { status: upstream.status, detail: result?.error?.message?.slice(0, 300) });
       return NextResponse.json({ error: upstream.status === 429 ? "Le quota OpenAI est atteint. Vérifie ta facturation et tes limites." : "DALL·E 3 n’a pas pu générer cette image. Réessaie avec une autre description." }, { status: upstream.status === 429 ? 429 : 502 });
     }
-    return NextResponse.json({ image: `data:image/png;base64,${result.data[0].b64_json}`, mimeType: "image/png", model: DALL_E_MODEL });
+    return NextResponse.json({ image: `data:image/png;base64,${result.data[0].b64_json}`, mimeType: "image/png", model: OPENAI_IMAGE_MODEL });
   } catch (error) {
     console.error("OpenAI image request error", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "DALL·E 3 ne répond pas actuellement. Réessaie dans un instant." }, { status: 502 });
