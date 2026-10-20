@@ -7,7 +7,6 @@ export const maxDuration = 60;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const DEFAULT_MODEL = "imagen-3.0-generate-002";
-const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
 const FALLBACK_MODELS = ["gemini-2.5-flash-image"] as const;
 
 type GeminiImage = { data?: string; mime_type?: string; mimeType?: string };
@@ -92,34 +91,6 @@ function extractText(result: GeminiResponse) {
 }
 
 
-async function generateWithOpenAI(prompt: string, apiKey: string): Promise<NextResponse | null> {
-  try {
-    const upstream = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: OPENAI_IMAGE_MODEL,
-        prompt,
-        n: 1,
-        size: "1024x1024",
-        quality: "high",
-        output_format: "png",
-      }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(55_000),
-    });
-    const result = await upstream.json().catch(() => null) as { data?: Array<{ b64_json?: string }>; error?: { message?: string } } | null;
-    if (!upstream.ok || !result?.data?.[0]?.b64_json) {
-      console.error("OpenAI image request failed", { status: upstream.status, detail: result?.error?.message?.slice(0, 300) });
-      return NextResponse.json({ error: upstream.status === 429 ? "Le quota OpenAI est atteint. Vérifie ta facturation et tes limites." : "Le modèle OpenAI GPT Image n’a pas pu générer cette image. Vérifie la clé API, les crédits et l’accès au modèle, puis réessaie." }, { status: upstream.status === 429 ? 429 : 502 });
-    }
-    return NextResponse.json({ image: `data:image/png;base64,${result.data[0].b64_json}`, mimeType: "image/png", model: OPENAI_IMAGE_MODEL });
-  } catch (error) {
-    console.error("OpenAI image request error", error instanceof Error ? error.message : "unknown");
-    return NextResponse.json({ error: "Le service OpenAI GPT Image ne répond pas actuellement. Réessaie dans un instant." }, { status: 502 });
-  }
-}
-
 async function generateWithPollinations(args: { prompt: string; mode: string; imageData: string; mimeType: string; apiKey: string }): Promise<{ ok: boolean; response: NextResponse }> {
   const { prompt, mode, imageData, mimeType, apiKey } = args;
   try {
@@ -179,11 +150,10 @@ async function generateWithPollinations(args: { prompt: string; mode: string; im
 
 export async function POST(request: NextRequest) {
   const geminiApiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
-  const openAiApiKey = process.env.OPENAI_API_KEY;
   const pollinationsApiKey = process.env.POLLINATIONS_API_KEY;
-  if (!geminiApiKey && !openAiApiKey && !pollinationsApiKey) {
+  if (!geminiApiKey) {
     return NextResponse.json(
-      { error: "La génération d’images n’est pas configurée. Ajoute OPENAI_API_KEY, GEMINI_API_KEY ou POLLINATIONS_API_KEY dans Vercel." },
+      { error: "La génération Gemini Imagen 3 n’est pas configurée. Ajoute GEMINI_API_KEY dans Vercel → Settings → Environment Variables, puis redéploie BCX." },
       { status: 503 },
     );
   }
@@ -231,27 +201,8 @@ export async function POST(request: NextRequest) {
       : `Crée une image originale de haute qualité à partir de cette description : ${prompt}. Retourne une image, pas seulement une description textuelle.`,
   });
 
-  if (mode === "edit" && !geminiApiKey && !pollinationsApiKey) {
-    return NextResponse.json({ error: "La modification de photos nécessite GEMINI_API_KEY ou POLLINATIONS_API_KEY. DALL·E 3 est disponible pour les nouvelles créations." }, { status: 503 });
-  }
-
-  // Provider order: Gemini first, then Pollinations, then OpenAI for new image generation.
-  // OpenAI's Images API here supports generation, not the photo-edit workflow.
-  if (!geminiApiKey) {
-    if (pollinationsApiKey) {
-      const generated = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
-      if (generated.ok) return generated.response;
-      if (mode === "generate" && openAiApiKey) {
-        const openAiFallback = await generateWithOpenAI(prompt, openAiApiKey);
-        if (openAiFallback) return openAiFallback;
-      }
-      return generated.response;
-    }
-    if (mode === "generate" && openAiApiKey) {
-      const openAiFallback = await generateWithOpenAI(prompt, openAiApiKey);
-      if (openAiFallback) return openAiFallback;
-    }
-  }
+  // Les créations utilisent Imagen 3 en priorité. Les modifications utilisent le modèle Gemini Image configuré plus bas.
+  // Ne pas basculer silencieusement vers OpenAI : cela masquait les erreurs Gemini par une erreur de quota OpenAI.
 
   // A trailing dot or whitespace is a common Vercel env-var typo; normalize it.
   const configuredModel = (process.env.GEMINI_IMAGE_MODEL || DEFAULT_MODEL).trim().replace(/[.\s]+$/, "");
@@ -317,20 +268,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (!finalResult) {
-    // Automatic fallback chain: Pollinations first, then OpenAI for new image generation.
+    // Secours automatique : Pollinations si le service Gemini ne renvoie pas d’image.
     if (pollinationsApiKey) {
       const fallback = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
       if (fallback.ok) return fallback.response;
       console.error("Pollinations image fallback failed", { geminiStatus: lastStatus });
-      if (mode === "generate" && openAiApiKey) {
-        const openAiFallback = await generateWithOpenAI(prompt, openAiApiKey);
-        if (openAiFallback) return openAiFallback;
-      }
       return fallback.response;
-    }
-    if (mode === "generate" && openAiApiKey) {
-      const openAiFallback = await generateWithOpenAI(prompt, openAiApiKey);
-      if (openAiFallback) return openAiFallback;
     }
     const message = lastStatus === 401 || lastStatus === 403
       ? "La clé Gemini est invalide ou n’a pas accès à la génération d’images. Vérifie GEMINI_API_KEY dans Vercel."
@@ -359,15 +302,7 @@ export async function POST(request: NextRequest) {
   if (pollinationsApiKey) {
     const fallback = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
     if (fallback.ok) return fallback.response;
-    if (mode === "generate" && openAiApiKey) {
-      const openAiFallback = await generateWithOpenAI(prompt, openAiApiKey);
-      if (openAiFallback) return openAiFallback;
-    }
     return fallback.response;
-  }
-  if (mode === "generate" && openAiApiKey) {
-    const openAiFallback = await generateWithOpenAI(prompt, openAiApiKey);
-    if (openAiFallback) return openAiFallback;
   }
   return NextResponse.json(
     { error: text || "Gemini n’a renvoyé aucune image. Essaie une description plus précise.", model: lastModel },
