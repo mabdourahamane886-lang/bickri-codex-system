@@ -6,8 +6,8 @@ export const maxDuration = 60;
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const DEFAULT_MODEL = "imagen-3.0-generate-002";
-const FALLBACK_MODELS = ["gemini-2.5-flash-image"] as const;
+const DEFAULT_MODEL = "gemini-nano-banana-2.1";
+const FALLBACK_MODELS = ["gemini-3.1-flash-image", "gemini-2.5-flash-image"] as const;
 
 type GeminiImage = { data?: string; mime_type?: string; mimeType?: string };
 type GeminiContentPart = {
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
   const pollinationsApiKey = process.env.POLLINATIONS_API_KEY;
   if (!geminiApiKey) {
     return NextResponse.json(
-      { error: "La génération Gemini Imagen 3 n’est pas configurée. Ajoute GEMINI_API_KEY dans Vercel → Settings → Environment Variables, puis redéploie BCX." },
+      { error: "La génération La génération d’images Gemini n’est pas configurée. Ajoute GEMINI_API_KEY dans Vercel → Settings → Environment Variables, puis redéploie BCX." },
       { status: 503 },
     );
   }
@@ -201,11 +201,11 @@ export async function POST(request: NextRequest) {
       : `Crée une image originale de haute qualité à partir de cette description : ${prompt}. Retourne une image, pas seulement une description textuelle.`,
   });
 
-  // Les créations utilisent Imagen 3 en priorité. Les modifications utilisent le modèle Gemini Image configuré plus bas.
+  // Imagen 3 a été arrêté par Google. BCX utilise maintenant les modèles Gemini Image via l’API Interactions.
   // Ne pas basculer silencieusement vers OpenAI : cela masquait les erreurs Gemini par une erreur de quota OpenAI.
 
   // A trailing dot or whitespace is a common Vercel env-var typo; normalize it.
-  const configuredModel = (mode === "edit" ? (process.env.GEMINI_EDIT_MODEL || "gemini-2.5-flash-image") : DEFAULT_MODEL).trim().replace(/[.\\s]+$/, "");
+  const configuredModel = (mode === "edit" ? (process.env.GEMINI_EDIT_MODEL || DEFAULT_MODEL) : DEFAULT_MODEL).trim().replace(/[.\\s]+$/, "");
   const models = [...new Set([configuredModel || DEFAULT_MODEL, ...FALLBACK_MODELS])];
   let lastStatus = 502;
   let lastDetail = "";
@@ -216,36 +216,25 @@ export async function POST(request: NextRequest) {
     lastModel = model;
     let response: Response;
     try {
-      const isImagenPredict = mode === "generate" && model.startsWith("imagen-");
-      response = await fetch(
-        isImagenPredict
-          ? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:predict?key=${encodeURIComponent(geminiApiKey!)}`
-          : "https://generativelanguage.googleapis.com/v1beta/interactions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(!isImagenPredict ? { "x-goog-api-key": geminiApiKey! } : {}),
-          },
-          body: JSON.stringify(isImagenPredict
-            ? {
-                instances: [{ prompt: prompt }],
-                parameters: { sampleCount: 1, aspectRatio: "3:4" },
-              }
-            : {
-                model,
-                input,
-                response_format: {
-                  type: "image",
-                  mime_type: "image/png",
-                  aspect_ratio: "4:5",
-                  image_size: "1K",
-                },
-              }),
-          cache: "no-store",
-          signal: AbortSignal.timeout(55_000),
+      response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": geminiApiKey!,
         },
-      );
+        body: JSON.stringify({
+          model,
+          input,
+          response_format: {
+            type: "image",
+            mime_type: "image/png",
+            aspect_ratio: "4:5",
+            image_size: "1K",
+          },
+        }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(55_000),
+      });
     } catch {
       lastStatus = 502;
       lastDetail = "Gemini request timed out or could not connect.";
@@ -277,8 +266,8 @@ export async function POST(request: NextRequest) {
         const geminiMessage = lastStatus === 429
           ? "Le quota Gemini est également atteint."
           : lastStatus === 401 || lastStatus === 403
-            ? "La clé Gemini est invalide ou n’a pas accès au modèle Imagen."
-            : "Gemini Imagen 3 n’a pas pu générer cette image.";
+            ? "La clé Gemini est invalide ou n’a pas accès au modèle de génération d’images."
+            : "Gemini Image n’a pas pu générer cette image.";
         return NextResponse.json({
           error: `${geminiMessage} Le service de secours Pollinations a aussi atteint sa limite de crédit. Vérifie les quotas des deux fournisseurs puis réessaie.`,
           model: lastModel,
@@ -292,7 +281,7 @@ export async function POST(request: NextRequest) {
       : lastStatus === 429
         ? "Le quota Gemini est atteint. Vérifie les limites et la facturation de ton projet Google AI."
         : lastStatus === 404 || lastStatus === 400
-          ? "Aucun des modèles Gemini Image configurés n’est disponible pour cette clé. Vérifie l’accès au modèle dans Google AI Studio."
+          ? "Aucun des modèles Gemini Image disponibles n’est accessible avec cette clé. Vérifie l’accès au modèle dans Google AI Studio."
           : "La génération d’image Gemini a échoué. Vérifie la configuration et réessaie.";
     return NextResponse.json(
       { error: message, providerDetail: lastDetail || undefined, model: lastModel },
