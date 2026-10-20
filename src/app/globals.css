@@ -1505,3 +1505,53 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
 .bcx-clean-message.user .msg-text{display:inline-block;width:fit-content;max-width:88%;padding:10px 14px;border-radius:18px;background:var(--surface-2,#f1f1f1);white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}
 .bcx-clean-message.assistant .md{width:100%;min-width:0;overflow-wrap:anywhere;word-break:normal}
 @media(max-width:640px){.bcx-classic-chat .chat-main,.bcx-classic-chat .chat-scroll,.bcx-classic-chat .chat-inner{width:100%;min-width:0;max-width:100%}.bcx-classic-chat .chat-inner{padding-left:16px;padding-right:16px}}
+
+
+/* Plugin catalogue: branded, app-store style cards */
+.plugin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.plugin-card { min-width: 0; height: 100%; }
+.plugin-card-body { display: flex; flex-direction: column; align-items: stretch; min-height: 245px; gap: 12px; }
+.plugin-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; }
+.plugin-brand-logo {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--border, rgba(127, 127, 127, .18));
+}
+.plugin-brand-logo svg { display: block; }
+.plugin-brand-logo.notion-logo {
+  background: #fff;
+  color: #111;
+  border: 1px solid #e4e4e4;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 31px;
+  font-weight: 800;
+  letter-spacing: -3px;
+  padding-right: 3px;
+  box-shadow: 2px 2px 0 #111;
+}
+.plugin-brand-logo.github-logo { background: #24292f; color: #fff; border-color: #24292f; }
+.plugin-card-title { font-size: var(--text-md); margin: 0; font-weight: 650; }
+.plugin-card-description { margin: 0; line-height: 1.55; font-size: 14px; flex: 1; }
+.plugin-card-category { font-size: 12px; margin: 0; }
+.plugin-card-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1px solid var(--border, rgba(127, 127, 127, .18)); padding-top: 12px; margin-top: auto; }
+.plugin-state { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted, #777); }
+.plugin-state.is-on { color: var(--success, #16803d); font-weight: 600; }
+.plugin-coming-soon { font-size: 11px; border-radius: 999px; padding: 5px 8px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.plugin-card-future { opacity: .86; }
+@media (max-width: 900px) {
+  .plugin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .plugin-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .plugin-card-body { min-height: 0; }
+}
