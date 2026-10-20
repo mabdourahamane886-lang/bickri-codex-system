@@ -251,6 +251,7 @@ export default function CodeAIPage() {
       return;
     }
     setImageLoading(true); setError(""); setImageResult(null);
+    setPrompt(""); // Comme pour une question normale, vider immédiatement la barre après l’envoi.
     try {
       const response = await fetch("/api/ai/images", {
         method: "POST",
