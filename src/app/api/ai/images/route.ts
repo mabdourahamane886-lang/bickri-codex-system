@@ -6,7 +6,7 @@ export const maxDuration = 60;
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const DEFAULT_MODEL = process.env.GEMINI_IMAGE_MODEL || "imagen-3.0-generate-002";
+const DEFAULT_MODEL = "imagen-3.0-generate-002";
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
 const FALLBACK_MODELS = ["gemini-2.5-flash-image"] as const;
 
