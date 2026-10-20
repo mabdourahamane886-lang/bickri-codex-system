@@ -475,15 +475,13 @@ export default function CodeAIPage() {
                 </div>
               </>
             ) : (
-              <div aria-live="polite" style={{ display: "grid", gap: 22 }}>
+              <div aria-live="polite" className="bcx-message-list" style={{ display: "grid", gap: 16 }}>
                 {messages.map((m, i) => {
                   const isLast = i === messages.length - 1;
                   if (m.role === "assistant" && !m.content && !m.events?.length && !(isLast && loading)) return null;
                   return (
-                    <article key={i} className={`msg ${m.role}`}>
-                      <div className="msg-avatar" aria-hidden="true">{m.role === "user" ? <User /> : <Sparkles />}</div>
-                      <div style={{ minWidth: 0 }}>
-                        <div className="msg-role">{m.role === "user" ? "Toi" : "Bickri AI"}</div>
+                    <article key={i} className={`msg bcx-clean-message ${m.role}`}>
+                      <div className="bcx-message-content" style={{ minWidth: 0, width: "100%" }}>
                         {m.role === "user" ? <div className="msg-text">{m.content}</div> : (
                           <>
                             <ToolEvents events={m.events ?? []} />
