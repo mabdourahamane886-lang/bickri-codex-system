@@ -14,7 +14,8 @@ import { useConfig } from "@/hooks/useConfig";
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
 type PluginStatus = { id: string; name: string; description: string; available: boolean; reason?: string; tools: number; writeTools: number };
-type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string };
+type ImageSearchResult = { title: string; imageUrl: string; thumbnailUrl: string; sourceUrl: string; sourceName: string; width?: number; height?: number };
+type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; images?: ImageSearchResult[] };
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
@@ -278,11 +279,48 @@ export default function CodeAIPage() {
     return /\b(crée|creer|créer|prépare|preparer|préparer|conçois|concevoir|génère|generer|générer|dessine|dessiner|fabrique|produis|produire|make|create|generate|draw)\b.{0,70}\b(image|images|affiche|affiches|logo|logos|illustration|illustrations|visuel|visuels|photo|photos|poster|banner|bannière|banniere)\b|\b(image|affiche|logo|illustration|visuel|photo|poster|bannière|banniere)\b.{0,70}\b(crée|creer|créer|prépare|preparer|préparer|conçois|concevoir|génère|generer|générer|dessine|dessiner|make|create|generate|draw)\b/i.test(text);
   }
 
+  function isImageSearchRequest(text: string) {
+    return /\\b(montre(?:-moi)?|affiche|trouve|recherche|cherche|voir|donne(?:-moi)?)\\b.{0,80}\\b(photos?|images?|photographies)\\b|\\b(photos?|images?|photographies)\\b.{0,80}\\b(de|sur|du|des|pour|à propos de)\\b/i.test(text);
+  }
+
+  async function searchImages(query: string) {
+    const content = query.trim();
+    setMessages((all) => [...all, { role: "user", content }, { role: "assistant", content: "Je recherche des images pertinentes sur le Web…" }]);
+    setPrompt("");
+    setLastMessage(content);
+    setError("");
+    try {
+      const response = await fetch("/api/ai/image-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: content.replace(/\\b(montre(?:-moi)?|affiche|trouve|recherche|cherche|voir|donne(?:-moi)?)\\b/ig, "").replace(/\\b(photos?|images?|photographies)\\b/ig, "").replace(/\\b(de|sur|du|des|pour|à propos de)\\b/ig, " ").trim() || content }),
+      });
+      const data = await response.json().catch(() => ({})) as { images?: ImageSearchResult[]; error?: string };
+      if (!response.ok) throw new Error(data.error || "La recherche d’images a échoué.");
+      const images = Array.isArray(data.images) ? data.images : [];
+      setMessages((all) => all.map((message, index) => index === all.length - 1
+        ? { ...message, content: images.length ? `J’ai trouvé ${images.length} images. Ouvre une image pour consulter sa source.` : "Je n’ai trouvé aucune image pour cette recherche. Essaie avec des mots-clés plus précis.", images }
+        : message));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "La recherche d’images a échoué.";
+      setMessages((all) => all.map((item, index) => index === all.length - 1 ? { ...item, content: message } : item));
+    }
+  }
+
   async function send(text: string) {
     const content = text.trim();
     if ((!content && !chatAttachment) || loading || pending || sendLockRef.current) return;
     sendLockRef.current = true;
     const attachment = chatAttachment;
+    // Les demandes de photos existantes sur le Web affichent une galerie, sans appeler la génération d’images.
+    if (!attachment && imageMode !== "edit" && !imageIntent && isImageSearchRequest(content) && !isImageRequest(content)) {
+      try {
+        await searchImages(content);
+      } finally {
+        sendLockRef.current = false;
+      }
+      return;
+    }
     // Image prompts typed directly in the main composer use the image API automatically.
     // Normal coding/chat prompts continue to the agent as before.
     if (!attachment && (imageIntent || imageMode === "edit" || isImageRequest(content))) {
@@ -486,6 +524,21 @@ export default function CodeAIPage() {
                           <>
                             <ToolEvents events={m.events ?? []} />
                             {m.content && <Markdown>{m.content}</Markdown>}
+                            {!!m.images?.length && (
+                              <div className="bcx-image-search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 12, marginTop: 14 }}>
+                                {m.images.map((image, imageIndex) => (
+                                  <article key={image.imageUrl + imageIndex} style={{ minWidth: 0, border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", background: "var(--surface)" }}>
+                                    <a href={image.sourceUrl || image.imageUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block" }} aria-label={`Ouvrir la source de ${image.title}`}>
+                                      <img src={image.thumbnailUrl || image.imageUrl} alt={image.title} loading="lazy" referrerPolicy="no-referrer" style={{ display: "block", width: "100%", height: 180, objectFit: "cover", background: "var(--surface-muted)" }} />
+                                    </a>
+                                    <div style={{ padding: 10 }}>
+                                      <p style={{ fontSize: 13, margin: "0 0 6px", overflowWrap: "anywhere" }}>{image.title}</p>
+                                      {image.sourceUrl && <a href={image.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{image.sourceName || "Voir la source"} ↗</a>}
+                                    </div>
+                                  </article>
+                                ))}
+                              </div>
+                            )}
                             {m.content && (
                               <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: "wrap" }} aria-label="Actions sur la réponse">
                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => { void navigator.clipboard.writeText(m.content).catch(() => setError("Impossible de copier la réponse sur cet appareil.")); }} aria-label="Copier la réponse" title="Copier la réponse"><Copy size={15} /> Copier</button>
