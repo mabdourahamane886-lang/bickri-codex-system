@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const webResults = isWebSearchConfigured() && shouldSearchWeb(latestUserQuery)
       ? await searchWeb(latestUserQuery, 5)
       : [];
-    const retrievedContext = [formatRetrievedKnowledge(retrieved), formatWebSearchResults(webResults)].filter(Boolean).join("\\n\\n");
+    const retrievedContext = [formatRetrievedKnowledge(retrieved), formatWebSearchResults(webResults)].filter(Boolean).join("\n\n");
     const result = await generateWithRouter({
       systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery, retrievedContext),
       messages,
