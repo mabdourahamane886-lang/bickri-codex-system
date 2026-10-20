@@ -6,7 +6,7 @@ export const maxDuration = 60;
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const DEFAULT_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
+const DEFAULT_MODEL = process.env.GEMINI_IMAGE_MODEL || "imagen-3.0-generate-002";
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
 const FALLBACK_MODELS = ["gemini-2.5-flash-image"] as const;
 
@@ -22,6 +22,7 @@ type GeminiContentPart = {
 };
 type GeminiStep = { content?: GeminiContentPart[] | string; output_image?: GeminiImage };
 type GeminiResponse = {
+  predictions?: Array<{ bytesBase64Encoded?: string; mimeType?: string }>;
   output_image?: GeminiImage;
   steps?: GeminiStep[];
   candidates?: Array<{ content?: { parts?: GeminiContentPart[] } }>;
@@ -40,6 +41,11 @@ function imageFromPart(part: GeminiContentPart) {
 }
 
 function extractImage(result: GeminiResponse) {
+  const prediction = result.predictions?.find((item) => typeof item.bytesBase64Encoded === "string" && item.bytesBase64Encoded.length > 0);
+  if (prediction?.bytesBase64Encoded) {
+    return { data: prediction.bytesBase64Encoded, mimeType: prediction.mimeType ?? "image/png" };
+  }
+
   if (result.output_image?.data) {
     return {
       data: result.output_image.data,
@@ -259,25 +265,36 @@ export async function POST(request: NextRequest) {
     lastModel = model;
     let response: Response;
     try {
-      response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": geminiApiKey!,
-        },
-        body: JSON.stringify({
-          model,
-          input,
-          response_format: {
-            type: "image",
-            mime_type: "image/png",
-            aspect_ratio: "4:5",
-            image_size: "1K",
+      const isImagenPredict = mode === "generate" && model.startsWith("imagen-");
+      response = await fetch(
+        isImagenPredict
+          ? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:predict?key=${encodeURIComponent(geminiApiKey!)}`
+          : "https://generativelanguage.googleapis.com/v1beta/interactions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(!isImagenPredict ? { "x-goog-api-key": geminiApiKey! } : {}),
           },
-        }),
-        cache: "no-store",
-        signal: AbortSignal.timeout(55_000),
-      });
+          body: JSON.stringify(isImagenPredict
+            ? {
+                instances: [{ prompt: prompt }],
+                parameters: { sampleCount: 1, aspectRatio: "3:4" },
+              }
+            : {
+                model,
+                input,
+                response_format: {
+                  type: "image",
+                  mime_type: "image/png",
+                  aspect_ratio: "4:5",
+                  image_size: "1K",
+                },
+              }),
+          cache: "no-store",
+          signal: AbortSignal.timeout(55_000),
+        },
+      );
     } catch {
       lastStatus = 502;
       lastDetail = "Gemini request timed out or could not connect.";
