@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
   // Ne pas basculer silencieusement vers OpenAI : cela masquait les erreurs Gemini par une erreur de quota OpenAI.
 
   // A trailing dot or whitespace is a common Vercel env-var typo; normalize it.
-  const configuredModel = (process.env.GEMINI_IMAGE_MODEL || DEFAULT_MODEL).trim().replace(/[.\s]+$/, "");
+  const configuredModel = (mode === "edit" ? (process.env.GEMINI_EDIT_MODEL || "gemini-2.5-flash-image") : DEFAULT_MODEL).trim().replace(/[.\\s]+$/, "");
   const models = [...new Set([configuredModel || DEFAULT_MODEL, ...FALLBACK_MODELS])];
   let lastStatus = 502;
   let lastDetail = "";
