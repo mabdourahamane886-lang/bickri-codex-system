@@ -60,9 +60,10 @@ export async function generateContent(opts: {
     .filter(Boolean);
   const preferredModels = [opts.model, opts.fallbackModel, ...configuredFallbacks]
     .filter((model, index, all) => Boolean(model) && all.indexOf(model) === index);
-  const models = Date.now() < primaryDownUntil
+  const healthyModels = Date.now() < primaryDownUntil
     ? preferredModels.filter((model) => model !== opts.model)
     : preferredModels;
+  const models = healthyModels.length ? healthyModels : preferredModels;
   let lastError: AIError | null = null;
 
   for (const model of models) {
