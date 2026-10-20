@@ -3,6 +3,7 @@ import { AIError } from "@/lib/ai/gemini";
 import { generateWithRouter } from "@/lib/ai/router";
 import { buildSystemInstruction } from "@/lib/ai/prompt";
 import { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
+import { formatWebSearchResults, isWebSearchConfigured, searchWeb, shouldSearchWeb } from "@/lib/ai/web-search";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -30,11 +31,21 @@ export async function POST(request: NextRequest) {
   try {
     const latestUserQuery = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
     const retrieved = await retrieveKnowledge(latestUserQuery, 5);
+    const webResults = isWebSearchConfigured() && shouldSearchWeb(latestUserQuery)
+      ? await searchWeb(latestUserQuery, 5)
+      : [];
+    const retrievedContext = [formatRetrievedKnowledge(retrieved), formatWebSearchResults(webResults)].filter(Boolean).join("\\n\\n");
     const result = await generateWithRouter({
-      systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery, formatRetrievedKnowledge(retrieved)),
+      systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery, retrievedContext),
       messages,
     });
-    return NextResponse.json({ answer: result.answer, model: result.model, provider: result.provider });
+    return NextResponse.json({
+      answer: result.answer,
+      model: result.model,
+      provider: result.provider,
+      sources: webResults.map(({ title, url, snippet, source }) => ({ title, url, snippet, source })),
+      webSearch: { configured: isWebSearchConfigured(), used: webResults.length > 0 },
+    });
   } catch (error) {
     if (error instanceof AIError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
     console.error("Erreur de connexion IA", error instanceof Error ? error.message : "erreur inconnue");
