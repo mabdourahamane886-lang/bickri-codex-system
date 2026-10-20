@@ -11,7 +11,6 @@ const PLUGINS_KEY = "bcx_ai_plugins_v1";
 const ICONS: Record<string, typeof GitBranch> = { github: GitBranch, registry: Fingerprint, web: Globe, deployments: Globe, social: Globe };
 const CATEGORIES: Record<string, string> = { github: "Développement", deployments: "Déploiement", registry: "Outils BCX", web: "Recherche", social: "Réseaux sociaux", "google-drive": "Productivité", notion: "Productivité" };
 const FUTURE_INTEGRATIONS = [
-  { name: "Google Drive", category: "Productivité", description: "Rechercher et consulter des documents connectés." },
   { name: "Slack", category: "Communication", description: "Rechercher des messages et résumer des échanges." },
   { name: "Figma", category: "Design", description: "Consulter des fichiers de conception et leurs détails." },
   { name: "Discord", category: "Communication", description: "Rechercher des discussions et informations de communauté." },
