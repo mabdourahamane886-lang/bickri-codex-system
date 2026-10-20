@@ -116,12 +116,36 @@ export async function runAgent(opts: {
     .join("\n")
     .slice(-8000);
   const retrieved = await retrieveKnowledge(latestUserQuery, 5);
+  // La mémoire n'est chargée que pour l'utilisateur connecté et reste strictement limitée à son compte.
+  let authorizedMemory = "";
+  if (opts.ctx.user && opts.ctx.supabase) {
+    try {
+      const { data: memories, error } = await opts.ctx.supabase
+        .from("bcx_ai_memories")
+        .select("title,content,category,updated_at")
+        .eq("user_id", opts.ctx.user.id)
+        .order("updated_at", { ascending: false })
+        .limit(12);
+      if (!error && Array.isArray(memories)) {
+        authorizedMemory = memories
+          .map((memory: { title?: string; content?: string; category?: string }) =>
+            `[${String(memory.category || "general").slice(0, 40)}] ${String(memory.title || "").slice(0, 120)}: ${String(memory.content || "").slice(0, 1200)}`)
+          .join("\\n")
+          .slice(0, 12000);
+      } else if (error) {
+        console.error("BCX memory context read failed", error.code);
+      }
+    } catch (error) {
+      console.error("BCX memory context unavailable", error instanceof Error ? error.message : "unknown");
+    }
+  }
   const system = buildSystemInstruction(
     opts.language,
     opts.projectContext,
     [...tools.keys()],
     latestUserQuery,
     formatRetrievedKnowledge(retrieved),
+    authorizedMemory,
   );
   let model: string | undefined;
 
