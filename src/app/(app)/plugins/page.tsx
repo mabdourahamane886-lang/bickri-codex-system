@@ -2,20 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Check, CircleAlert, CircleDashed, Cloud, Fingerprint, Github, Globe, HardDrive, MessageSquare, Palette, Plug, RefreshCw, Search, Share2, SlidersHorizontal, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, CircleAlert, CircleDashed, Cloud, Fingerprint, Github, Globe, HardDrive, Plug, RefreshCw, Search, Share2, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 
 type PluginStatus = { id: string; name: string; description: string; available: boolean; reason?: string; tools: number; writeTools: number };
 const PLUGINS_KEY = "bcx_ai_plugins_v1";
 const CATEGORIES: Record<string, string> = { github: "Développement", registry: "Outils BCX", web: "Recherche web", deployments: "Déploiement", social: "Réseaux sociaux", "google-drive": "Productivité", notion: "Productivité" };
-
-const FUTURE_INTEGRATIONS = [
-  { id: "slack", name: "Slack", category: "Communication", description: "Rechercher des messages et résumer des échanges.", Icon: MessageSquare },
-  { id: "figma", name: "Figma", category: "Design", description: "Consulter des fichiers de conception et leurs détails.", Icon: Palette },
-  { id: "discord", name: "Discord", category: "Communauté", description: "Rechercher des discussions et informations de communauté.", Icon: MessageSquare },
-  { id: "google-calendar", name: "Google Calendar", category: "Productivité", description: "Consulter les événements et préparer les réunions.", Icon: CalendarDays },
-];
 
 function PluginLogo({ id }: { id: string }) {
   if (id === "google-drive") {
@@ -89,7 +82,7 @@ export default function PluginsPage() {
     const matchesFilter = filter === "all" || (filter === "active" ? isActive : plugin.available);
     return matchesQuery && matchesFilter;
   });
-  const filteredFuture = FUTURE_INTEGRATIONS.filter((item) => `${item.name} ${item.category} ${item.description}`.toLowerCase().includes(query.trim().toLowerCase()));
+
 
   return (
     <main className="content" style={{ maxWidth: 1120 }}>
@@ -142,12 +135,6 @@ export default function PluginsPage() {
       </div>
       {filteredPlugins.length === 0 && !loading && <div className="card card-body" style={{ marginTop: 12 }}><p>Aucun plugin ne correspond à cette recherche ou à ce filtre.</p><button className="btn btn-ghost btn-sm" style={{ marginTop: 10, justifySelf: "start" }} onClick={() => { setQuery(""); setFilter("all"); }}>Effacer les filtres</button></div>}
 
-      <section style={{ marginTop: 34 }}>
-        <div className="row" style={{ gap: 10, marginBottom: 14 }}><Sparkles size={19} aria-hidden="true" /><div><h2 style={{ fontSize: "var(--text-lg)" }}>Découvrir d’autres intégrations</h2><p className="muted" style={{ marginTop: 4 }}>Ces intégrations sont présentées à titre indicatif : elles ne sont pas encore connectées à BCX.</p></div></div>
-        <div className="plugin-grid">
-          {filteredFuture.map(({ id, name, category, description, Icon }) => <article className="card plugin-card plugin-card-future" key={id}><div className="card-body plugin-card-body"><div className="plugin-card-top"><span className="plugin-brand-logo"><Icon size={25} strokeWidth={1.8} /></span><Badge tone="neutral">Bientôt</Badge></div><h3 className="plugin-card-title">{name}</h3><p className="plugin-card-description">{description}</p><p className="muted plugin-card-category">{category}</p><div className="plugin-card-footer"><span className="muted" style={{ fontSize: 12 }}>Pas encore connecté</span><span className="plugin-coming-soon">À intégrer</span></div></div></article>)}
-        </div>
-      </section>
       <p className="muted" style={{ marginTop: 20, fontSize: 13 }}>Les préférences sont enregistrées sur cet appareil et partagées avec le chat BCX. Les actions sensibles conservent leurs contrôles de sécurité.</p>
     </main>
   );
