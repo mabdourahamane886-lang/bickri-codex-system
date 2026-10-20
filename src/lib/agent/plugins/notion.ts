@@ -38,6 +38,7 @@ export const notionPlugin: Plugin = {
   description: "Recherche les pages Notion partagées avec l'intégration et lit leur contenu textuel. Lecture seule.",
   async load(ctx) {
     if (!ctx.user) return { tools: [], reason: "Connecte-toi à BCX pour utiliser Notion." };
+    if (!ctx.trusted) return { tools: [], reason: "Cette intégration partagée est réservée aux comptes BCX autorisés (admin/éditeur). Configure un accès OAuth individuel pour ouvrir l'accès à chaque utilisateur." };
     if (!process.env.NOTION_API_KEY) return { tools: [], reason: "À configurer : ajoute NOTION_API_KEY dans les variables serveur BCX et partage les pages voulues avec l'intégration Notion." };
     return { tools: [
       {
