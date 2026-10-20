@@ -1497,3 +1497,11 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .bcx-classic-chat .bcx-thinking-caret,
   .bcx-classic-chat .bcx-thinking-label { animation: none !important; }
 }
+
+/* Fix narrow chat messages on mobile after removing message avatars. */
+.bcx-message-list{display:flex!important;flex-direction:column;width:100%;min-width:0;gap:22px!important}
+.bcx-clean-message{display:block!important;width:100%;min-width:0;max-width:100%;margin:0}
+.bcx-clean-message .bcx-message-content{display:block;width:100%;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:normal}
+.bcx-clean-message.user .msg-text{display:inline-block;width:fit-content;max-width:88%;padding:10px 14px;border-radius:18px;background:var(--surface-2,#f1f1f1);white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}
+.bcx-clean-message.assistant .md{width:100%;min-width:0;overflow-wrap:anywhere;word-break:normal}
+@media(max-width:640px){.bcx-classic-chat .chat-main,.bcx-classic-chat .chat-scroll,.bcx-classic-chat .chat-inner{width:100%;min-width:0;max-width:100%}.bcx-classic-chat .chat-inner{padding-left:16px;padding-right:16px}}
