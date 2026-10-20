@@ -85,6 +85,7 @@ export default function CodeAIPage() {
   const [thinkingStep, setThinkingStep] = useState(0);
   const [error, setError] = useState("");
   const [lastMessage, setLastMessage] = useState("");
+  const [copiedPromptIndex, setCopiedPromptIndex] = useState<number | null>(null);
   const [plugins, setPlugins] = useState<PluginStatus[] | null>(null);
   const [account, setAccount] = useState<{ signedIn: boolean; trusted: boolean } | null>(null);
   const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
@@ -520,7 +521,31 @@ export default function CodeAIPage() {
                   return (
                     <article key={i} className={`msg bcx-clean-message ${m.role}`}>
                       <div className="bcx-message-content" style={{ minWidth: 0, width: "100%" }}>
-                        {m.role === "user" ? <div className="msg-text">{m.content}</div> : (
+                        {m.role === "user" ? (
+                          <>
+                            <div className="msg-text">{m.content}</div>
+                            <div className="row" style={{ gap: 6, marginTop: 8 }}>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(m.content);
+                                    setCopiedPromptIndex(i);
+                                    window.setTimeout(() => setCopiedPromptIndex((current) => current === i ? null : current), 1800);
+                                  } catch {
+                                    setError("Impossible de copier le prompt sur cet appareil.");
+                                  }
+                                }}
+                                aria-label="Copier la question ou le prompt"
+                                title="Copier la question ou le prompt"
+                              >
+                                {copiedPromptIndex === i ? <Check size={15} /> : <Copy size={15} />}
+                                {copiedPromptIndex === i ? "Copié" : "Copier le prompt"}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
                           <>
                             <ToolEvents events={m.events ?? []} />
                             {m.content && <Markdown>{m.content}</Markdown>}
