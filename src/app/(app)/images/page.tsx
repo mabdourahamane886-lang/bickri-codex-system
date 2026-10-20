@@ -69,6 +69,7 @@ export default function ImageStudioPage() {
     setLoading(true);
     setError("");
     setResult(null);
+    setPrompt(""); // Vider la saisie dès l’envoi, comme dans le chat BCX.
     try {
       const response = await fetch("/api/ai/images", {
         method: "POST",
@@ -96,7 +97,7 @@ export default function ImageStudioPage() {
 
   return (
     <main className="content">
-      <PageHeader title="Studio d’images IA" description="Crée des images originales avec DALL·E 3 en qualité HD, ou transforme tes propres photos avec l’IA." />
+      <PageHeader title="Studio d’images IA" description="Crée des images originales avec Gemini Imagen 3, ou transforme tes propres photos avec l’IA." />
 
       <div className="grid-2" style={{ alignItems: "start" }}>
         <section className="card card-pad stack" style={{ gap: 18 }}>
