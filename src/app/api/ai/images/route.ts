@@ -273,6 +273,18 @@ export async function POST(request: NextRequest) {
       const fallback = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
       if (fallback.ok) return fallback.response;
       console.error("Pollinations image fallback failed", { geminiStatus: lastStatus });
+      if (fallback.response.status === 402) {
+        const geminiMessage = lastStatus === 429
+          ? "Le quota Gemini est également atteint."
+          : lastStatus === 401 || lastStatus === 403
+            ? "La clé Gemini est invalide ou n’a pas accès au modèle Imagen."
+            : "Gemini Imagen 3 n’a pas pu générer cette image.";
+        return NextResponse.json({
+          error: `${geminiMessage} Le service de secours Pollinations a aussi atteint sa limite de crédit. Vérifie les quotas des deux fournisseurs puis réessaie.`,
+          model: lastModel,
+          providerDetail: lastDetail || undefined,
+        }, { status: 502 });
+      }
       return fallback.response;
     }
     const message = lastStatus === 401 || lastStatus === 403
@@ -302,6 +314,12 @@ export async function POST(request: NextRequest) {
   if (pollinationsApiKey) {
     const fallback = await generateWithPollinations({ prompt, mode, imageData: typeof body.imageData === "string" ? body.imageData : "", mimeType: typeof body.mimeType === "string" ? body.mimeType : "", apiKey: pollinationsApiKey });
     if (fallback.ok) return fallback.response;
+    if (fallback.response.status === 402) {
+      return NextResponse.json({
+        error: "Gemini n’a renvoyé aucune image et le service de secours Pollinations a atteint sa limite de crédit. Vérifie les quotas des fournisseurs puis réessaie.",
+        model: lastModel,
+      }, { status: 502 });
+    }
     return fallback.response;
   }
   return NextResponse.json(
