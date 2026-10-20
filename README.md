@@ -92,8 +92,8 @@ L'assistant peut appeler de vrais outils pendant la conversation (appel de fonct
 | Registre BCX | Lister les identifiants, calculer le prochain code libre, créer un identifiant | Tout compte connecté (règles RLS) |
 | Web | Recherche Web via Tavily et lecture de pages publiques | Tout compte connecté ; `TAVILY_API_KEY` pour la recherche |
 | Réseaux sociaux | Recherche de contenus publics indexés sur YouTube, Instagram, Facebook, TikTok, X et LinkedIn | Tout compte connecté ; `TAVILY_API_KEY` requis |
-| Google Drive | Rechercher des fichiers et lire des documents texte/Google Docs, en lecture seule | OAuth serveur configuré ; accès limité aux fichiers autorisés au compte OAuth |
-| Notion | Rechercher et lire des pages et blocs partagés avec l'intégration, en lecture seule | `NOTION_API_KEY` et partage explicite des pages avec l'intégration |
+| Google Drive | Rechercher des fichiers et lire des documents texte/Google Docs, en lecture seule | OAuth serveur configuré ; réservé aux comptes BCX admin/éditeur ; accès limité aux fichiers autorisés au compte OAuth |
+| Notion | Rechercher et lire des pages et blocs partagés avec l'intégration, en lecture seule | `NOTION_API_KEY`, partage explicite des pages et compte BCX admin/éditeur |
 
 Garde-fous :
 
@@ -104,7 +104,7 @@ Garde-fous :
 - Les résultats d'outils sont traités comme des données non fiables dans les instructions du modèle.
 - Google Drive : active l'API Google Drive dans Google Cloud, configure OAuth 2.0 et obtiens un refresh token avec le scope `https://www.googleapis.com/auth/drive.readonly`. Renseigne les variables OAuth côté serveur ; ne partage jamais ces secrets côté client.
 - Notion : crée une intégration interne, renseigne son token dans `NOTION_API_KEY`, puis partage chaque page/base nécessaire avec cette intégration. Les pages non partagées restent inaccessibles.
-- Ces deux plugins sont en lecture seule. Les identifiants configurés côté serveur représentent des connexions d'intégration partagées, pas un flux OAuth individuel par utilisateur BCX.
+- Ces deux plugins sont en lecture seule et réservés aux comptes BCX de confiance (admin/éditeur), car les identifiants configurés côté serveur sont des connexions partagées, pas un flux OAuth individuel par utilisateur BCX.
 
 Ajouter un plugin : créer `src/lib/agent/plugins/<nom>.ts` qui implémente l'interface `Plugin` (`src/lib/agent/types.ts`), puis l'ajouter à `src/lib/agent/plugins/index.ts`.
 
