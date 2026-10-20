@@ -9,6 +9,8 @@ export async function GET() {
     reasoningProtocol: true,
     codeAgent: true,
     knowledgeRetrieval: true,
+    googleWebSearch: Boolean(process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID),
+    webSearch: Boolean(process.env.TAVILY_API_KEY || (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID)),
     imageGeneration: Boolean(process.env.GEMINI_API_KEY || process.env.AI_API_KEY),
     voiceInterface: true,
     memoryStorage: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
