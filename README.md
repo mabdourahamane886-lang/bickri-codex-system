@@ -74,6 +74,11 @@ Copie `.env.example` vers `.env.local` en local, ou configure-les dans **Vercel 
 | `BCX_ADMIN_EMAILS` | Non | E-mails (séparés par des virgules) des comptes autorisés à utiliser le plugin GitHub |
 | `GITHUB_ALLOWED_OWNERS` | Non | Propriétaires GitHub autorisés pour les comptes de confiance (défaut : `mabdourahamane886-lang`) |
 | `GITHUB_ALLOWED_REPOSITORIES` | Non | Dépôts accessibles en lecture et écriture à tous les comptes connectés (défaut : `mabdourahamane886-lang/bickri-codex-system`, liste séparée par des virgules) |
+| `GOOGLE_DRIVE_CLIENT_ID` | Pour Google Drive | Identifiant OAuth côté serveur |
+| `GOOGLE_DRIVE_CLIENT_SECRET` | Pour Google Drive | Secret OAuth côté serveur |
+| `GOOGLE_DRIVE_REFRESH_TOKEN` | Pour Google Drive | Jeton de renouvellement OAuth avec accès Drive en lecture seule |
+| `GOOGLE_DRIVE_FOLDER_ID` | Non | Limite facultative des recherches à un dossier Drive |
+| `NOTION_API_KEY` | Pour Notion | Jeton d'une intégration Notion interne ; partager les pages avec l'intégration |
 
 Ne préfixe jamais une clé secrète par `NEXT_PUBLIC_` et n'expose jamais une clé `service_role`. La page `/settings` indique ce qui est configuré sans jamais afficher les valeurs.
 
@@ -87,6 +92,8 @@ L'assistant peut appeler de vrais outils pendant la conversation (appel de fonct
 | Registre BCX | Lister les identifiants, calculer le prochain code libre, créer un identifiant | Tout compte connecté (règles RLS) |
 | Web | Recherche Web via Tavily et lecture de pages publiques | Tout compte connecté ; `TAVILY_API_KEY` pour la recherche |
 | Réseaux sociaux | Recherche de contenus publics indexés sur YouTube, Instagram, Facebook, TikTok, X et LinkedIn | Tout compte connecté ; `TAVILY_API_KEY` requis |
+| Google Drive | Rechercher des fichiers et lire des documents texte/Google Docs, en lecture seule | OAuth serveur configuré ; accès limité aux fichiers autorisés au compte OAuth |
+| Notion | Rechercher et lire des pages et blocs partagés avec l'intégration, en lecture seule | `NOTION_API_KEY` et partage explicite des pages avec l'intégration |
 
 Garde-fous :
 
@@ -95,6 +102,9 @@ Garde-fous :
 - Outils GitHub exclus volontairement : suppression de fichiers, fusion de pull requests, création ou fork de dépôts.
 - Le plugin Web refuse les adresses privées et internes (protection SSRF) et limite la taille des réponses.
 - Les résultats d'outils sont traités comme des données non fiables dans les instructions du modèle.
+- Google Drive : active l'API Google Drive dans Google Cloud, configure OAuth 2.0 et obtiens un refresh token avec le scope `https://www.googleapis.com/auth/drive.readonly`. Renseigne les variables OAuth côté serveur ; ne partage jamais ces secrets côté client.
+- Notion : crée une intégration interne, renseigne son token dans `NOTION_API_KEY`, puis partage chaque page/base nécessaire avec cette intégration. Les pages non partagées restent inaccessibles.
+- Ces deux plugins sont en lecture seule. Les identifiants configurés côté serveur représentent des connexions d'intégration partagées, pas un flux OAuth individuel par utilisateur BCX.
 
 Ajouter un plugin : créer `src/lib/agent/plugins/<nom>.ts` qui implémente l'interface `Plugin` (`src/lib/agent/types.ts`), puis l'ajouter à `src/lib/agent/plugins/index.ts`.
 
