@@ -2,19 +2,30 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CircleAlert, CircleCheck, CircleDashed, Fingerprint, GitBranch, Globe, Plug, RefreshCw } from "lucide-react";
+import { ArrowLeft, CircleAlert, CircleDashed, Fingerprint, GitBranch, Globe, Plug, RefreshCw, Search, Sparkles, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 
 type PluginStatus = { id: string; name: string; description: string; available: boolean; reason?: string; tools: number; writeTools: number };
 const PLUGINS_KEY = "bcx_ai_plugins_v1";
-const ICONS: Record<string, typeof GitBranch> = { github: GitBranch, registry: Fingerprint, web: Globe };
+const ICONS: Record<string, typeof GitBranch> = { github: GitBranch, registry: Fingerprint, web: Globe, deployments: Globe, social: Globe };
+const CATEGORIES: Record<string, string> = { github: "Développement", deployments: "Déploiement", registry: "Outils BCX", web: "Recherche", social: "Réseaux sociaux" };
+const FUTURE_INTEGRATIONS = [
+  { name: "Google Drive", category: "Productivité", description: "Rechercher et consulter des documents connectés." },
+  { name: "Notion", category: "Productivité", description: "Explorer des pages et bases de connaissances." },
+  { name: "Slack", category: "Communication", description: "Rechercher des messages et résumer des échanges." },
+  { name: "Figma", category: "Design", description: "Consulter des fichiers de conception et leurs détails." },
+  { name: "Discord", category: "Communication", description: "Rechercher des discussions et informations de communauté." },
+  { name: "Google Calendar", category: "Productivité", description: "Consulter les événements et préparer les réunions." },
+];
 
 export default function PluginsPage() {
   const [plugins, setPlugins] = useState<PluginStatus[] | null>(null);
   const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | "active" | "available">("all");
 
   const loadPlugins = useCallback(async () => {
     setLoading(true);
@@ -50,6 +61,12 @@ export default function PluginsPage() {
 
   const availableCount = (plugins ?? []).filter((plugin) => plugin.available).length;
   const activeCount = (plugins ?? []).filter((plugin) => plugin.available && enabled.includes(plugin.id)).length;
+  const filteredPlugins = (plugins ?? []).filter((plugin) => {
+    const matchesQuery = `${plugin.name} ${plugin.description} ${CATEGORIES[plugin.id] ?? ""}`.toLowerCase().includes(query.trim().toLowerCase());
+    const isActive = plugin.available && enabled.includes(plugin.id);
+    const matchesFilter = filter === "all" || (filter === "active" ? isActive : plugin.available);
+    return matchesQuery && matchesFilter;
+  });
 
   return (
     <main className="content" style={{ maxWidth: 1000 }}>
@@ -67,8 +84,18 @@ export default function PluginsPage() {
       {error && <div className="alert alert-danger"><CircleAlert /><span>{error}</span></div>}
       {loading && !plugins && <div className="card card-body row"><CircleDashed className="spin" /><span>Chargement des plugins…</span></div>}
       {plugins?.length === 0 && !loading && !error && <div className="card card-body">Aucun plugin n’est actuellement fourni par le serveur.</div>}
+      <section className="card" style={{ marginBottom: 18 }}>
+        <div className="card-body" style={{ display: "grid", gap: 12 }}>
+          <div className="row" style={{ gap: 8 }}><Search size={17} aria-hidden="true" /><input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un plugin ou une intégration…" aria-label="Rechercher un plugin" /></div>
+          <div className="row" style={{ gap: 8, flexWrap: "wrap" }} aria-label="Filtrer les plugins">
+            <SlidersHorizontal size={16} aria-hidden="true" />
+            {([{ id: "all", label: "Tous" }, { id: "active", label: "Actifs" }, { id: "available", label: "Disponibles" }] as const).map((item) => <button key={item.id} type="button" className={filter === item.id ? "btn btn-primary btn-sm" : "btn btn-sm"} onClick={() => setFilter(item.id)} aria-pressed={filter === item.id}>{item.label}</button>)}
+            <span className="muted" style={{ marginLeft: "auto", fontSize: 12 }}>{filteredPlugins.length} résultat(s)</span>
+          </div>
+        </div>
+      </section>
       <div className="stack" style={{ gap: 12 }}>
-        {(plugins ?? []).map((plugin) => {
+        {filteredPlugins.map((plugin) => {
           const Icon = ICONS[plugin.id] ?? Plug;
           const isOn = enabled.includes(plugin.id) && plugin.available;
           return (
@@ -82,6 +109,7 @@ export default function PluginsPage() {
                     {plugin.available && plugin.writeTools > 0 && <Badge tone="gold">Écriture validée</Badge>}
                   </div>
                   <p style={{ marginTop: 8 }}>{plugin.available ? plugin.description : (plugin.reason || "Ce plugin n’est pas configuré sur le serveur.")}</p>
+                  <p className="muted" style={{ fontSize: 12, marginTop: 5 }}>Catégorie : {CATEGORIES[plugin.id] ?? "Intégration"}</p>
                   <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>{plugin.tools} outil(s) · {plugin.writeTools} action(s) d’écriture</p>
                 </div>
                 <button type="button" role="switch" aria-checked={isOn} aria-label={`Activer le plugin ${plugin.name}`} className="switch" disabled={!plugin.available} onClick={() => toggle(plugin.id)}><i /></button>
@@ -89,7 +117,14 @@ export default function PluginsPage() {
             </article>
           );
         })}
+        {filteredPlugins.length === 0 && !loading && <div className="card card-body"><p>Aucun plugin ne correspond à cette recherche ou à ce filtre.</p><button className="btn btn-ghost btn-sm" style={{ marginTop: 10, justifySelf: "start" }} onClick={() => { setQuery(""); setFilter("all"); }}>Effacer les filtres</button></div>}
       </div>
+      <section style={{ marginTop: 30 }}>
+        <div className="row" style={{ gap: 10, marginBottom: 12 }}><Sparkles size={19} aria-hidden="true" /><div><h2 style={{ fontSize: "var(--text-lg)" }}>Explorer d’autres intégrations</h2><p className="muted" style={{ marginTop: 4 }}>Pistes pour enrichir BCX. Elles ne sont pas encore connectées et ne peuvent pas être activées pour le moment.</p></div></div>
+        <div className="stack" style={{ gap: 10 }}>
+          {FUTURE_INTEGRATIONS.filter((item) => `${item.name} ${item.category} ${item.description}`.toLowerCase().includes(query.trim().toLowerCase())).map((item) => <article className="card" key={item.name}><div className="card-body row" style={{ alignItems: "flex-start", gap: 12 }}><span className="plugin-icon" aria-hidden="true"><Plug size={20} /></span><div className="grow" style={{ minWidth: 0 }}><div className="row" style={{ gap: 8, flexWrap: "wrap" }}><h3 style={{ fontSize: "var(--text-md)" }}>{item.name}</h3><Badge tone="neutral">À intégrer</Badge></div><p style={{ marginTop: 6 }}>{item.description}</p><p className="muted" style={{ fontSize: 12, marginTop: 6 }}>Catégorie : {item.category}</p></div></div></article>)}
+        </div>
+      </section>
       <p className="muted" style={{ marginTop: 20, fontSize: 13 }}>Les préférences sont enregistrées sur cet appareil et partagées avec le chat BCX. Les actions d’écriture sensibles continuent de demander une validation lorsqu’elle est nécessaire.</p>
     </main>
   );
