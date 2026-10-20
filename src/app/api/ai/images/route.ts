@@ -6,8 +6,8 @@ export const maxDuration = 60;
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const DEFAULT_MODEL = "gemini-nano-banana-2.1";
-const FALLBACK_MODELS = ["gemini-3.1-flash-image", "gemini-2.5-flash-image"] as const;
+const DEFAULT_MODEL = (process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image").trim();
+const FALLBACK_MODELS = ["gemini-nano-banana-2.1", "gemini-2.5-flash-image"] as const;
 
 type GeminiImage = { data?: string; mime_type?: string; mimeType?: string };
 type GeminiContentPart = {
