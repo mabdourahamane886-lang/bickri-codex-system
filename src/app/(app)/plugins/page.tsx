@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, CircleAlert, CircleDashed, Cloud, Fingerprint, Github, Globe, HardDrive, Plug, RefreshCw, Search, Share2, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Check, CircleAlert, CircleDashed, Cloud, Fingerprint, Github, Globe, Plug, RefreshCw, Search, Share2, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 
