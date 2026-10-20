@@ -46,7 +46,8 @@ export const drivePlugin: Plugin = {
           if (!query) return { error: "Saisis des mots-clés pour rechercher un fichier." };
           const token = await getDriveToken();
           const folder = process.env.GOOGLE_DRIVE_FOLDER_ID;
-          const clauses = ["trashed = false", `(name contains '${query.replace(/\\/g, "\\\\").replace(/'/g, "\\'")} ' or fullText contains '${query.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')`.replace(/' /g, "'")];
+          const escapedQuery = query.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+          const clauses = ["trashed = false", `(name contains '${escapedQuery}' or fullText contains '${escapedQuery}')`];
           if (folder) clauses.push(`'${folder.replace(/'/g, "")}' in parents`);
           const url = new URL("https://www.googleapis.com/drive/v3/files");
           url.searchParams.set("q", clauses.join(" and "));
@@ -70,8 +71,9 @@ export const drivePlugin: Plugin = {
           const exportable = new Set(["application/vnd.google-apps.document", "application/vnd.google-apps.spreadsheet"]);
           const textMime = /^(text\/(plain|csv|markdown)|application\/(json|xml))$/i.test(file.mimeType ?? "");
           if (!exportable.has(file.mimeType ?? "") && !textMime) return { error: `Le type ${file.mimeType || "inconnu"} n'est pas pris en charge pour l'extraction textuelle.`, name: file.name, url: file.webViewLink };
+          const exportMime = file.mimeType === "application/vnd.google-apps.spreadsheet" ? "text/csv" : "text/plain";
           const endpoint = exportable.has(file.mimeType ?? "")
-            ? `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=text/plain`
+            ? `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=${encodeURIComponent(exportMime)}`
             : `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`;
           const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.timeout(15000) });
           if (!response.ok) return { error: `Lecture du fichier impossible (HTTP ${response.status}).`, name: file.name };
