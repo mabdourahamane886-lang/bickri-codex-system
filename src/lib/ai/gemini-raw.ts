@@ -52,7 +52,18 @@ export async function generateContent(opts: {
     return { res, data };
   };
 
-  const models = Date.now() < primaryDownUntil || opts.model === opts.fallbackModel ? [opts.fallbackModel] : [opts.model, opts.fallbackModel];
+  // Plusieurs modèles de repli peuvent être configurés sans toucher au code.
+  // En cas de surcharge du modèle principal, on passe directement aux modèles suivants.
+  const configuredFallbacks = (process.env.AI_MODEL_FALLBACKS || process.env.GEMINI_FALLBACK_MODELS || "")
+    .split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
+  const preferredModels = [opts.model, opts.fallbackModel, ...configuredFallbacks]
+    .filter((model, index, all) => Boolean(model) && all.indexOf(model) === index);
+  const healthyModels = Date.now() < primaryDownUntil
+    ? preferredModels.filter((model) => model !== opts.model)
+    : preferredModels;
+  const models = healthyModels.length ? healthyModels : preferredModels;
   let lastError: AIError | null = null;
 
   for (const model of models) {
@@ -61,8 +72,17 @@ export async function generateContent(opts: {
       if (!res.ok) {
         const detail = data?.error?.message?.slice(0, 300) ?? "";
         console.error("Gemini", model, res.status, detail);
-        lastError = new AIError(`Gemini a renvoyé une erreur (HTTP ${res.status}) avec ${model}. ${detail}`, res.status === 429 ? 429 : 502);
-        if (RETRYABLE.has(res.status) && model === opts.model) { primaryDownUntil = Date.now() + 10 * 60_000; continue; }
+        lastError = new AIError(
+          RETRYABLE.has(res.status)
+            ? "Le service IA est momentanément saturé. Tentative avec un autre modèle…"
+            : `La requête IA a échoué (HTTP ${res.status}). Vérifie les paramètres du modèle et les autorisations de la clé.`,
+          res.status === 429 ? 429 : RETRYABLE.has(res.status) ? 503 : 502,
+          RETRYABLE.has(res.status) ? "AI_PROVIDER_BUSY" : "AI_PROVIDER_ERROR",
+        );
+        if (RETRYABLE.has(res.status)) {
+          if (model === opts.model) primaryDownUntil = Date.now() + 10 * 60_000;
+          continue;
+        }
         throw lastError;
       }
       const content = data?.candidates?.[0]?.content;
@@ -73,10 +93,16 @@ export async function generateContent(opts: {
       }
       return { content: { role: "model", parts: content.parts }, model, finishReason: data?.candidates?.[0]?.finishReason };
     } catch (err) {
-      if (err instanceof AIError) { if (model === opts.model && models.length > 1) continue; throw err; }
-      lastError = new AIError("Le service IA n'a pas répondu à temps. Réessaie dans quelques instants.", 504, "AI_NETWORK_TIMEOUT");
-      if (model === opts.model) { primaryDownUntil = Date.now() + 5 * 60_000; continue; }
+      if (err instanceof AIError) throw err;
+      lastError = new AIError("Le service IA n'a pas répondu à temps. Tentative avec le modèle suivant…", 503, "AI_NETWORK_TIMEOUT");
+      if (model === opts.model) primaryDownUntil = Date.now() + 5 * 60_000;
+      // Une panne réseau sur un modèle ne doit pas empêcher l'essai des modèles suivants.
+      continue;
     }
   }
-  throw lastError ?? new AIError("Service IA indisponible.", 503);
+  throw new AIError(
+    "Le service Gemini est temporairement surchargé ou indisponible sur les modèles configurés. Réessaie dans quelques instants ou ajoute un autre modèle de repli dans AI_MODEL_FALLBACKS.",
+    503,
+    "AI_PROVIDER_UNAVAILABLE",
+  );
 }
