@@ -7,9 +7,30 @@ import { themeScript } from "@/components/providers/ThemeToggle";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "BICKRI CODEX SYSTEM", template: "%s · BCX" },
-  description: "Registre officiel des identifiants BICKRI CODEX, studio de code et assistant de programmation Bickri Code AI.",
+  metadataBase: new URL("https://bickri-codex-system.vercel.app"),
+  title: { default: "BICKRI CODEX SYSTEM (BCX) — Studio de code & IA", template: "%s · BCX" },
+  description: "BICKRI CODEX SYSTEM : environnement de développement, assistant IA Bickri Code AI, outils de programmation et registre officiel des identifiants BCX.",
   applicationName: "BICKRI CODEX SYSTEM",
+  keywords: ["BICKRI CODEX SYSTEM", "BCX", "Bickri Code AI", "assistant IA", "programmation", "IDE en ligne", "développement logiciel", "TypeScript", "Next.js", "GitHub"],
+  category: "technology",
+  creator: "Bickri Service Agency",
+  publisher: "Bickri Service Agency",
+  referrer: "strict-origin-when-cross-origin",
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "BICKRI CODEX SYSTEM",
+    title: "BICKRI CODEX SYSTEM (BCX) — Studio de code & IA",
+    description: "Code, conçois et développe avec Bickri Code AI, l’assistant IA de BCX.",
+    locale: "fr_FR",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BICKRI CODEX SYSTEM (BCX)",
+    description: "Studio de développement et assistant IA Bickri Code AI.",
+  },
   icons: { icon: "/icon.svg" },
 };
 
