@@ -32,6 +32,7 @@ export const drivePlugin: Plugin = {
   description: "Recherche des fichiers Google Drive accessibles à l'intégration et lit le contenu textuel pris en charge.",
   async load(ctx) {
     if (!ctx.user) return { tools: [], reason: "Connecte-toi à BCX pour utiliser Google Drive." };
+    if (!ctx.trusted) return { tools: [], reason: "Cette intégration partagée est réservée aux comptes BCX autorisés (admin/éditeur). Configure un accès OAuth individuel pour ouvrir l'accès à chaque utilisateur." };
     const configured = Boolean(process.env.GOOGLE_DRIVE_CLIENT_ID && process.env.GOOGLE_DRIVE_CLIENT_SECRET && process.env.GOOGLE_DRIVE_REFRESH_TOKEN);
     if (!configured) return { tools: [], reason: "À configurer : ajoute les identifiants OAuth Google Drive dans les variables serveur BCX." };
     return { tools: [
