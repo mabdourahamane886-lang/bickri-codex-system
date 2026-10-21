@@ -166,7 +166,7 @@ export default function StudioPage() {
           </select>
           <button className="btn btn-sm" onClick={applyTemplate}><LayoutTemplate /> Charger</button>
           <button className="btn btn-sm" onClick={() => download("bundle")} title="Télécharger un fichier HTML autonome"><Download /> Exporter</button>
-          <button className={`btn btn-sm ${aiOpen ? "btn-primary" : ""}`} onClick={() => setAiOpen((v) => !v)} aria-pressed={aiOpen}><Sparkles /> Assistant</button>
+          <button className={`btn btn-sm ${aiOpen ? "btn-primary" : ""}`} onClick={() => setAiOpen((v) => !v)} aria-pressed={aiOpen}><Sparkles /> Codex BCX</button>
           <button className="btn btn-sm btn-primary" onClick={run} title="Exécuter (Ctrl + S)"><Play /> Exécuter</button>
         </div>
       </div>
@@ -218,7 +218,7 @@ export default function StudioPage() {
         {aiOpen && (
           <section className="ai-pane" aria-label="Assistant de code">
             <div className="pane-head">
-              <span className="row"><Sparkles size={13} style={{ color: "var(--accent)" }} /> Bickri Code AI</span>
+              <span className="row"><Sparkles size={15} style={{ color: "var(--accent)" }} /> Codex BCX <span className="codex-live-badge">IA de programmation</span></span>
               <button className="btn btn-ghost btn-sm" onClick={() => setAiOpen(false)} aria-label="Fermer l'assistant"><X /></button>
             </div>
             <div className="ai-pane-body">
@@ -236,10 +236,10 @@ export default function StudioPage() {
                 </>
               )}
             </div>
-            <form className="ai-pane-form" onSubmit={askAI}>
-              <textarea className="textarea" rows={3} maxLength={4000} value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} placeholder={`Ex. Rends ${activeFile.name} responsive sur mobile`}
+            <form className="ai-pane-form codex-composer" onSubmit={askAI}>
+              <textarea className="textarea codex-composer-input" rows={2} maxLength={4000} value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} aria-label="Message à Codex BCX" placeholder={`Demande à Codex BCX de modifier ${activeFile.name}…`}
                 onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); (e.currentTarget.form as HTMLFormElement).requestSubmit(); } }} />
-              <button className="btn btn-primary" type="submit" disabled={aiLoading || !aiPrompt.trim()}>{aiLoading ? "Réflexion…" : "Demander"}</button>
+              <div className="codex-composer-footer"><span className="codex-composer-hint">Entrée pour une nouvelle ligne · Ctrl/⌘ + Entrée pour envoyer</span><button className="btn btn-primary codex-composer-send" type="submit" disabled={aiLoading || !aiPrompt.trim()} aria-label={aiLoading ? "Codex BCX réfléchit" : "Envoyer à Codex BCX"}>{aiLoading ? <span className="typing"><i /><i /><i /></span> : <><Sparkles size={15} /> Envoyer</>}</button></div>
             </form>
           </section>
         )}

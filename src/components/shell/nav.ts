@@ -12,7 +12,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Outils de travail",
     items: [
-      { href: "/studio", label: "Studio de code", short: "Studio", icon: Code },
+      { href: "/studio", label: "Codex BCX", short: "Codex", icon: Code },
       { href: "/publicite", label: "Studio publicitaire", short: "Affiche", icon: Megaphone },
       { href: "/registry", label: "Registre BCX", short: "Registre", icon: Fingerprint },
     ],
