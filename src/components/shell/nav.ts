@@ -7,6 +7,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Conversation",
     items: [
       { href: "/", label: "Bickri Chat", short: "Chat", icon: MessageSquare },
+      { href: "/plugins", label: "Plugins", short: "Plugins", icon: Plug },
     ],
   },
   {
@@ -21,7 +22,6 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Plateforme",
     items: [
       { href: "/cloud", label: "BCX Cloud", short: "Cloud", icon: Cloud },
-      { href: "/plugins", label: "Plugins", short: "Plugins", icon: Plug },
       { href: "/settings", label: "Paramètres", short: "Réglages", icon: Settings },
     ],
   },
