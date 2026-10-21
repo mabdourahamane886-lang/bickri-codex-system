@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-  ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, ImagePlus, Layers, LogIn, WandSparkles,
+  ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, GitBranch, ImagePlus, Layers, LogIn, WandSparkles,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
