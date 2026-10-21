@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-  ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, Globe, ImagePlus, Layers, Loader2, LogIn, WandSparkles,
+  ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, ImagePlus, Layers, LogIn, WandSparkles,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
@@ -28,7 +28,6 @@ const HISTORY_KEY = "bcx_ai_conversations_v1";
 const PLUGINS_KEY = "bcx_ai_plugins_v1";
 const MAX_CONTINUATIONS = 4;
 const LANGUAGES = ["TypeScript / Next.js", "JavaScript", "HTML / CSS", "Python", "Python / Django", "Dart / Flutter", "Kotlin / Android", "Java", "C / C++", "Rust", "PHP", "SQL / Supabase", "Autre langage"];
-const PLUGIN_ICONS: Record<string, typeof GitBranch> = { github: GitBranch, registry: Fingerprint, web: Globe };
 const STARTERS = [
   { icon: Layers, text: "Crée une application web responsive en Next.js avec authentification Supabase." },
   { icon: Bug, text: "Explique et corrige cette erreur TypeScript : " },
@@ -89,7 +88,6 @@ export default function CodeAIPage() {
   const [plugins, setPlugins] = useState<PluginStatus[] | null>(null);
   const [account, setAccount] = useState<{ signedIn: boolean; trusted: boolean } | null>(null);
   const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
-  const [showPlugins, setShowPlugins] = useState(false);
   const [showTools, setShowTools] = useState(false);
   const [showNav, setShowNav] = useState(false);
   const [imageMode, setImageMode] = useState<"create" | "edit">("create");
@@ -456,25 +454,7 @@ export default function CodeAIPage() {
 
   function toggle(id: string) { setEnabled((all) => (all.includes(id) ? all.filter((x) => x !== id) : [...all, id])); }
 
-  const pluginList = (
-    <ul className="plugin-list">
-      {(plugins ?? []).map((p) => {
-        const Icon = PLUGIN_ICONS[p.id] ?? Plug;
-        const on = enabled.includes(p.id);
-        return (
-          <li key={p.id} className={`plugin ${p.available ? "" : "off"}`}>
-            <span className="plugin-icon" aria-hidden="true"><Icon /></span>
-            <div className="grow" style={{ minWidth: 0 }}>
-              <div className="plugin-name">{p.name}{p.available && p.writeTools > 0 && <Badge tone="gold">écriture validée</Badge>}</div>
-              <p>{p.available ? p.description : p.reason}</p>
-            </div>
-            <button type="button" role="switch" aria-checked={on && p.available} aria-label={`Plugin ${p.name}`} className="switch" disabled={!p.available} onClick={() => toggle(p.id)}><i /></button>
-          </li>
-        );
-      })}
-      {!plugins && <li className="plugin off"><Loader2 className="spin" size={14} /> <p>Chargement des plugins…</p></li>}
-    </ul>
-  );
+
 
   return (
     <main className="chat bcx-classic-chat">
@@ -486,7 +466,7 @@ export default function CodeAIPage() {
         <div className="classic-sidebar-bottom"><Link href="/plugins">Plugins</Link><button type="button" onClick={() => { if (confirm("Effacer toutes les conversations enregistrées ?")) { history.forEach((item) => deleteConversation(item.id)); newChat(); } }}>Effacer l’historique</button><Link href="/settings">Paramètres</Link><Link href="/login">Compte</Link></div>
       </aside>
       <div className="row bcx-chat-toolbar" style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", justifyContent: "space-between" }}><button type="button" className="btn btn-ghost btn-icon" aria-label="Ouvrir le menu" onClick={() => setShowNav((v) => !v)}><Menu /></button><strong className="bcx-mobile-plan">Free plan · <span>Upgrade</span></strong><button type="button" className="btn btn-ghost btn-icon" aria-label="Nouvelle conversation" onClick={newChat}><SquarePen /></button></div>
-      {showNav && <div className="plugin-popover bcx-nav-popover" role="dialog" aria-label="Navigation et historique Bickri"><div className="row"><b className="grow">Bickri Codex System</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={newChat}><SquarePen size={18}/> Nouveau chat</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); setShowTools(true); }}><Layers size={18}/> Outils</button><Link className="btn btn-ghost" href="/plugins" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Plug size={18}/> Tous les plugins</Link><hr className="divider"/><div className="row"><b className="grow">Historique</b><span className="muted">{history.length}</span></div>{history.length ? <div className="bcx-history-list">{history.map((item) => <div className={`bcx-history-item ${item.id === activeConversationId ? "active" : ""}`} key={item.id}><button type="button" className="bcx-history-open" title={item.title} onClick={() => openConversation(item)}>{item.title}</button><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={`Supprimer ${item.title}`} title="Supprimer" onClick={() => deleteConversation(item.id)}><X size={14}/></button></div>)}</div> : <p className="muted" style={{fontSize:12}}>Tes conversations apparaîtront ici.</p>}<hr className="divider"/><b>Plugins</b>{pluginList}</div>}
+      {showNav && <div className="plugin-popover bcx-nav-popover" role="dialog" aria-label="Navigation et historique Bickri"><div className="row"><b className="grow">Bickri Codex System</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={newChat}><SquarePen size={18}/> Nouveau chat</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); setShowTools(true); }}><Layers size={18}/> Outils</button><Link className="btn btn-ghost" href="/plugins" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Plug size={18}/> Tous les plugins</Link><hr className="divider"/><div className="row"><b className="grow">Historique</b><span className="muted">{history.length}</span></div>{history.length ? <div className="bcx-history-list">{history.map((item) => <div className={`bcx-history-item ${item.id === activeConversationId ? "active" : ""}`} key={item.id}><button type="button" className="bcx-history-open" title={item.title} onClick={() => openConversation(item)}>{item.title}</button><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={`Supprimer ${item.title}`} title="Supprimer" onClick={() => deleteConversation(item.id)}><X size={14}/></button></div>)}</div> : <p className="muted" style={{fontSize:12}}>Tes conversations apparaîtront ici.</p>}</div>}
       <div className="chat-main">
         <div className="chat-scroll">
           <div className="chat-inner">
@@ -636,12 +616,6 @@ export default function CodeAIPage() {
           </div>}
           {chatAttachment && <div className="bcx-image-attachment"><span className="attachment-preview-icon">{chatAttachment.preview ? <img src={chatAttachment.preview} alt="" /> : <FileText size={22} />}</span><div className="grow"><b>Pièce jointe prête</b><small>{chatAttachment.name} · {chatAttachment.mimeType}</small></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setChatAttachment(null)} aria-label="Retirer la pièce jointe"><X size={16} /></button></div>}
           {imageSource && <div className="bcx-image-attachment"><img src={imageSource.preview} alt="Image à modifier" /><div className="grow"><b>Image à modifier</b><small>{imageSource.file.name}</small></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => { setImageSource(null); setImageMode("create"); }} aria-label="Retirer l’image"><X size={16} /></button></div>}
-          {showPlugins && (
-            <div className="plugin-popover" role="dialog" aria-label="Plugins">
-              <div className="row"><b className="grow">Plugins</b><button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowPlugins(false)} aria-label="Fermer"><X /></button></div>
-              {pluginList}
-            </div>
-          )}
           <form className="composer" onSubmit={onSubmit}>
             <label htmlFor="ai-input" className="sr-only">Message</label>
             <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Décris ton application, demande une modification de dépôt ou colle une erreur…"} />
