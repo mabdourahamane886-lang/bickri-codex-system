@@ -1641,3 +1641,17 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   .studio .codex-composer { transition: none; }
 }
+
+
+/* Dedicated, distraction-free Plugins page. Other BCX routes keep the full navigation. */
+.plugins-standalone {
+  min-height: 100dvh;
+  width: 100%;
+  background: var(--bg, var(--surface));
+}
+.plugins-standalone > .content {
+  width: min(100%, 1120px);
+  margin-inline: auto;
+  padding-top: clamp(18px, 3vw, 36px);
+  padding-bottom: max(28px, env(safe-area-inset-bottom));
+}
