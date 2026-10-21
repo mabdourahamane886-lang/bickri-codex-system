@@ -1,4 +1,4 @@
-import { Cloud, Code, Fingerprint, Megaphone, MessageSquare, Settings, type LucideIcon } from "lucide-react";
+import { Cloud, Code, Fingerprint, Megaphone, MessageSquare, Plug, Settings, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; short: string; icon: LucideIcon };
 
@@ -21,13 +21,14 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Plateforme",
     items: [
       { href: "/cloud", label: "BCX Cloud", short: "Cloud", icon: Cloud },
+      { href: "/plugins", label: "Plugins", short: "Plugins", icon: Plug },
       { href: "/settings", label: "Paramètres", short: "Réglages", icon: Settings },
     ],
   },
 ];
 
 export const ALL_NAV = NAV_GROUPS.flatMap((g) => g.items);
-export const MOBILE_NAV = ["/", "/studio", "/publicite", "/registry", "/settings"].map((h) => ALL_NAV.find((i) => i.href === h)!);
+export const MOBILE_NAV = ["/", "/studio", "/publicite", "/registry", "/plugins", "/settings"].map((h) => ALL_NAV.find((i) => i.href === h)!);
 
 export function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
