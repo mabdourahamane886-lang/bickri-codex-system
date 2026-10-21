@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, CircleAlert, CircleDashed, Cloud, Fingerprint, Github, Globe, Plug, RefreshCw, Search, Share2, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Check, CircleAlert, CircleDashed, Cloud, Fingerprint, Globe, Plug, RefreshCw, Search, Share2, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 
@@ -26,7 +26,7 @@ function PluginLogo({ id }: { id: string }) {
     return <span className="plugin-brand-logo notion-logo" aria-label="Logo Notion">N</span>;
   }
   const common = { size: 25, strokeWidth: 1.8 };
-  if (id === "github") return <span className="plugin-brand-logo github-logo"><Github {...common} /></span>;
+  if (id === "github") return <span className="plugin-brand-logo github-logo" aria-label="Logo GitHub"><svg viewBox="0 0 24 24" width="25" height="25" fill="currentColor" role="img" aria-hidden="true"><path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.56.1.76-.24.76-.54v-2.1c-3.1.68-3.76-1.32-3.76-1.32-.5-1.28-1.24-1.62-1.24-1.62-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15.99 1.7 2.59 1.21 3.22.93.1-.72.39-1.21.7-1.49-2.48-.28-5.09-1.24-5.09-5.52 0-1.22.44-2.22 1.15-3-.12-.28-.5-1.42.11-2.96 0 0 .94-.3 3.05 1.14a10.6 10.6 0 0 1 5.55 0c2.11-1.44 3.05-1.14 3.05-1.14.61 1.54.23 2.68.11 2.96.72.78 1.15 1.78 1.15 3 0 4.29-2.61 5.23-5.1 5.51.4.35.75 1.02.75 2.06v3.05c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z"/></svg></span>;
   if (id === "deployments") return <span className="plugin-brand-logo"><Cloud {...common} /></span>;
   if (id === "registry") return <span className="plugin-brand-logo"><Fingerprint {...common} /></span>;
   if (id === "web") return <span className="plugin-brand-logo"><Globe {...common} /></span>;
