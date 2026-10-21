@@ -1029,6 +1029,10 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
 .classic-brand-mark { display:grid; place-items:center; width:28px; height:28px; border-radius:9px; background:#10a37f; color:white; font-weight:800; }
 .classic-new-chat { display:flex; align-items:center; gap:10px; width:100%; padding:12px; border:1px solid #565869; border-radius:9px; background:transparent; color:#fff; text-align:left; cursor:pointer; font-size:14px; }
 .classic-new-chat:hover,.classic-history-row:hover { background:#2b2c2f; }
+.classic-shortcuts { display:grid; gap:3px; padding:4px 0 10px; border-bottom:1px solid #44454a; }
+.classic-shortcuts a { display:flex; align-items:center; gap:10px; min-height:40px; padding:9px 12px; border-radius:9px; color:#ececf1; font-size:14px; }
+.classic-shortcuts a:hover { background:#2b2c2f; }
+.classic-shortcuts a svg { flex:0 0 auto; width:17px; height:17px; color:#a7a7b0; }
 .classic-history-heading { padding:12px 7px 2px; color:#a7a7b0; font-size:12px; font-weight:600; }
 .classic-history-list { flex:1; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:3px; }
 .classic-history-row { display:flex; align-items:center; gap:4px; border-radius:7px; padding:2px 4px; }
@@ -1408,8 +1412,13 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
     display: flex !important;
     flex-direction: column !important;
     gap: 3px !important;
-    max-height: none !important;
-    overflow: visible !important;
+    flex: 0 1 auto !important;
+    min-height: 0 !important;
+    max-height: min(42dvh, 420px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
     margin-top: 10px;
   }
   .bcx-classic-chat > .bcx-nav-popover .bcx-history-item {
