@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-  ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, Fingerprint, GitBranch, ImagePlus, Layers, LogIn, WandSparkles,
+  ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, GitBranch, ImagePlus, Layers, LogIn, WandSparkles,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
@@ -463,9 +463,7 @@ export default function CodeAIPage() {
         <button type="button" className="classic-new-chat" onClick={newChat}><SquarePen size={17}/> Nouveau chat</button>
         <nav className="classic-shortcuts" aria-label="Outils BCX">
           <Link href="/plugins" onClick={() => setShowNav(false)}><Plug size={17}/> Plugins</Link>
-          <Link href="/studio" onClick={() => setShowNav(false)}><Layers size={17}/> Codex BCX</Link>
-          <Link href="/publicite" onClick={() => setShowNav(false)}><Sparkles size={17}/> Studio publicitaire</Link>
-          <Link href="/registry" onClick={() => setShowNav(false)}><Fingerprint size={17}/> Registre BCX</Link>
+          <Link href="/ai" onClick={() => setShowNav(false)}><Layers size={17}/> Codex BCX</Link>
           <Link href="/cloud" onClick={() => setShowNav(false)}><WandSparkles size={17}/> BCX Cloud</Link>
           <Link href="/settings" onClick={() => setShowNav(false)}><User size={17}/> Paramètres</Link>
         </nav>
@@ -474,7 +472,7 @@ export default function CodeAIPage() {
         <div className="classic-sidebar-bottom"><button type="button" onClick={() => { if (confirm("Effacer toutes les conversations enregistrées ?")) { history.forEach((item) => deleteConversation(item.id)); newChat(); } }}>Effacer l’historique</button><Link href="/settings">Paramètres</Link><Link href="/login">Compte</Link></div>
       </aside>
       <div className="row bcx-chat-toolbar" style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", justifyContent: "space-between" }}><button type="button" className="btn btn-ghost btn-icon" aria-label="Ouvrir le menu" onClick={() => setShowNav((v) => !v)}><Menu /></button><strong className="bcx-mobile-plan">Free plan · <span>Upgrade</span></strong><button type="button" className="btn btn-ghost btn-icon" aria-label="Nouvelle conversation" onClick={newChat}><SquarePen /></button></div>
-      {showNav && <div className="plugin-popover bcx-nav-popover" role="dialog" aria-label="Navigation et historique Bickri"><div className="row"><b className="grow">Bickri Codex System</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={newChat}><SquarePen size={18}/> Nouveau chat</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); setShowTools(true); }}><Layers size={18}/> Outils</button><Link href="/plugins" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Plug size={18}/> Plugins</Link><Link href="/studio" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Layers size={18}/> Codex BCX</Link><Link href="/publicite" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Sparkles size={18}/> Studio publicitaire</Link><Link href="/registry" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Fingerprint size={18}/> Registre BCX</Link><Link href="/cloud" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><WandSparkles size={18}/> BCX Cloud</Link><Link href="/settings" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><User size={18}/> Paramètres</Link><hr className="divider"/><div className="row"><b className="grow">Historique</b><span className="muted">{history.length}</span></div>{history.length ? <div className="bcx-history-list">{history.map((item) => <div className={`bcx-history-item ${item.id === activeConversationId ? "active" : ""}`} key={item.id}><button type="button" className="bcx-history-open" title={item.title} onClick={() => openConversation(item)}>{item.title}</button><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={`Supprimer ${item.title}`} title="Supprimer" onClick={() => deleteConversation(item.id)}><X size={14}/></button></div>)}</div> : <p className="muted" style={{fontSize:12}}>Tes conversations apparaîtront ici.</p>}</div>}
+      {showNav && <div className="plugin-popover bcx-nav-popover" role="dialog" aria-label="Navigation et historique Bickri"><div className="row"><b className="grow">Bickri Codex System</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={newChat}><SquarePen size={18}/> Nouveau chat</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); setShowTools(true); }}><Layers size={18}/> Outils</button><Link href="/plugins" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Plug size={18}/> Plugins</Link><Link href="/ai" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Layers size={18}/> Codex BCX</Link><Link href="/cloud" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><WandSparkles size={18}/> BCX Cloud</Link><Link href="/settings" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><User size={18}/> Paramètres</Link><hr className="divider"/><div className="row"><b className="grow">Historique</b><span className="muted">{history.length}</span></div>{history.length ? <div className="bcx-history-list">{history.map((item) => <div className={`bcx-history-item ${item.id === activeConversationId ? "active" : ""}`} key={item.id}><button type="button" className="bcx-history-open" title={item.title} onClick={() => openConversation(item)}>{item.title}</button><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={`Supprimer ${item.title}`} title="Supprimer" onClick={() => deleteConversation(item.id)}><X size={14}/></button></div>)}</div> : <p className="muted" style={{fontSize:12}}>Tes conversations apparaîtront ici.</p>}</div>}
       <div className="chat-main">
         <div className="chat-scroll">
           <div className="chat-inner">
@@ -490,7 +488,7 @@ export default function CodeAIPage() {
                   <h1>Bonjour, Mohamed</h1>
                   <p>
                     Décris une fonctionnalité, colle une erreur ou demande du code.
-                    {activePlugins.length ? ` Plugins actifs : ${activePlugins.map((p) => p.name).join(", ")}.` : " Active des plugins pour que l'IA travaille directement sur GitHub et le registre."}
+                    {activePlugins.length ? ` Plugins actifs : ${activePlugins.map((p) => p.name).join(", ")}.` : " Active des plugins pour que l’IA utilise les outils connectés."}
                   </p>
                 </div>
                 <div className="starter-grid">
@@ -619,7 +617,7 @@ export default function CodeAIPage() {
               <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Importer un fichier ou du code</button>
               <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
               <button type="button" className="btn" onClick={() => { setImageMode("create"); setImageIntent(true); setPrompt((old) => old || "Crée une affiche publicitaire professionnelle pour mon entreprise. Nom, offre, coordonnées et style souhaité : "); setShowTools(false); inputRef.current?.focus(); }}><Sparkles size={17} /> Créer une affiche</button>
-              <Link className="btn" href="/registry" onClick={() => setShowTools(false)}><Fingerprint size={17} /> Registre BCX</Link>
+              
             </div>
           </div>}
           {chatAttachment && <div className="bcx-image-attachment"><span className="attachment-preview-icon">{chatAttachment.preview ? <img src={chatAttachment.preview} alt="" /> : <FileText size={22} />}</span><div className="grow"><b>Pièce jointe prête</b><small>{chatAttachment.name} · {chatAttachment.mimeType}</small></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setChatAttachment(null)} aria-label="Retirer la pièce jointe"><X size={16} /></button></div>}
