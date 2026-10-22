@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert, CircleCheck, CircleDashed, HardDrive, LogIn, LogOut, Trash2 } from "lucide-react";
+import { ArrowLeft, CircleAlert, CircleCheck, CircleDashed, HardDrive, LogIn, LogOut, Settings2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge } from "@/components/ui/Badge";
@@ -34,7 +34,11 @@ export default function SettingsPage() {
 
   return (
     <main className="content" style={{ maxWidth: 960 }}>
-      <PageHeader title="Paramètres" description="Configuration du déploiement, compte et données stockées sur cet appareil." />
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap" }}>
+        <Link href="/ai" className="btn btn-ghost"><ArrowLeft size={17} /> Retour au chat</Link>
+        <span className="settings-page-mark" aria-hidden="true"><Settings2 size={18} /></span>
+      </div>
+      <PageHeader title="Paramètres" description="Gère la configuration, ton compte, l’apparence et les données locales de BCX depuis cette page dédiée." />
 
       <div className="stack" style={{ gap: 20 }}>
         <section className="card" aria-labelledby="cfg-title">
