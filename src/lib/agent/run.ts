@@ -164,8 +164,8 @@ export async function runAgent(opts: {
       compact(contents);
       const res = await generateContent({
         apiKey: opts.apiKey,
-        model: process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-3.8-flash",
-        fallbackModel: process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-3.6-flash",
+        model: process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash",
+        fallbackModel: process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite",
         systemInstruction: system,
         contents,
         tools: declarations,
