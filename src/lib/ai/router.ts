@@ -1,13 +1,72 @@
 import "server-only";
 import { AIError, generateWithGemini, type ChatMessage } from "./gemini";
-type RouterOptions = { systemInstruction: string; messages: ChatMessage[]; maxOutputTokens?: number };
-type ProviderResult = { answer: string; model: string; provider: "google" | "openai" | "openrouter" };
 
-export function getAIProviderOrder(provider = process.env.AI_PROVIDER || "auto"): Array<"google" | "openai" | "openrouter"> {
+type RouterOptions = { systemInstruction: string; messages: ChatMessage[]; maxOutputTokens?: number };
+type AIProvider = "google" | "openai" | "openrouter" | "anthropic";
+type ProviderResult = { answer: string; model: string; provider: AIProvider };
+
+export function getAIProviderOrder(provider = process.env.AI_PROVIDER || "auto"): AIProvider[] {
+  if (provider === "anthropic") return ["anthropic"];
   if (provider === "openai") return ["openai", "google"];
   if (provider === "openrouter") return ["openrouter", "google"];
   if (provider === "google") return ["google", "openai"];
   return ["google", "openai"];
+}
+
+async function generateWithAnthropic(opts: RouterOptions & { apiKey: string; model: string }): Promise<ProviderResult> {
+  let response: Response;
+  try {
+    response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": opts.apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: opts.model,
+        system: opts.systemInstruction,
+        messages: opts.messages.map((message) => ({ role: message.role, content: message.content })),
+        max_tokens: opts.maxOutputTokens ?? 4096,
+      }),
+      signal: AbortSignal.timeout(30000),
+      cache: "no-store",
+    });
+  } catch {
+    throw new AIError("L’API Anthropic ne répond pas ou la connexion a expiré.", 503, "AI_PROVIDER_UNAVAILABLE");
+  }
+
+  const payload = await response.json().catch(() => null) as {
+    content?: Array<{ type?: string; text?: string }>;
+    error?: { message?: string; type?: string };
+  } | null;
+
+  if (!response.ok) {
+    const status = response.status === 429 ? 429 : response.status >= 500 ? 503 : 502;
+    const code = response.status === 401 || response.status === 403
+      ? "ANTHROPIC_AUTH_ERROR"
+      : response.status === 429
+        ? "AI_QUOTA_OR_RATE_LIMIT"
+        : response.status === 404
+          ? "ANTHROPIC_MODEL_NOT_FOUND"
+          : "AI_PROVIDER_ERROR";
+    const detail = response.status === 401 || response.status === 403
+      ? "Vérifie la clé Anthropic et ses autorisations."
+      : response.status === 404
+        ? "Vérifie ANTHROPIC_MODEL dans les variables Vercel."
+        : response.status === 429
+          ? "Vérifie le quota et les limites de l’API Anthropic."
+          : "Vérifie la configuration de l’API Anthropic.";
+    throw new AIError(`Anthropic a renvoyé HTTP ${response.status}. ${detail}`, status, code);
+  }
+
+  const answer = (payload?.content ?? [])
+    .filter((part) => part.type === "text" && typeof part.text === "string")
+    .map((part) => part.text)
+    .join("")
+    .trim();
+  if (!answer) throw new AIError("Anthropic a renvoyé une réponse vide.", 502, "AI_EMPTY_RESPONSE");
+  return { answer, model: opts.model, provider: "anthropic" };
 }
 
 async function generateOpenAICompatible(opts: RouterOptions & { apiKey: string; model: string; baseUrl: string }): Promise<ProviderResult> {
@@ -50,10 +109,23 @@ async function generateOpenAICompatible(opts: RouterOptions & { apiKey: string; 
 export async function generateWithRouter(opts: RouterOptions): Promise<ProviderResult> {
   const googleKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
   const openAIKey = process.env.OPENAI_API_KEY;
-  const order = getAIProviderOrder(process.env.AI_PROVIDER || "auto");
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const selectedProvider = process.env.AI_PROVIDER || "auto";
+  const order = getAIProviderOrder(selectedProvider);
   const failures: string[] = [];
+
   for (const provider of order) {
     try {
+      if (provider === "anthropic") {
+        if (!anthropicKey) {
+          throw new AIError("ANTHROPIC_API_KEY n’est pas configurée dans l’environnement serveur.", 503, "AI_NOT_CONFIGURED");
+        }
+        return await generateWithAnthropic({
+          ...opts,
+          apiKey: anthropicKey,
+          model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5",
+        });
+      }
       if (provider === "google") {
         if (!googleKey) continue;
         const result = await generateWithGemini({
@@ -74,8 +146,11 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
     } catch (error) {
       failures.push(error instanceof Error ? error.message : "Erreur fournisseur inconnue.");
       console.warn(`Bickri AI : échec du fournisseur ${provider}; tentative de repli.`);
+      if (selectedProvider === "anthropic") throw error;
     }
   }
-  if (!googleKey && !openAIKey) throw new AIError("Aucune clé IA serveur n'est configurée. Ajoute GEMINI_API_KEY ou OPENAI_API_KEY.", 503, "AI_NOT_CONFIGURED");
+  if (!googleKey && !openAIKey && !anthropicKey) {
+    throw new AIError("Aucune clé IA serveur n'est configurée. Ajoute une clé pour le fournisseur choisi.", 503, "AI_NOT_CONFIGURED");
+  }
   throw new AIError(failures.length ? `Tous les fournisseurs IA configurés ont échoué. ${failures[failures.length - 1]}` : "Aucun fournisseur IA compatible avec la configuration choisie.", 503, "AI_PROVIDERS_EXHAUSTED");
 }
