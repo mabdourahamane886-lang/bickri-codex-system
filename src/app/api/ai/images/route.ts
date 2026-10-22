@@ -6,8 +6,8 @@ export const maxDuration = 60;
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const DEFAULT_MODEL = (process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image").trim();
-const FALLBACK_MODELS = ["gemini-nano-banana-2.1", "gemini-2.5-flash-image"] as const;
+const DEFAULT_MODEL = (process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image").trim();
+const FALLBACK_MODELS = ["gemini-2.5-flash-image"] as const;
 
 type GeminiImage = { data?: string; mime_type?: string; mimeType?: string };
 type GeminiContentPart = {
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
   const pollinationsApiKey = process.env.POLLINATIONS_API_KEY;
   if (!geminiApiKey) {
     return NextResponse.json(
-      { error: "La génération La génération d’images Gemini n’est pas configurée. Ajoute GEMINI_API_KEY dans Vercel → Settings → Environment Variables, puis redéploie BCX." },
+      { error: "La génération d’images Gemini n’est pas configurée. Ajoute GEMINI_API_KEY dans Vercel → Settings → Environment Variables, puis redéploie BCX." },
       { status: 503 },
     );
   }
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Décris l’image à créer ou les modifications souhaitées." }, { status: 400 });
   }
 
-  const input: Array<Record<string, string>> = [];
+  const input: Array<Record<string, unknown>> = [];
   if (mode === "edit") {
     const imageData = typeof body.imageData === "string" ? body.imageData : "";
     const mimeType = typeof body.mimeType === "string" ? body.mimeType : "";
@@ -191,11 +191,10 @@ export async function POST(request: NextRequest) {
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64) || Math.floor(base64.length * 0.75) > MAX_IMAGE_BYTES) {
       return NextResponse.json({ error: "Image invalide ou trop volumineuse (maximum 8 Mo)." }, { status: 413 });
     }
-    input.push({ type: "image", data: base64, mime_type: mimeType });
+    input.push({ inlineData: { data: base64, mimeType } });
   }
 
   input.push({
-    type: "text",
     text: mode === "edit"
       ? `Modifie l’image fournie en respectant cette demande : ${prompt}. Retourne l’image modifiée, pas seulement une description. Préserve les éléments qui ne doivent pas changer.`
       : `Crée une image originale de haute qualité à partir de cette description : ${prompt}. Retourne une image, pas seulement une description textuelle.`,
@@ -216,21 +215,15 @@ export async function POST(request: NextRequest) {
     lastModel = model;
     let response: Response;
     try {
-      response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-goog-api-key": geminiApiKey!,
         },
         body: JSON.stringify({
-          model,
-          input,
-          response_format: {
-            type: "image",
-            mime_type: "image/png",
-            aspect_ratio: "4:5",
-            image_size: "1K",
-          },
+          contents: [{ role: "user", parts: input }],
+          generationConfig: { responseModalities: ["IMAGE", "TEXT"], imageConfig: { aspectRatio: "4:5", imageSize: "1K" } },
         }),
         cache: "no-store",
         signal: AbortSignal.timeout(55_000),
