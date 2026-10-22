@@ -35,10 +35,10 @@ export async function embedTexts(texts: string[], taskType: "RETRIEVAL_DOCUMENT"
 
   const model = process.env.BCX_EMBEDDING_MODEL || "gemini-embedding-001";
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:batchEmbedContents?key=${encodeURIComponent(apiKey)}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:batchEmbedContents`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
         requests: texts.map((text) => ({
           model: `models/${model}`,
