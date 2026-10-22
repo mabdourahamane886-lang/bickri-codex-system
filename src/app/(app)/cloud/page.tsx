@@ -23,11 +23,12 @@ const ROADMAP = [
 
 export default function CloudPage() {
   const config = getConfigStatus();
+  const aiAvailable = config.gemini || config.openaiCompatible;
   const done = 3;
 
   const modules: Module[] = [
     { icon: Code, tag: "Édition", title: "Studio de code", text: "Éditeur HTML, CSS et JavaScript avec coloration syntaxique, aperçu isolé et console.", status: "Disponible", tone: "success", href: "/studio" },
-    { icon: Sparkles, tag: "Assistant", title: "Bickri Code AI", text: "Génère du code, explique les erreurs et conçoit une architecture de projet.", status: config.ai ? "Disponible" : "Clé requise", tone: config.ai ? "success" : "warning", href: "/ai" },
+    { icon: Sparkles, tag: "Assistant", title: "Bickri Code AI", text: "Génère du code, explique les erreurs et conçoit une architecture de projet.", status: aiAvailable ? "Disponible" : "Clé requise", tone: aiAvailable ? "success" : "warning", href: "/ai" },
     { icon: Database, tag: "Données", title: "Registre partagé", text: "Identifiants BCX stockés dans PostgreSQL avec contrôle d'accès par propriétaire.", status: config.supabase ? "Disponible" : "À configurer", tone: config.supabase ? "success" : "warning", href: "/registry" },
     { icon: SquareTerminal, tag: "Exécution", title: "Terminal Linux", text: "Terminal distant via WebSocket, sessions isolées, quotas et arrêt automatique.", status: "Planifié", tone: "neutral" },
     { icon: Hammer, tag: "Compilation", title: "Builds", text: "Jobs asynchrones Node.js et Python, puis Dart, Flutter et Android.", status: "Planifié", tone: "neutral" },
