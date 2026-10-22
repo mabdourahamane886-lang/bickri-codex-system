@@ -279,7 +279,7 @@ export default function CodeAIPage() {
   }
 
   function isImageSearchRequest(text: string) {
-    return /\\b(montre(?:-moi)?|affiche|trouve|recherche|cherche|voir|donne(?:-moi)?)\\b.{0,80}\\b(photos?|images?|photographies)\\b|\\b(photos?|images?|photographies)\\b.{0,80}\\b(de|sur|du|des|pour|à propos de)\\b/i.test(text);
+    return /\b(montre(?:-moi)?|affiche|trouve|recherche|cherche|voir|donne(?:-moi)?)\b.{0,80}\b(photos?|images?|photographies)\b|\b(photos?|images?|photographies)\b.{0,80}\b(de|sur|du|des|pour|à propos de)\b/i.test(text);
   }
 
   async function searchImages(query: string) {
@@ -292,7 +292,7 @@ export default function CodeAIPage() {
       const response = await fetch("/api/ai/image-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: content.replace(/\\b(montre(?:-moi)?|affiche|trouve|recherche|cherche|voir|donne(?:-moi)?)\\b/ig, "").replace(/\\b(photos?|images?|photographies)\\b/ig, "").replace(/\\b(de|sur|du|des|pour|à propos de)\\b/ig, " ").trim() || content }),
+        body: JSON.stringify({ query: content.replace(/\b(montre(?:-moi)?|affiche|trouve|recherche|cherche|voir|donne(?:-moi)?)\b/ig, "").replace(/\b(photos?|images?|photographies)\b/ig, "").replace(/\b(de|sur|du|des|pour|à propos de)\b/ig, " ").trim() || content }),
       });
       const data = await response.json().catch(() => ({})) as { images?: ImageSearchResult[]; error?: string };
       if (!response.ok) throw new Error(data.error || "La recherche d’images a échoué.");
