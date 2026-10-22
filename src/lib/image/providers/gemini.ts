@@ -31,7 +31,7 @@ const ASPECT_RATIOS: Record<NonNullable<ImageRequest["aspectRatio"]>, string> = 
 };
 
 function imageFromPart(part: GeminiImagePart): { base64: string; mimeType: string } | null {
-  const inline = part.inlineData ?? part.inline_data;
+  const inline = (part.inlineData ?? part.inline_data) as { data?: string; mime_type?: string; mimeType?: string } | undefined;
   const base64 = part.data ?? inline?.data;
   const mimeType = part.mime_type ?? part.mimeType ?? inline?.mime_type ?? inline?.mimeType;
   if (!base64 || (part.type && part.type !== "image" && !inline)) return null;
