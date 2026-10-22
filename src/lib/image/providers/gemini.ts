@@ -20,7 +20,7 @@ const ASPECT_RATIOS: Record<NonNullable<ImageRequest["aspectRatio"]>, string> = 
 };
 
 export function createGeminiProvider(apiKey: string, model: string): ImageProvider {
-  const normalizedModel = model.trim().replace(/[.\\s]+$/, "");
+  const normalizedModel = model.trim().replace(/[.\s]+$/, "");
   return {
     name: "gemini",
     async generate({ prompt, aspectRatio = "1:1" }: ImageRequest): Promise<ImageResult> {
