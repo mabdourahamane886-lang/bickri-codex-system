@@ -130,8 +130,8 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
         if (!googleKey) continue;
         const result = await generateWithGemini({
           apiKey: googleKey,
-          model: process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-3.8-flash",
-          fallbackModel: process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-3.6-flash",
+          model: process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash",
+          fallbackModel: process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite",
           systemInstruction: opts.systemInstruction,
           messages: opts.messages,
           maxOutputTokens: opts.maxOutputTokens,
