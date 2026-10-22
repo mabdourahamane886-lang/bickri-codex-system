@@ -11,8 +11,8 @@ const IMAGE_SIZES: Record<NonNullable<ImageRequest["aspectRatio"]>, string> = {
   "1:1": "1024x1024",
   "16:9": "1536x1024",
   "9:16": "1024x1536",
-  "4:3": "1200x900",
-  "3:4": "900x1200",
+  "4:3": "1536x1024",
+  "3:4": "1024x1536",
 };
 
 export class OpenAICompatibleImageProvider implements ImageProvider {
