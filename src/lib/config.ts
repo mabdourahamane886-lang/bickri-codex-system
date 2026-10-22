@@ -5,6 +5,7 @@ export function getConfigStatus() {
   return {
     supabase: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
     gemini: Boolean(process.env.GEMINI_API_KEY || process.env.AI_API_KEY),
+    anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
     openaiCompatible: Boolean(process.env.OPENAI_API_KEY),
     webSearch: Boolean(process.env.TAVILY_API_KEY),
     githubMcp: Boolean(process.env.GITHUB_MCP_URL && process.env.GITHUB_MCP_BEARER_TOKEN),
