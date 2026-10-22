@@ -23,7 +23,7 @@ Le terminal cloud, les conteneurs de build, la compilation Flutter/Android et le
 - Next.js 15 App Router, React 19, TypeScript strict, Geist
 - Supabase Auth, PostgreSQL et Row Level Security (RLS)
 - CodeMirror 6, `react-markdown`, `remark-gfm`, `lucide-react`
-- Fournisseurs IA : Gemini en priorité, API compatible OpenAI/OpenRouter en repli
+- Fournisseurs IA : Gemini en priorité, Anthropic Claude sélectionnable, API compatible OpenAI/OpenRouter en repli
 - Vitest, ESLint, GitHub Actions
 - Déploiement Vercel ; compatibilité Cloudflare possible via OpenNext selon la configuration d'hébergement
 
@@ -66,8 +66,10 @@ Copie `.env.example` et remplace les valeurs de démonstration. Les clés privé
 Variables principales :
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-- `AI_PROVIDER` (`auto`, `google`, `openai`, `openrouter`), `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`
-- `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`
+- `AI_PROVIDER` (`auto`, `google`, `anthropic`, `openai`, `openrouter`)
+- Anthropic Claude : `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` (sélectionne explicitement `AI_PROVIDER=anthropic` pour tester Anthropic sans bascule automatique vers un autre fournisseur)
+- Gemini : `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`
+- OpenAI/OpenRouter : `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`
 - `TAVILY_API_KEY`
 - `GITHUB_MCP_URL`, `GITHUB_MCP_BEARER_TOKEN`, `GITHUB_ALLOWED_OWNERS`, `GITHUB_ALLOWED_REPOSITORIES`, `BCX_ADMIN_EMAILS`
 - `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN`, `GOOGLE_DRIVE_FOLDER_ID`
@@ -97,7 +99,7 @@ Format : `BCX-<CATÉGORIE>-<SÉRIE GRECQUE>-<NUMÉRO>`, par exemple `BCX-AI-THET
 
 1. Importe le dépôt GitHub dans Vercel.
 2. Ajoute les variables nécessaires dans **Project → Settings → Environment Variables** (Preview/Production selon le besoin).
-3. Configure dans Supabase l'URL de production et la redirection `https://TON-DOMAINE/auth/callback`.
+3. Configure dans Supabase l'URL du site et la redirection `https://TON-DOMAINE/auth/callback`.
 4. Déploie et vérifie `/api/health`, puis les routes principales.
 5. Après toute modification des variables d'environnement, déclenche un nouveau déploiement.
 
