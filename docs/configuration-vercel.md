@@ -12,8 +12,8 @@ Dans **Vercel → bickri-codex-system → Settings → Environment Variables**, 
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://avgzbyvmsjjfgywtijno.supabase.co` | Publique |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_DdDungDBgeVWS4yKRZJa1Q_dDhxV36a` | Publique (clé « publishable ») |
 | `GEMINI_API_KEY` | Clé créée sur [Google AI Studio](https://aistudio.google.com/apikey) | **Secrète** : type « Sensitive » |
-| `GEMINI_MODEL` | `gemini-3.8-flash` | Optionnelle |
-| `GEMINI_FALLBACK_MODEL` | `gemini-3.6-flash` | Optionnelle |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Optionnelle |
+| `GEMINI_FALLBACK_MODEL` | `gemini-2.5-flash-lite` | Optionnelle |
 | `BCX_ADMIN_EMAILS` | `mabdourahamane886@gmail.com` | Optionnelle : active le plugin GitHub pour ce compte |
 | `GITHUB_ALLOWED_OWNERS` | `mabdourahamane886-lang` | Optionnelle : comptes GitHub accessibles |
 
