@@ -36,11 +36,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const currentLabel = current?.label ?? (pathname === "/ai" ? "Bickri Chat" : "Page");
   const isWorkspace = pathname === "/";
   const isStandalonePlugins = pathname === "/plugins";
+  const isStandaloneSettings = pathname === "/settings";
 
   if (isWorkspace) return <>{children}</>;
   // Keep the Plugins catalogue focused: its own header and “Retour au chat” control
   // replace the global sidebar and mobile tab bar on this route only.
   if (isStandalonePlugins) return <div className="plugins-standalone">{children}</div>;
+  // Settings gets its own focused page, without the global sidebar or mobile navigation.
+  if (isStandaloneSettings) return <div className="settings-standalone">{children}</div>;
 
   return (
     <div className="shell">
