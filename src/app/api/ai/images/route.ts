@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
       lastStatus = 502;
       lastDetail = "Gemini request timed out or could not connect.";
       console.error("Gemini image request failed", { model, status: lastStatus, detail: lastDetail });
-      break;
+      continue;
     }
 
     const result = await response.json().catch(() => null) as GeminiResponse | null;
@@ -245,8 +245,9 @@ export async function POST(request: NextRequest) {
     lastDetail = typeof result?.error?.message === "string" ? result.error.message.slice(0, 300) : "";
     console.error("Gemini image request failed", { model, status: lastStatus, detail: lastDetail });
 
-    // Retry only when a model identifier/endpoint is rejected, not for auth or quota failures.
-    if (response.status !== 404 && response.status !== 400) break;
+    // Try the next configured model for invalid model IDs, overloads and transient server errors.
+    // Authentication/permission failures should not be retried with another model.
+    if (![400, 404, 408, 429, 500, 502, 503, 504].includes(response.status)) break;
   }
 
   if (!finalResult) {
