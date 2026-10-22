@@ -66,3 +66,19 @@ export function nextSerial(identifiers: string[], category: string, greek: strin
     .reduce((n, id) => Math.max(n, Number(id.slice(prefix.length)) || 0), floor);
   return max + 1;
 }
+
+
+/** Valide le format et les valeurs autorisées, pas seulement la forme de la chaîne. */
+export function isValidCode(identifier: string): boolean {
+  const parsed = parseCode(identifier);
+  if (!parsed || !CATEGORIES.some((item) => item.code === parsed.category)) return false;
+  if (!GREEK_LETTERS.some((item) => item.name === parsed.greek)) return false;
+  return Number.isSafeInteger(parsed.serial) && parsed.serial > 0;
+}
+
+/** Calcule l'identifiant complet suivant pour une catégorie et une série données. */
+export function nextCode(identifiers: string[], category: string, greek: string): string {
+  if (!CATEGORIES.some((item) => item.code === category)) throw new Error("Catégorie BCX invalide.");
+  if (!GREEK_LETTERS.some((item) => item.name === greek)) throw new Error("Série grecque invalide.");
+  return formatCode(category, greek, nextSerial(identifiers.filter(isValidCode), category, greek));
+}
