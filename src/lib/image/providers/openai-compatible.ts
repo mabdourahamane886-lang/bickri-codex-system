@@ -37,7 +37,7 @@ export function createOpenAICompatibleProvider(
           prompt,
           n: 1,
           size: IMAGE_SIZES[aspectRatio],
-          response_format: "b64_json",
+          // GPT image models return base64 by default. response_format is unsupported by these models.
         }),
         cache: "no-store",
         signal: AbortSignal.timeout(55_000),
