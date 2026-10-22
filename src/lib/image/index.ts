@@ -6,12 +6,14 @@ import { createOpenAICompatibleProvider } from "./providers/openai-compatible";
 
 export type ImageProviderName = "gemini" | "openai-compatible";
 
+const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image";
+
 export function getImageProvider(): ImageProvider {
   const kind = (process.env.IMAGE_PROVIDER ?? "auto").trim().toLowerCase();
 
   if (kind === "gemini") {
     const key = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
-    const model = process.env.GEMINI_IMAGE_MODEL || "gemini-nano-banana-2.1";
+    const model = process.env.GEMINI_IMAGE_MODEL || DEFAULT_GEMINI_IMAGE_MODEL;
     if (!key) throw new Error("GEMINI_API_KEY manquant");
     return createGeminiProvider(key, model);
   }
@@ -26,10 +28,11 @@ export function getImageProvider(): ImageProvider {
   }
 
   if (kind === "auto") {
-    if (process.env.GEMINI_API_KEY || process.env.AI_API_KEY) {
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
+    if (geminiKey) {
       return createGeminiProvider(
-        (process.env.GEMINI_API_KEY || process.env.AI_API_KEY)!,
-        process.env.GEMINI_IMAGE_MODEL || "gemini-nano-banana-2.1",
+        geminiKey,
+        process.env.GEMINI_IMAGE_MODEL || DEFAULT_GEMINI_IMAGE_MODEL,
       );
     }
     const key = process.env.IMAGE_API_KEY || process.env.OPENAI_API_KEY;
