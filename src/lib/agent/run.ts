@@ -164,11 +164,11 @@ export async function runAgent(opts: {
       compact(contents);
       const configuredModel = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "";
       const configuredFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "";
-      const model = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"].includes(configuredModel) ? "gemini-3.8-flash" : configuredModel || "gemini-3.8-flash";
+      const selectedModel = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"].includes(configuredModel) ? "gemini-3.8-flash" : configuredModel || "gemini-3.8-flash";
       const fallbackModel = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"].includes(configuredFallback) ? "gemini-3.6-flash" : configuredFallback || "gemini-3.6-flash";
       const res = await generateContent({
         apiKey: opts.apiKey,
-        model,
+        model: selectedModel,
         fallbackModel,
         systemInstruction: system,
         contents,
