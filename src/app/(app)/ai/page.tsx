@@ -253,14 +253,12 @@ export default function CodeAIPage() {
     setImageLoading(true); setError(""); setImageResult(null);
     setPrompt(""); // Comme pour une question normale, vider immédiatement la barre après l’envoi.
     try {
-      const response = await fetch("/api/ai/images", {
+      const response = await fetch(imageMode === "edit" ? "/api/ai/images" : "/api/ai/image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: content,
-          mode: imageMode,
-          ...(imageMode === "edit" && imageSource ? { imageData: imageSource.data, mimeType: imageSource.file.type } : {}),
-        }),
+        body: JSON.stringify(imageMode === "edit"
+          ? { prompt: content, mode: imageMode, ...(imageSource ? { imageData: imageSource.data, mimeType: imageSource.file.type } : {}) }
+          : { prompt: content, aspectRatio: "1:1" }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || typeof data.image !== "string") throw new Error(data.error || "Impossible de générer cette image.");

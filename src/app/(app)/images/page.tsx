@@ -71,14 +71,12 @@ export default function ImageStudioPage() {
     setResult(null);
     setPrompt(""); // Vider la saisie dès l’envoi, comme dans le chat BCX.
     try {
-      const response = await fetch("/api/ai/images", {
+      const response = await fetch(mode === "edit" ? "/api/ai/images" : "/api/ai/image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode,
-          prompt: prompt.trim(),
-          ...(mode === "edit" && source ? { imageData: source.data, mimeType: source.file.type } : {}),
-        }),
+        body: JSON.stringify(mode === "edit"
+          ? { mode, prompt: prompt.trim(), ...(source ? { imageData: source.data, mimeType: source.file.type } : {}) }
+          : { prompt: prompt.trim(), aspectRatio: "1:1" }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "La demande a échoué.");
@@ -97,7 +95,7 @@ export default function ImageStudioPage() {
 
   return (
     <main className="content">
-      <PageHeader title="Studio d’images IA" description="Crée des images originales avec Gemini Imagen 3, ou transforme tes propres photos avec l’IA." />
+      <PageHeader title="Studio d’images IA" description="Crée des images avec Gemini, OpenAI ou OpenRouter, ou transforme tes propres photos avec l’IA." />
 
       <div className="grid-2" style={{ alignItems: "start" }}>
         <section className="card card-pad stack" style={{ gap: 18 }}>
