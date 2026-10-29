@@ -1,33 +1,25 @@
-import { Cloud, Code, MessageSquare, Plug, Settings, type LucideIcon } from "lucide-react";
+import { Code, MessageSquare, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; short: string; icon: LucideIcon };
 
+/**
+ * Navigation principale BCX : une seule interface avec deux espaces.
+ * Le chat conserve l'assistant IA ; Codex ouvre l'éditeur de code.
+ * Les anciens modules ne sont plus exposés dans la navigation.
+ */
 export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
-    label: "Conversation",
+    label: "Espace de travail",
     items: [
-      { href: "/", label: "Bickri Chat", short: "Chat", icon: MessageSquare },
-      { href: "/plugins", label: "Plugins", short: "Plugins", icon: Plug },
-    ],
-  },
-  {
-    label: "Outils de travail",
-    items: [
-      { href: "/ai", label: "Codex BCX", short: "Codex", icon: Code },
-    ],
-  },
-  {
-    label: "Plateforme",
-    items: [
-      { href: "/cloud", label: "BCX Cloud", short: "Cloud", icon: Cloud },
-      { href: "/settings", label: "Paramètres", short: "Réglages", icon: Settings },
+      { href: "/ai", label: "Chat", short: "Chat", icon: MessageSquare },
+      { href: "/studio", label: "Codex", short: "Codex", icon: Code },
     ],
   },
 ];
 
 export const ALL_NAV = NAV_GROUPS.flatMap((g) => g.items);
-export const MOBILE_NAV = ["/", "/ai", "/plugins", "/cloud", "/settings"].map((h) => ALL_NAV.find((i) => i.href === h)!);
+export const MOBILE_NAV = ALL_NAV;
 
 export function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
+  return pathname === href || pathname.startsWith(href + "/");
 }
