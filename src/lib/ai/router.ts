@@ -116,9 +116,9 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
   const openAIKey = process.env.OPENAI_API_KEY;
   const openRouterKey = process.env.OPENROUTER_API_KEY || openAIKey;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  // When Gemini is configured and no provider is explicitly selected, stay on Gemini.
-  // This prevents an unrelated Anthropic key left in Vercel from hijacking error handling.
-  const selectedProvider = (process.env.AI_PROVIDER || (googleKey ? "google" : "auto")).trim().toLowerCase();
+  // This BCX deployment uses Gemini as its configured provider. When a Gemini key
+  // exists, never switch to Anthropic just because an unrelated key is also present.
+  const selectedProvider = googleKey ? "google" : (process.env.AI_PROVIDER || "auto").trim().toLowerCase();
   const order = getAIProviderOrder(selectedProvider).filter((provider) => !opts.excludeProviders?.includes(provider));
   const failures: string[] = [];
 
