@@ -22,9 +22,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.AI_API_KEY || process.env.GEMINI_API_KEY;
-  const hasAnyAIProvider = Boolean(apiKey || process.env.OPENAI_API_KEY || process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY);
-  if (!hasAnyAIProvider) return NextResponse.json({ error: "Aucun fournisseur IA serveur n'est configuré. Vérifie les variables d'environnement Vercel.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
+  if (!apiKey) return NextResponse.json({ error: "GEMINI_API_KEY est manquante dans les variables serveur Vercel.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
 
   const limit = rateLimit(`agent:${clientKey(request.headers)}`, 30, 60_000);
   if (!limit.ok) return NextResponse.json({ error: `Trop de requêtes. Réessaie dans ${limit.retryAfter} s.` }, { status: 429 });
@@ -64,7 +63,6 @@ export async function POST(request: NextRequest) {
       const fallback = await generateWithRouter({
         systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery),
         messages: fallbackMessages,
-        excludeProviders: ["google"],
       });
       const fallbackContents = [...contents, { role: "model" as const, parts: [{ text: fallback.answer }] }];
       return NextResponse.json({
