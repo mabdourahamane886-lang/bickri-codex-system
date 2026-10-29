@@ -474,10 +474,6 @@ export default function CodeAIPage() {
       <div className="chat-main">
         <div className="chat-scroll">
           <div className="chat-inner">
-            {config && !config.ai && (
-              <div className="alert alert-warning"><CircleAlert /><span>L&apos;assistant n&apos;est pas encore configuré : ajoute <code className="mono">GEMINI_API_KEY</code> dans les variables d&apos;environnement Vercel, puis redéploie.</span></div>
-            )}
-
             {messages.length === 0 ? (
               <>
                 <div className="chat-hero">
