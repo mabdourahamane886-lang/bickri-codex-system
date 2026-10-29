@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getImageProvider } from "@/lib/image";
+import { getImageProviders } from "@/lib/image";
 import type { ImageRequest } from "@/lib/image/types";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 
@@ -34,14 +34,24 @@ export async function POST(request: NextRequest) {
     : "1:1";
 
   try {
-    const provider = getImageProvider();
-    const result = await provider.generate({ prompt, aspectRatio });
-    return NextResponse.json({
-      image: `data:${result.mimeType};base64,${result.base64}`,
-      mimeType: result.mimeType,
-      provider: result.provider,
-      model: result.model,
-    });
+    const providers = getImageProviders();
+    const failures: string[] = [];
+    for (const provider of providers) {
+      try {
+        const result = await provider.generate({ prompt, aspectRatio });
+        return NextResponse.json({
+          image: `data:${result.mimeType};base64,${result.base64}`,
+          mimeType: result.mimeType,
+          provider: result.provider,
+          model: result.model,
+        });
+      } catch (providerError) {
+        const message = providerError instanceof Error ? providerError.message : "Erreur fournisseur inconnue.";
+        failures.push(message);
+        console.warn("Image provider failed; trying configured fallback.", { provider: provider.name, message });
+      }
+    }
+    throw new Error(failures.length ? `Tous les fournisseurs d'images ont échoué : ${failures[failures.length - 1]}` : "Aucun fournisseur d'images disponible.");
   } catch (error) {
     const message = error instanceof Error ? error.message : "La génération d'image a échoué.";
     const status = /configur|aucun fournisseur/i.test(message) ? 503 : /quota|limite/i.test(message) ? 429 : 502;
