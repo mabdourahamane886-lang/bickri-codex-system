@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
   try {
     const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
     const projectContext = typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "";
-    if (!apiKey) throw new AIError("L'agent avec outils nécessite Gemini. La route va essayer un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
     try {
+      if (!apiKey) throw new AIError("Gemini n'est pas configuré; bascule vers un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
       const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext });
       return NextResponse.json(result);
     } catch (agentError) {
