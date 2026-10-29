@@ -5,17 +5,9 @@ type RouterOptions = { systemInstruction: string; messages: ChatMessage[]; maxOu
 type AIProvider = "google" | "openai" | "openrouter" | "anthropic";
 type ProviderResult = { answer: string; model: string; provider: AIProvider };
 
-export function getAIProviderOrder(provider = process.env.AI_PROVIDER || "auto"): AIProvider[] {
-  if (provider === "anthropic") return ["anthropic"];
-  if (provider === "openai") return ["openai", "google", "anthropic"];
-  if (provider === "openrouter") return ["openrouter", "google", "openai", "anthropic"];
-  // Gemini-only mode must not fall through to unrelated providers.
-  if (provider === "google") return ["google"];
-  const openRouterSelected = Boolean(process.env.OPENROUTER_API_KEY) ||
-    (process.env.OPENAI_BASE_URL || "").toLowerCase().includes("openrouter.ai");
-  return openRouterSelected
-    ? ["google", "openrouter", "openai", "anthropic"]
-    : ["google", "openai", "openrouter", "anthropic"];
+export function getAIProviderOrder(_provider = process.env.AI_PROVIDER || "auto"): AIProvider[] {
+  // BCX is Gemini-only: no OpenAI, OpenRouter, or Anthropic fallback.
+  return ["google"];
 }
 
 async function generateWithAnthropic(opts: RouterOptions & { apiKey: string; model: string }): Promise<ProviderResult> {
@@ -113,12 +105,13 @@ async function generateOpenAICompatible(opts: RouterOptions & { apiKey: string; 
 
 export async function generateWithRouter(opts: RouterOptions): Promise<ProviderResult> {
   const googleKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
+  if (!googleKey) throw new AIError("GEMINI_API_KEY est manquante dans les variables serveur Vercel.", 503, "AI_NOT_CONFIGURED");
   const openAIKey = process.env.OPENAI_API_KEY;
   const openRouterKey = process.env.OPENROUTER_API_KEY || openAIKey;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   // This BCX deployment uses Gemini as its configured provider. When a Gemini key
   // exists, never switch to Anthropic just because an unrelated key is also present.
-  const selectedProvider = googleKey ? "google" : (process.env.AI_PROVIDER || "auto").trim().toLowerCase();
+  const selectedProvider = "google";
   const order = getAIProviderOrder(selectedProvider).filter((provider) => !opts.excludeProviders?.includes(provider));
   const failures: string[] = [];
 
