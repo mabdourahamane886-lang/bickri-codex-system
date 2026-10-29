@@ -9,7 +9,8 @@ export function getAIProviderOrder(provider = process.env.AI_PROVIDER || "auto")
   if (provider === "anthropic") return ["anthropic"];
   if (provider === "openai") return ["openai", "google", "anthropic"];
   if (provider === "openrouter") return ["openrouter", "google", "openai", "anthropic"];
-  if (provider === "google") return ["google", "openai", "anthropic"];
+  // Gemini-only mode must not fall through to unrelated providers.
+  if (provider === "google") return ["google"];
   const openRouterSelected = Boolean(process.env.OPENROUTER_API_KEY) ||
     (process.env.OPENAI_BASE_URL || "").toLowerCase().includes("openrouter.ai");
   return openRouterSelected
@@ -115,7 +116,9 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
   const openAIKey = process.env.OPENAI_API_KEY;
   const openRouterKey = process.env.OPENROUTER_API_KEY || openAIKey;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  const selectedProvider = process.env.AI_PROVIDER || "auto";
+  // When Gemini is configured and no provider is explicitly selected, stay on Gemini.
+  // This prevents an unrelated Anthropic key left in Vercel from hijacking error handling.
+  const selectedProvider = (process.env.AI_PROVIDER || (googleKey ? "google" : "auto")).trim().toLowerCase();
   const order = getAIProviderOrder(selectedProvider).filter((provider) => !opts.excludeProviders?.includes(provider));
   const failures: string[] = [];
 
