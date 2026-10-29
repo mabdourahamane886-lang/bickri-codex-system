@@ -73,41 +73,6 @@ export function getImageProviders(): ImageProvider[] {
 
 export function getImageProvider(): ImageProvider {
   return getImageProviders()[0];
-
-  if (kind === "gemini") {
-    const key = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
-    const model = process.env.GEMINI_IMAGE_MODEL || DEFAULT_GEMINI_IMAGE_MODEL;
-    if (!key) throw new Error("GEMINI_API_KEY manquant");
-    return createGeminiProvider(key, model);
-  }
-
-  if (kind === "openai-compatible" || kind === "openai" || kind === "openrouter") {
-    const key = process.env.IMAGE_API_KEY || process.env.OPENAI_API_KEY;
-    const model = process.env.IMAGE_OPENAI_MODEL || process.env.IMAGE_MODEL || process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
-    if (!key) throw new Error("IMAGE_API_KEY ou OPENAI_API_KEY manquant");
-    return createOpenAICompatibleProvider(key, getCompatibleBaseUrl(kind), model);
-  }
-
-  if (kind === "auto") {
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
-    if (geminiKey) {
-      return createGeminiProvider(
-        geminiKey,
-        process.env.GEMINI_IMAGE_MODEL || DEFAULT_GEMINI_IMAGE_MODEL,
-      );
-    }
-    const key = process.env.IMAGE_API_KEY || process.env.OPENAI_API_KEY;
-    if (key) {
-      return createOpenAICompatibleProvider(
-        key,
-        getCompatibleBaseUrl("openai-compatible"),
-        process.env.IMAGE_OPENAI_MODEL || process.env.IMAGE_MODEL || process.env.OPENAI_IMAGE_MODEL || "gpt-image-1",
-      );
-    }
-    throw new Error("Aucun fournisseur d'images configuré. Ajoute GEMINI_API_KEY ou IMAGE_API_KEY côté serveur.");
-  }
-
-  throw new Error("IMAGE_PROVIDER inconnu : utilise auto, gemini ou openai-compatible.");
 }
 
 export type { ImageProvider, ImageRequest, ImageResult } from "./types";
