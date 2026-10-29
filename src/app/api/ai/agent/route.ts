@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext });
       return NextResponse.json(result);
     } catch (agentError) {
-      if (!(agentError instanceof AIError) || !["AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_BUSY", "AI_NETWORK_TIMEOUT", "AI_QUOTA_OR_RATE_LIMIT", "AI_EMPTY_RESPONSE"].includes(agentError.code || "")) {
+      if (!(agentError instanceof AIError) || !["AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_BUSY", "AI_NETWORK_TIMEOUT", "AI_QUOTA_OR_RATE_LIMIT", "AI_EMPTY_RESPONSE", "AI_PROVIDER_ERROR", "AI_ACCESS_DENIED", "AI_BAD_REQUEST", "AI_MODEL_NOT_FOUND"].includes(agentError.code || "")) {
         throw agentError;
       }
       const fallbackMessages = contents
