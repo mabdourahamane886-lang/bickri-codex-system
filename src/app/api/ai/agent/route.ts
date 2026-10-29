@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AIError } from "@/lib/ai/gemini";
+import { generateWithRouter } from "@/lib/ai/router";
+import { buildSystemInstruction } from "@/lib/ai/prompt";
 import { getAgentContext } from "@/lib/agent/context";
 import { runAgent, sanitizeContents } from "@/lib/agent/run";
 import { PLUGINS } from "@/lib/agent/plugins";
@@ -21,7 +23,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const apiKey = process.env.AI_API_KEY || process.env.GEMINI_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "Aucune clé IA serveur n'est configurée (AI_API_KEY ou GEMINI_API_KEY).", code: "AI_NOT_CONFIGURED" }, { status: 503 });
+  const hasAnyAIProvider = Boolean(apiKey || process.env.OPENAI_API_KEY || process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY);
+  if (!hasAnyAIProvider) return NextResponse.json({ error: "Aucun fournisseur IA serveur n'est configuré. Vérifie les variables d'environnement Vercel.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
 
   const limit = rateLimit(`agent:${clientKey(request.headers)}`, 30, 60_000);
   if (!limit.ok) return NextResponse.json({ error: `Trop de requêtes. Réessaie dans ${limit.retryAfter} s.` }, { status: 429 });
@@ -39,16 +42,41 @@ export async function POST(request: NextRequest) {
   const ctx = await getAgentContext();
 
   try {
-    const result = await runAgent({
-      ctx,
-      apiKey,
-      contents,
-      pluginIds,
-      decision,
-      language: typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage",
-      projectContext: typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "",
-    });
-    return NextResponse.json(result);
+    const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
+    const projectContext = typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "";
+    if (!apiKey) throw new AIError("L'agent avec outils nécessite Gemini. La route va essayer un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
+    try {
+      const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext });
+      return NextResponse.json(result);
+    } catch (agentError) {
+      if (!(agentError instanceof AIError) || !["AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_BUSY", "AI_NETWORK_TIMEOUT", "AI_QUOTA_OR_RATE_LIMIT", "AI_EMPTY_RESPONSE"].includes(agentError.code || "")) {
+        throw agentError;
+      }
+      const fallbackMessages = contents
+        .map((item) => ({
+          role: item.role === "model" ? "assistant" as const : "user" as const,
+          content: item.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n").trim(),
+        }))
+        .filter((item) => item.content.length > 0)
+        .slice(-12);
+      if (!fallbackMessages.some((item) => item.role === "user")) throw agentError;
+      const latestUserQuery = [...fallbackMessages].reverse().find((item) => item.role === "user")?.content || "";
+      const fallback = await generateWithRouter({
+        systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery),
+        messages: fallbackMessages,
+        excludeProviders: ["google"],
+      });
+      const fallbackContents = [...contents, { role: "model" as const, parts: [{ text: fallback.answer }] }];
+      return NextResponse.json({
+        contents: fallbackContents,
+        events: [],
+        answer: fallback.answer,
+        model: fallback.model,
+        provider: fallback.provider,
+        fallbackMode: true,
+        plugins: PLUGINS.map((plugin) => ({ id: plugin.id, name: plugin.name, description: plugin.description, available: false, reason: "Réponse textuelle de secours : les outils nécessitent Gemini.", tools: 0, writeTools: 0 })),
+      });
+    }
   } catch (err) {
     if (err instanceof AIError) return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
     console.error("Agent", err instanceof Error ? err.message : err);
