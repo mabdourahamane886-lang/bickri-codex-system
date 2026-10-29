@@ -111,7 +111,6 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   // This BCX deployment uses Gemini as its configured provider. When a Gemini key
   // exists, never switch to Anthropic just because an unrelated key is also present.
-  const selectedProvider = "google";
   const order = getAIProviderOrder(selectedProvider).filter((provider) => !opts.excludeProviders?.includes(provider));
   const failures: string[] = [];
 
@@ -172,7 +171,6 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
     } catch (error) {
       failures.push(error instanceof Error ? error.message : "Erreur fournisseur inconnue.");
       console.warn(`Bickri AI : échec du fournisseur ${provider}; tentative de repli.`);
-      if (selectedProvider === "anthropic") throw error;
     }
   }
   if (!googleKey && !openAIKey && !openRouterKey && !anthropicKey) {
