@@ -93,7 +93,8 @@ export default function CodeAIPage() {
   const { config } = useConfig();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contents, setContents] = useState<unknown[]>([]);
-  const [history, setHistory] = useState<SavedConversation[]>([]);\n  const [historySearch, setHistorySearch] = useState("");
+  const [history, setHistory] = useState<SavedConversation[]>([]);
+  const [historySearch, setHistorySearch] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("");
   const [pending, setPending] = useState<Pending[] | null>(null);
   const [prompt, setPrompt] = useState("");
