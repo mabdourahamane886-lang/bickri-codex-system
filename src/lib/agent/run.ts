@@ -112,10 +112,9 @@ export async function runAgent(opts: {
   const contents = opts.contents;
   const declarations = [...tools.values()].map((t) => ({ name: t.name, description: t.description, ...(t.parameters ? { parameters: t.parameters } : {}) }));
   const latestUserQuery = [...contents].reverse()
-    .filter((item) => item.role === "user")
-    .flatMap((item) => item.parts.filter((part) => typeof part.text === "string").map((part) => part.text!))
-    .join("\n")
-    .slice(-8000);
+    .find((item) => item.role === "user")
+    ?.parts.filter((part) => typeof part.text === "string").map((part) => part.text!).join("\n")
+    .slice(-8000) ?? "";
   const retrieved = await retrieveKnowledge(latestUserQuery, 5);
   // La mémoire n'est chargée que pour l'utilisateur connecté et reste strictement limitée à son compte.
   let authorizedMemory = "";
