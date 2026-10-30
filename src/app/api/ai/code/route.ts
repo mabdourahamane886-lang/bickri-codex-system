@@ -10,8 +10,8 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
-  if (!(process.env.GEMINI_API_KEY || process.env.AI_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY)) {
-    return NextResponse.json({ error: "Aucune clé IA serveur n'est configurée. Ajoute une clé correspondant au fournisseur choisi dans Vercel → Settings → Environment Variables.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
+  if (!(process.env.GEMINI_API_KEY || process.env.AI_API_KEY)) {
+    return NextResponse.json({ error: "Bickri AI est momentanément indisponible. Ta demande reste dans la conversation ; réessaie dans un instant.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
   }
   const limit = rateLimit(`ai:${clientKey(request.headers)}`, 20, 60_000);
   if (!limit.ok) return NextResponse.json({ error: `Trop de requêtes. Réessaie dans ${limit.retryAfter} s.`, code: "RATE_LIMITED" }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });
@@ -47,7 +47,12 @@ export async function POST(request: NextRequest) {
       webSearch: { configured: isWebSearchConfigured(), used: webResults.length > 0 },
     });
   } catch (error) {
-    if (error instanceof AIError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+    if (error instanceof AIError) {
+      const publicMessage = error.code === "AI_QUOTA_OR_RATE_LIMIT"
+        ? "Le service IA est très sollicité. Réessaie dans quelques instants."
+        : "Une difficulté technique empêche temporairement la réponse. Réessaie dans un instant.";
+      return NextResponse.json({ error: publicMessage, code: error.code }, { status: error.status });
+    }
     console.error("Erreur de connexion IA", error instanceof Error ? error.message : "erreur inconnue");
     return NextResponse.json({ error: "La connexion au service IA a échoué. Réessaie dans quelques instants.", code: "AI_CONNECTION_FAILED" }, { status: 502 });
   }

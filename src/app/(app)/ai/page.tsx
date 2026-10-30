@@ -26,7 +26,7 @@ type AgentResponse = {
 const CHAT_KEY = "bcx_ai_chat_v2";
 const HISTORY_KEY = "bcx_ai_conversations_v1";
 const PLUGINS_KEY = "bcx_ai_plugins_v1";
-const MAX_CONTINUATIONS = 4;
+const MAX_CONTINUATIONS = 8;
 const LANGUAGES = ["TypeScript / Next.js", "JavaScript", "HTML / CSS", "Python", "Python / Django", "Dart / Flutter", "Kotlin / Android", "Java", "C / C++", "Rust", "PHP", "SQL / Supabase", "Autre langage"];
 const STARTERS = [
   { icon: Layers, text: "Crée une application web responsive en Next.js avec authentification Supabase." },
@@ -188,6 +188,7 @@ export default function CodeAIPage() {
         });
         const data = (await res.json().catch(() => ({}))) as AgentResponse;
         if (!res.ok) throw new Error(data.error || "La requête a échoué.");
+        if (!Array.isArray(data.contents)) throw new Error("Réponse incomplète du service.");
         state = data.contents;
         setContents(data.contents);
         patchAssistant((m) => ({ ...m, model: data.model, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...data.events] }));
@@ -200,8 +201,12 @@ export default function CodeAIPage() {
         body = {}; // poursuite automatique sans nouveau message
       }
       patchAssistant((m) => ({ ...m, content: m.content || "La tâche est longue : écris « continue » pour que je poursuive." }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue.");
+    } catch {
+      patchAssistant((message) => ({
+        ...message,
+        content: message.content || "Je rencontre une interruption temporaire du service. Ton échange est conservé. Tu peux réessayer sans recommencer ta demande.",
+      }));
+      setError("Connexion temporairement interrompue. Ta conversation est conservée : appuie sur « Réessayer » pour reprendre.");
     } finally {
       setLoading(false);
     }
