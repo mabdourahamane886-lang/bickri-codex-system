@@ -614,7 +614,7 @@ export default function CodeAIPage() {
             )}
 
             {error && (
-              <div className="alert alert-danger" role="alert">
+              <div className="alert alert-warning bcx-friendly-error" role="status">
                 <CircleAlert />
                 <div className="grow"><p>{error}</p><button className="btn btn-sm" style={{ marginTop: 8 }} onClick={retry}><RefreshCw /> Réessayer</button></div>
               </div>
