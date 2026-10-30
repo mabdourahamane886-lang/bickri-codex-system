@@ -2,8 +2,7 @@ import "server-only";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { str, type Plugin, type Tool } from "../types";
-
-type SearchResult = { title?: string; url?: string; content?: string };
+import { isWebSearchConfigured, searchWeb } from "@/lib/ai/web-search";
 
 export function isPrivateAddress(ip: string): boolean {
   if (isIP(ip) === 4) {
@@ -48,19 +47,6 @@ export async function fetchPublic(raw: string) {
   }
   throw new Error("Trop de redirections.");
 }
-async function searchWeb(query: string) {
-  const key = process.env.TAVILY_API_KEY;
-  if (!key) return { error: "TAVILY_API_KEY n'est pas configurée pour la recherche Web." };
-  const response = await fetch("https://api.tavily.com/search", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ query, search_depth: "advanced", max_results: 6, include_answer: false, include_raw_content: false }),
-    signal: AbortSignal.timeout(15000), cache: "no-store",
-  });
-  if (!response.ok) return { error: `Le moteur de recherche a renvoyé HTTP ${response.status}.` };
-  const payload = await response.json() as { results?: SearchResult[] };
-  return { query, results: (payload.results ?? []).map((r) => ({ title: str(r.title, 300), url: str(r.url, 1000), excerpt: str(r.content, 1200) })) };
-}
 export const webPlugin: Plugin = {
   id: "web", name: "Web", description: "Recherche Web en temps réel et lecture de pages publiques.",
   async load(ctx) {
@@ -75,18 +61,18 @@ export const webPlugin: Plugin = {
         catch (err) { return { error: err instanceof Error ? err.message : "Lecture impossible." }; }
       },
     }];
-    if (process.env.TAVILY_API_KEY) tools.push({
+    if (isWebSearchConfigured()) tools.push({
       name: "web_search",
-      description: "Recherche des pages Web récentes et pertinentes. Présente les URL retournées comme sources et distingue les résultats trouvés des faits vérifiés.",
+      description: "Recherche sur Internet avec Google Search en priorité et Tavily en secours. Utilise cet outil pour trouver des informations récentes, des sources fiables et des pages pertinentes. Présente les URL retournées comme sources.",
       parameters: { type: "object", properties: { query: { type: "string", description: "Question ou sujet à rechercher sur le Web." } }, required: ["query"] },
       write: false, label: (a) => `Recherche Web : ${str(a.query, 90)}`,
       run: async (a) => {
         const query = str(a.query, 400).trim();
         if (!query) return { error: "La requête est vide." };
-        try { return await searchWeb(query); }
+        try { const results = await searchWeb(query, 6); return { query, results }; }
         catch (err) { return { error: err instanceof Error ? err.message : "Recherche impossible." }; }
       },
     });
-    return { tools, reason: process.env.TAVILY_API_KEY ? undefined : "Lecture de pages active ; ajoute TAVILY_API_KEY pour activer la recherche Web." };
+    return { tools, reason: isWebSearchConfigured() ? undefined : "Lecture de pages active ; configure GOOGLE_SEARCH_API_KEY + GOOGLE_SEARCH_ENGINE_ID ou TAVILY_API_KEY pour activer la recherche Web." };
   },
 };
