@@ -106,11 +106,7 @@ async function generateOpenAICompatible(opts: RouterOptions & { apiKey: string; 
 export async function generateWithRouter(opts: RouterOptions): Promise<ProviderResult> {
   const googleKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
   if (!googleKey) throw new AIError("GEMINI_API_KEY est manquante dans les variables serveur Vercel.", 503, "AI_NOT_CONFIGURED");
-  const openAIKey = process.env.OPENAI_API_KEY;
-  const openRouterKey = process.env.OPENROUTER_API_KEY || openAIKey;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  // This BCX deployment uses Gemini as its configured provider. When a Gemini key
-  // exists, never switch to Anthropic just because an unrelated key is also present.
+  // BCX currently routes assistant requests exclusively through Gemini.
   const order = getAIProviderOrder().filter((provider) => !opts.excludeProviders?.includes(provider));
   const failures: string[] = [];
 
