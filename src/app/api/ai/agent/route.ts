@@ -12,13 +12,25 @@ export const maxDuration = 60;
 
 /** Liste des plugins et de leur disponibilité pour l'utilisateur courant. */
 export async function GET() {
-  const ctx = await getAgentContext();
-  const plugins = await Promise.all(PLUGINS.map(async (p) => {
-    const loaded = await p.load(ctx);
-    await loaded.close?.();
-    return { id: p.id, name: p.name, description: p.description, available: loaded.tools.length > 0, reason: loaded.reason, tools: loaded.tools.length, writeTools: loaded.tools.filter((t) => t.write).length };
-  }));
-  return NextResponse.json({ signedIn: Boolean(ctx.user), trusted: ctx.trusted, plugins }, { headers: { "Cache-Control": "no-store" } });
+  try {
+    const ctx = await getAgentContext();
+    const results = await Promise.allSettled(PLUGINS.map(async (p) => {
+      const loaded = await p.load(ctx);
+      try {
+        return { id: p.id, name: p.name, description: p.description, available: loaded.tools.length > 0, reason: loaded.reason, tools: loaded.tools.length, writeTools: loaded.tools.filter((t) => t.write).length };
+      } finally {
+        await loaded.close?.();
+      }
+    }));
+    // Un plugin défaillant ne doit pas rendre indisponible toute l'interface de chat.
+    const plugins = results.map((result, index) => result.status === "fulfilled"
+      ? result.value
+      : { id: PLUGINS[index].id, name: PLUGINS[index].name, description: PLUGINS[index].description, available: false, reason: "Connecteur temporairement indisponible.", tools: 0, writeTools: 0 });
+    return NextResponse.json({ signedIn: Boolean(ctx.user), trusted: ctx.trusted, plugins }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    console.error("Agent capabilities unavailable:", error instanceof Error ? error.message : error);
+    return NextResponse.json({ signedIn: false, trusted: false, plugins: [] }, { headers: { "Cache-Control": "no-store" } });
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -38,7 +50,13 @@ export async function POST(request: NextRequest) {
   if (!contents.length) return NextResponse.json({ error: "Écris un message avant d'envoyer." }, { status: 400 });
 
   const pluginIds = Array.isArray(body.plugins) ? body.plugins.filter((p): p is string => typeof p === "string") : [];
-  const ctx = await getAgentContext();
+  let ctx: Awaited<ReturnType<typeof getAgentContext>>;
+  try {
+    ctx = await getAgentContext();
+  } catch (error) {
+    console.error("Agent context unavailable:", error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: "L’espace de travail est momentanément indisponible. Réessaie dans quelques instants.", code: "AGENT_CONTEXT_UNAVAILABLE" }, { status: 503 });
+  }
 
   try {
     const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
