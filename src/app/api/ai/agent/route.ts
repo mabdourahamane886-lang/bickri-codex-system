@@ -76,7 +76,14 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (err) {
-    if (err instanceof AIError) return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
+    if (err instanceof AIError) {
+      const publicMessage = err.code === "AI_NOT_CONFIGURED"
+        ? "Bickri AI est momentanément indisponible. Ta conversation est conservée ; réessaie dans un instant."
+        : err.code === "AI_QUOTA_OR_RATE_LIMIT"
+          ? "Le service IA est très sollicité. Ta demande est conservée ; réessaie dans quelques instants."
+          : "Une difficulté technique empêche temporairement la réponse. Ta conversation est conservée ; réessaie dans un instant.";
+      return NextResponse.json({ error: publicMessage, code: err.code }, { status: err.status });
+    }
     console.error("Agent", err instanceof Error ? err.message : err);
     return NextResponse.json({ error: "L'agent a rencontré une erreur. Réessaie." }, { status: 500 });
   }
