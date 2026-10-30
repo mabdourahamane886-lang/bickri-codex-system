@@ -1682,3 +1682,65 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
 @media (max-width: 640px) {
   .settings-standalone > .content { padding-left: 16px; padding-right: 16px; }
 }
+
+
+/* BCX history: searchable, grouped conversation rail (desktop + mobile). */
+.bcx-history-search {
+  display:flex; align-items:center; gap:9px; min-height:36px;
+  margin:8px 12px 10px; padding:0 11px;
+  border:1px solid #e5e7eb; border-radius:10px;
+  background:#f8f9fa; color:#777; 
+}
+.bcx-history-search svg { flex:0 0 auto; }
+.bcx-history-search input {
+  width:100%; min-width:0; border:0; outline:0; background:transparent;
+  color:#202123; font-size:12px;
+}
+.bcx-history-search input::placeholder { color:#9296a0; }
+.bcx-history-group { display:grid; gap:3px; margin:8px 0 14px; }
+.bcx-history-group-title {
+  padding:7px 12px 4px; color:#9296a0; font-size:10px;
+  font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+}
+.bcx-history-group .classic-history-row { margin:0 5px; }
+.bcx-mobile-history-search { margin:10px 0; min-height:42px; }
+.bcx-friendly-error { border-color:rgba(190,140,40,.25)!important; background:rgba(190,140,40,.07)!important; color:var(--text)!important; }
+.bcx-friendly-error svg { color:var(--warning)!important; flex:0 0 auto; }
+
+/* A calmer multi-layer thinking animation with a moving halo and staggered dots. */
+.bcx-classic-chat .bcx-thinking { gap:11px; min-height:42px; margin-top:14px; }
+.bcx-classic-chat .bcx-thinking-orbit {
+  position:relative; isolation:isolate; width:32px; height:32px; flex-basis:32px;
+  border:1px solid transparent;
+  background:linear-gradient(#f5fffd,#f5fffd) padding-box,
+    conic-gradient(from 0deg,#10a37f,#77dfc4,#9bb8ff,#10a37f) border-box;
+  box-shadow:0 0 0 4px rgba(16,163,127,.055),0 0 22px rgba(16,163,127,.13);
+  animation:bcx-thinking-orbit 2.4s linear infinite,bcx-thinking-pulse 1.8s ease-in-out infinite;
+}
+.bcx-classic-chat .bcx-thinking-orbit::after {
+  content:""; position:absolute; inset:-5px; z-index:-1; border-radius:50%;
+  border:1px solid rgba(16,163,127,.16); animation:bcx-thinking-ripple 2s ease-out infinite;
+}
+.bcx-classic-chat .bcx-thinking-orbit svg { filter:drop-shadow(0 0 5px rgba(16,163,127,.3)); }
+.bcx-classic-chat .bcx-thinking-label {
+  color:#68717b; font-size:13px; letter-spacing:.005em;
+  animation:bcx-thinking-fade .38s cubic-bezier(.2,.7,.2,1) both;
+}
+.bcx-classic-chat .bcx-thinking-caret {
+  width:5px; height:5px; margin-left:1px;
+  box-shadow:8px 0 0 rgba(16,163,127,.55),16px 0 0 rgba(16,163,127,.25);
+  animation:bcx-thinking-dots 1.25s ease-in-out infinite;
+}
+@keyframes bcx-thinking-orbit { to { transform:rotate(360deg); } }
+@keyframes bcx-thinking-ripple { 0% { opacity:.65; transform:scale(.82); } 100% { opacity:0; transform:scale(1.5); } }
+@keyframes bcx-thinking-dots { 0%,100% { opacity:.45; transform:translateX(0); } 50% { opacity:1; transform:translateX(2px); } }
+@media (prefers-reduced-motion:reduce) {
+  .bcx-classic-chat .bcx-thinking-orbit,
+  .bcx-classic-chat .bcx-thinking-orbit::after,
+  .bcx-classic-chat .bcx-thinking-caret,
+  .bcx-classic-chat .bcx-thinking-label { animation:none!important; }
+}
+@media(max-width:760px) {
+  .bcx-history-search { min-height:42px; }
+  .bcx-history-group-title { padding-left:8px; }
+}
