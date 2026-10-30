@@ -111,7 +111,7 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   // This BCX deployment uses Gemini as its configured provider. When a Gemini key
   // exists, never switch to Anthropic just because an unrelated key is also present.
-  const order = getAIProviderOrder(selectedProvider).filter((provider) => !opts.excludeProviders?.includes(provider));
+  const order = getAIProviderOrder().filter((provider) => !opts.excludeProviders?.includes(provider));
   const failures: string[] = [];
 
   for (const provider of order) {
