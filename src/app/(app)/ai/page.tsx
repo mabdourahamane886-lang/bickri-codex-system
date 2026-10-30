@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, GitBranch, ImagePlus, Layers, LogIn, WandSparkles,
-  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon,
+  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon, Search,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
@@ -19,6 +19,24 @@ type ChatMessage = { role: "user" | "assistant"; content: string; events?: Agent
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
+function conversationGroup(value: string) {
+  const date = new Date(value);
+  const today = new Date();
+  const start = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.floor((start(today) - start(date)) / 86400000);
+  if (days <= 0) return "Aujourd’hui";
+  if (days === 1) return "Hier";
+  if (days < 7) return "7 derniers jours";
+  if (days < 30) return "30 derniers jours";
+  return "Plus anciens";
+}
+function friendlyError(error: unknown) {
+  const raw = error instanceof Error ? error.message.toLowerCase() : "";
+  if (/quota|rate.?limit|429|limite|facturation/.test(raw)) return "Le service est très sollicité pour le moment. Patiente un instant puis réessaie.";
+  if (/timeout|timed out|network|fetch|connexion|503|502|504|indisponible|tempor/.test(raw)) return "La connexion a été interrompue pendant le traitement. Ta demande est conservée : tu peux réessayer.";
+  if (/not configured|manquante|configuration|api key|clé gemini/.test(raw)) return "L’assistant est momentanément indisponible. Réessaie un peu plus tard.";
+  return "Une difficulté a interrompu cette réponse. Ta conversation est conservée ; tu peux réessayer.";
+}
 type AgentResponse = {
   contents: unknown[]; events: AgentEvent[]; answer?: string; pending?: Pending[]; continue?: boolean; model?: string; error?: string;
 };
@@ -75,7 +93,7 @@ export default function CodeAIPage() {
   const { config } = useConfig();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contents, setContents] = useState<unknown[]>([]);
-  const [history, setHistory] = useState<SavedConversation[]>([]);
+  const [history, setHistory] = useState<SavedConversation[]>([]);\n  const [historySearch, setHistorySearch] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("");
   const [pending, setPending] = useState<Pending[] | null>(null);
   const [prompt, setPrompt] = useState("");
@@ -201,7 +219,7 @@ export default function CodeAIPage() {
       }
       patchAssistant((m) => ({ ...m, content: m.content || "La tâche est longue : écris « continue » pour que je poursuive." }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue.");
+      setError(friendlyError(err));
     } finally {
       setLoading(false);
     }
@@ -268,7 +286,7 @@ export default function CodeAIPage() {
       setImageSource(null);
       setImageMode("create");
       setImageIntent(false);
-    } catch (err) { setError(err instanceof Error ? err.message : "Impossible de générer cette image."); }
+    } catch (err) { setError(friendlyError(err)); }
     finally { setImageLoading(false); }
   }
 
@@ -299,7 +317,7 @@ export default function CodeAIPage() {
         ? { ...message, content: images.length ? `J’ai trouvé ${images.length} images. Ouvre une image pour consulter sa source.` : "Je n’ai trouvé aucune image pour cette recherche. Essaie avec des mots-clés plus précis.", images }
         : message));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "La recherche d’images a échoué.";
+      const message = friendlyError(err);
       setMessages((all) => all.map((item, index) => index === all.length - 1 ? { ...item, content: message } : item));
     }
   }
@@ -465,8 +483,12 @@ export default function CodeAIPage() {
           <Link href="/cloud" onClick={() => setShowNav(false)}><WandSparkles size={17}/> BCX Cloud</Link>
           <Link href="/settings" onClick={() => setShowNav(false)}><User size={17}/> Paramètres</Link>
         </nav>
-        <div className="classic-history-heading">Conversations</div>
-        <div className="classic-history-list">{history.map((item) => <div key={item.id} className={`classic-history-row ${item.id === activeConversationId ? "active" : ""}`}><button type="button" onClick={() => { openConversation(item); setShowNav(false); }} title={item.title}>{item.title}</button><button type="button" className="classic-delete-chat" aria-label={`Supprimer ${item.title}`} onClick={() => deleteConversation(item.id)}><X size={14}/></button></div>)}{history.length === 0 && <p className="classic-history-empty">Tes conversations apparaîtront ici.</p>}</div>
+        <div className="classic-history-heading">Historique</div>
+        <label className="bcx-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher une conversation…" aria-label="Rechercher dans l’historique"/></label>
+        <div className="classic-history-list">{(["Aujourd’hui","Hier","7 derniers jours","30 derniers jours","Plus anciens"] as const).map((group) => {
+          const items = history.filter((item) => item.title.toLocaleLowerCase("fr").includes(historySearch.toLocaleLowerCase("fr")) && conversationGroup(item.updatedAt) === group);
+          return items.length ? <section className="bcx-history-group" key={group}><div className="bcx-history-group-title">{group}</div>{items.map((item) => <div key={item.id} className={`classic-history-row ${item.id === activeConversationId ? "active" : ""}`}><button type="button" onClick={() => { openConversation(item); setShowNav(false); }} title={item.title}>{item.title}</button><button type="button" className="classic-delete-chat" aria-label={`Supprimer ${item.title}`} onClick={() => deleteConversation(item.id)}><X size={14}/></button></div>)}</section> : null;
+        })}{history.length === 0 && <p className="classic-history-empty">Tes conversations apparaîtront ici.</p>}{history.length > 0 && !history.some((item) => item.title.toLocaleLowerCase("fr").includes(historySearch.toLocaleLowerCase("fr"))) && <p className="classic-history-empty">Aucune conversation correspondante.</p>}</div>
         <div className="classic-sidebar-bottom"><button type="button" onClick={() => { if (confirm("Effacer toutes les conversations enregistrées ?")) { history.forEach((item) => deleteConversation(item.id)); newChat(); } }}>Effacer l’historique</button><Link href="/settings">Paramètres</Link><Link href="/login">Compte</Link></div>
       </aside>
       <div className="row bcx-chat-toolbar" style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", justifyContent: "space-between" }}><button type="button" className="btn btn-ghost btn-icon" aria-label="Ouvrir le menu" onClick={() => setShowNav((v) => !v)}><Menu /></button><strong className="bcx-mobile-plan">Free plan · <span>Upgrade</span></strong><button type="button" className="btn btn-ghost btn-icon" aria-label="Nouvelle conversation" onClick={newChat}><SquarePen /></button></div>
