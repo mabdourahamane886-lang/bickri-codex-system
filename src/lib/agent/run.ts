@@ -2,6 +2,7 @@ import "server-only";
 import { generateContent, type GeminiContent, type GeminiPart } from "@/lib/ai/gemini-raw";
 import { buildSystemInstruction } from "@/lib/ai/prompt";
 import { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
+import { formatWebSearchResults, searchWeb, shouldSearchWeb } from "@/lib/ai/web-search";
 import { PLUGINS } from "./plugins";
 import type { AgentContext, PluginStatus, Tool } from "./types";
 
@@ -139,6 +140,23 @@ export async function runAgent(opts: {
       console.error("BCX memory context unavailable", error instanceof Error ? error.message : "unknown");
     }
   }
+  // Recherche Web automatique pour les demandes explicites ou les sujets d'actualité.
+  // Elle ne dépend pas de l'activation manuelle du plugin dans l'interface.
+  let webContext = "";
+  if (shouldSearchWeb(latestUserQuery)) {
+    try {
+      const webResults = await searchWeb(latestUserQuery, 6);
+      webContext = formatWebSearchResults(webResults);
+      if (webResults.length) {
+        events.push({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "ok" });
+      } else {
+        events.push({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "error" });
+      }
+    } catch (error) {
+      console.warn("BCX automatic web search unavailable:", error instanceof Error ? error.message : "unknown");
+      events.push({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "error" });
+    }
+  }
   const system = buildSystemInstruction(
     opts.language,
     opts.projectContext,
@@ -146,7 +164,7 @@ export async function runAgent(opts: {
     latestUserQuery,
     formatRetrievedKnowledge(retrieved),
     authorizedMemory,
-  );
+  ) + (webContext ? `\n\nRECHERCHE WEB — SOURCES À UTILISER :\n${webContext}\n\nConsignes : réponds à la question en t’appuyant sur ces résultats, distingue les faits confirmés des éléments incertains et ajoute les URL des sources pertinentes dans ta réponse. Ne prétends pas avoir consulté une page au-delà de son extrait fourni.` : "");
   let model: string | undefined;
 
   try {
