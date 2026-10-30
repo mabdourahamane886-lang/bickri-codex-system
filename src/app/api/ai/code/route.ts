@@ -47,7 +47,12 @@ export async function POST(request: NextRequest) {
       webSearch: { configured: isWebSearchConfigured(), used: webResults.length > 0 },
     });
   } catch (error) {
-    if (error instanceof AIError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+    if (error instanceof AIError) {
+      const publicMessage = error.code === "AI_QUOTA_OR_RATE_LIMIT"
+        ? "Le service IA est très sollicité. Réessaie dans quelques instants."
+        : "Une difficulté technique empêche temporairement la réponse. Réessaie dans un instant.";
+      return NextResponse.json({ error: publicMessage, code: error.code }, { status: error.status });
+    }
     console.error("Erreur de connexion IA", error instanceof Error ? error.message : "erreur inconnue");
     return NextResponse.json({ error: "La connexion au service IA a échoué. Réessaie dans quelques instants.", code: "AI_CONNECTION_FAILED" }, { status: 502 });
   }
