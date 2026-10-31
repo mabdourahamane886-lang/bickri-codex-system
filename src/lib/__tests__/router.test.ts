@@ -1,8 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { getAIProviderOrder } from "../ai/router";
-describe("routage des fournisseurs Bickri AI", () => {
-  it("privilégie Gemini par défaut et prévoit un repli compatible OpenAI", () => expect(getAIProviderOrder("auto")).toEqual(["google", "openai"]));
-  it("permet de choisir OpenAI en premier", () => expect(getAIProviderOrder("openai")).toEqual(["openai", "google"]));
-  it("permet de choisir OpenRouter en premier", () => expect(getAIProviderOrder("openrouter")).toEqual(["openrouter", "google"]));
-  it("privilégie Google lorsque ce fournisseur est explicitement choisi", () => expect(getAIProviderOrder("google")).toEqual(["google", "openai"]));
+
+describe("routage automatique des fournisseurs Bickri AI", () => {
+  it("essaie les quatre fournisseurs dans l'ordre automatique", () => {
+    expect(getAIProviderOrder("auto")).toEqual(["google", "anthropic", "openai", "openrouter"]);
+  });
+  it("permet de placer Claude en premier tout en gardant les replis", () => {
+    expect(getAIProviderOrder("anthropic")).toEqual(["anthropic", "google", "openai", "openrouter"]);
+  });
+  it("permet de choisir OpenAI en premier", () => {
+    expect(getAIProviderOrder("openai")).toEqual(["openai", "google", "anthropic", "openrouter"]);
+  });
+  it("permet de choisir OpenRouter en premier", () => {
+    expect(getAIProviderOrder("openrouter")).toEqual(["openrouter", "google", "anthropic", "openai"]);
+  });
+  it("conserve la priorité Gemini lorsqu'elle est demandée", () => {
+    expect(getAIProviderOrder("google")).toEqual(["google", "anthropic", "openai", "openrouter"]);
+  });
 });
