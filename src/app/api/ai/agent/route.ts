@@ -6,6 +6,7 @@ import { getAgentContext } from "@/lib/agent/context";
 import { runAgent, sanitizeContents } from "@/lib/agent/run";
 import { PLUGINS } from "@/lib/agent/plugins";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
+import { recordBcxUsage } from "@/lib/telemetry";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -34,6 +35,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const requestStartedAt = Date.now();
   const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "GEMINI_API_KEY est manquante dans les variables serveur Vercel.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
 
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest) {
     try {
       if (!apiKey) throw new AIError("Gemini n'est pas configuré; bascule vers un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
       const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext });
+      await recordBcxUsage({ userId: ctx.user?.id, capability: "agent", provider: result.model || "gemini", outcome: "success", latencyMs: Date.now() - requestStartedAt });
       return NextResponse.json(result);
     } catch (agentError) {
       if (!(agentError instanceof AIError) || !["AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_BUSY", "AI_NETWORK_TIMEOUT", "AI_QUOTA_OR_RATE_LIMIT", "AI_EMPTY_RESPONSE", "AI_PROVIDER_ERROR", "AI_ACCESS_DENIED", "AI_BAD_REQUEST", "AI_MODEL_NOT_FOUND"].includes(agentError.code || "")) {
@@ -83,6 +86,7 @@ export async function POST(request: NextRequest) {
         messages: fallbackMessages,
       });
       const fallbackContents = [...contents, { role: "model" as const, parts: [{ text: fallback.answer }] }];
+      await recordBcxUsage({ userId: ctx.user?.id, capability: "agent", provider: fallback.provider || fallback.model || "fallback", outcome: "success", latencyMs: Date.now() - requestStartedAt });
       return NextResponse.json({
         contents: fallbackContents,
         events: [],
@@ -94,6 +98,7 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (err) {
+    await recordBcxUsage({ userId: ctx.user?.id, capability: "agent", provider: "unknown", outcome: "error", latencyMs: Date.now() - requestStartedAt, errorCode: err instanceof AIError ? err.code : "AGENT_INTERNAL_ERROR" });
     if (err instanceof AIError) return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
     console.error("Agent", err instanceof Error ? err.message : err);
     return NextResponse.json({ error: "L'agent a rencontré une erreur. Réessaie." }, { status: 500 });

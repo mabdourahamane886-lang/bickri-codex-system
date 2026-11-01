@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isBcxTelemetryConfigured } from "@/lib/telemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,18 +17,18 @@ export async function GET() {
     memoryStorage: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
     feedbackCollection: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
     modelRouting: true,
-    secureSandbox: false,
-    usageTelemetry: false,
+    secureSandbox: Boolean(process.env.BCX_SANDBOX_URL && process.env.BCX_SANDBOX_TOKEN),
+    usageTelemetry: isBcxTelemetryConfigured(),
   };
   return NextResponse.json({
     product: "BICKRI CODEX SYSTEM",
     assistant: "Bickri AI",
     capabilities,
     notes: {
-      memoryStorage: "La mémoire persistante requiert la migration SQL BCX et l'authentification utilisateur.",
+      memoryStorage: "La table BCX est installée dans Supabase. La mémoire est privée à chaque compte et nécessite une session authentifiée.",
       feedbackCollection: "Les retours nécessitent la migration SQL BCX et une session utilisateur.",
-      secureSandbox: "L'exécution arbitraire de code exige un worker isolé dédié; ne pas l'exécuter dans la route web.",
-      usageTelemetry: "Les métriques serveur détaillées ne sont pas encore activées.",
+      secureSandbox: "La sandbox reste désactivée tant que le Worker Cloudflare Containers dédié et ses secrets BCX_SANDBOX_URL / BCX_SANDBOX_TOKEN ne sont pas déployés.",
+      usageTelemetry: "Les événements minimaux (capacité, fournisseur, résultat et latence) sont écrits côté serveur sans enregistrer les prompts ni le code.",
     },
   }, { headers: { "Cache-Control": "no-store" } });
 }
