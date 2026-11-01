@@ -28,14 +28,16 @@ export async function recordBcxUsage(input: {
   if (!client) return false;
 
   try {
-    const { error } = await client.from("bcx_ai_usage_events").insert({
+    const event = {
       user_id: input.userId ?? null,
       capability: input.capability.slice(0, 80),
       provider: input.provider.slice(0, 80),
       outcome: input.outcome,
       latency_ms: Number.isFinite(input.latencyMs) ? Math.max(0, Math.round(input.latencyMs!)) : null,
       error_code: input.errorCode?.slice(0, 100) ?? null,
-    });
+    };
+    // The project does not yet ship generated Database typings for this table.
+    const { error } = await client.from("bcx_ai_usage_events").insert(event as never);
     if (error) {
       console.error("BCX telemetry write failed", error.code);
       return false;
