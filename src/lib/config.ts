@@ -11,6 +11,9 @@ export function getConfigStatus() {
     githubMcp: Boolean(process.env.GITHUB_MCP_URL && process.env.GITHUB_MCP_BEARER_TOKEN),
     googleDrive: Boolean(process.env.GOOGLE_DRIVE_CLIENT_ID && process.env.GOOGLE_DRIVE_CLIENT_SECRET && process.env.GOOGLE_DRIVE_REFRESH_TOKEN),
     notion: Boolean(process.env.NOTION_API_KEY),
+    memoryStorage: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
+    usageTelemetry: Boolean((process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) && process.env.SUPABASE_SERVICE_ROLE_KEY),
+    secureSandbox: Boolean(process.env.BCX_SANDBOX_URL && process.env.BCX_SANDBOX_TOKEN),
   };
 }
 
