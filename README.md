@@ -23,7 +23,7 @@ Le terminal cloud, les conteneurs de build, la compilation Flutter/Android et le
 - Next.js 15 App Router, React 19, TypeScript strict, Geist
 - Supabase Auth, PostgreSQL et Row Level Security (RLS)
 - CodeMirror 6, `react-markdown`, `remark-gfm`, `lucide-react`
-- Fournisseurs IA : Gemini en priorité, Anthropic Claude sélectionnable, API compatible OpenAI/OpenRouter en repli
+- Fournisseurs IA : DeepSeek Reasoning en priorité (mode thinking), Gemini en secours pour le chat de code; les routes agent avec outils conservent leur intégration Gemini native
 - Vitest, ESLint, GitHub Actions
 - Déploiement Vercel ; compatibilité Cloudflare possible via OpenNext selon la configuration d'hébergement
 
@@ -66,7 +66,8 @@ Copie `.env.example` et remplace les valeurs de démonstration. Les clés privé
 Variables principales :
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-- `AI_PROVIDER` (`auto`, `google`, `anthropic`, `openai`, `openrouter`)
+- `AI_PROVIDER=deepseek` (moteur principal du chat de code)
+- DeepSeek : `DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL` (par défaut `deepseek-flash`), `DEEPSEEK_REASONING_EFFORT` (`low`, `high`, `max`)
 - Anthropic Claude : `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` (sélectionne explicitement `AI_PROVIDER=anthropic` pour tester Anthropic sans bascule automatique vers un autre fournisseur)
 - Gemini : `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`
 - OpenAI/OpenRouter : `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`
