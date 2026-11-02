@@ -1,58 +1,58 @@
 import "server-only";
 import { AIError, generateWithGemini, type ChatMessage } from "./gemini";
+import { generateWithDeepSeek } from "./deepseek";
 
+type AIProvider = "deepseek" | "google";
 type RouterOptions = {
   systemInstruction: string;
   messages: ChatMessage[];
   maxOutputTokens?: number;
   excludeProviders?: AIProvider[];
 };
-
-type AIProvider = "google";
 type ProviderResult = { answer: string; model: string; provider: AIProvider };
 
-/** BCX utilise exclusivement Gemini pour les réponses conversationnelles. */
+/** DeepSeek Reasoning est le moteur principal; Gemini reste le fournisseur de secours. */
 export function getAIProviderOrder(): AIProvider[] {
-  return ["google"];
+  return ["deepseek", "google"];
 }
 
 export async function generateWithRouter(opts: RouterOptions): Promise<ProviderResult> {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
-  if (!apiKey) {
-    throw new AIError(
-      "Le service IA n'est pas encore configuré. Réessaie ultérieurement.",
-      503,
-      "AI_NOT_CONFIGURED",
-    );
+  const excluded = new Set(opts.excludeProviders ?? []);
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
+
+  if (!excluded.has("deepseek") && deepseekKey) {
+    try {
+      const result = await generateWithDeepSeek({
+        apiKey: deepseekKey,
+        model: process.env.DEEPSEEK_MODEL || "deepseek-flash",
+        systemInstruction: opts.systemInstruction,
+        messages: opts.messages,
+        maxOutputTokens: opts.maxOutputTokens,
+      });
+      return { ...result, provider: "deepseek" };
+    } catch (error) {
+      const canFallback = error instanceof AIError &&
+        ["AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_BUSY", "AI_NETWORK_TIMEOUT", "AI_QUOTA_OR_RATE_LIMIT", "AI_EMPTY_RESPONSE"].includes(error.code || "");
+      if (!canFallback || !geminiKey || excluded.has("google")) throw error;
+      console.warn("Bickri AI: DeepSeek indisponible; bascule vers Gemini.");
+    }
   }
 
-  if (opts.excludeProviders?.includes("google")) {
-    throw new AIError("Aucun fournisseur IA disponible pour cette requête.", 503, "AI_PROVIDERS_EXHAUSTED");
-  }
-
-  const primaryModel = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash";
-  const fallbackModel =
-    process.env.AI_MODEL_FALLBACK ||
-    process.env.GEMINI_FALLBACK_MODEL ||
-    "gemini-2.5-flash-lite";
-
-  try {
+  if (!excluded.has("google") && geminiKey) {
     const result = await generateWithGemini({
-      apiKey,
-      model: primaryModel,
-      fallbackModel,
+      apiKey: geminiKey,
+      model: process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      fallbackModel: process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite",
       systemInstruction: opts.systemInstruction,
       messages: opts.messages,
       maxOutputTokens: opts.maxOutputTokens,
     });
     return { ...result, provider: "google" };
-  } catch (error) {
-    if (error instanceof AIError) throw error;
-    console.error("Bickri AI: erreur inattendue du routeur Gemini.");
-    throw new AIError(
-      "Le service IA rencontre un problème temporaire. Réessaie dans quelques instants.",
-      503,
-      "AI_PROVIDER_UNAVAILABLE",
-    );
   }
+
+  if (!deepseekKey && !geminiKey) {
+    throw new AIError("Aucun fournisseur IA n'est configuré. Ajoute DEEPSEEK_API_KEY dans les variables serveur.", 503, "AI_NOT_CONFIGURED");
+  }
+  throw new AIError("Aucun fournisseur IA disponible pour cette requête.", 503, "AI_PROVIDERS_EXHAUSTED");
 }
