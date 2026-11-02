@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
-  if (!(process.env.GEMINI_API_KEY || process.env.AI_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY)) {
+  if (!(process.env.DEEPSEEK_API_KEY || process.env.GEMINI_API_KEY || process.env.AI_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY)) {
     return NextResponse.json({ error: "Aucune clé IA serveur n'est configurée. Ajoute une clé correspondant au fournisseur choisi dans Vercel → Settings → Environment Variables.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
   }
   const limit = rateLimit(`ai:${clientKey(request.headers)}`, 20, 60_000);
