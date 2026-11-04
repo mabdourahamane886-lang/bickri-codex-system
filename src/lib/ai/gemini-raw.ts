@@ -32,6 +32,7 @@ export async function generateContent(opts: {
   tools?: FunctionDeclaration[];
   maxOutputTokens?: number;
   timeoutMs?: number;
+  maxOutputTokens?: number;
 }): Promise<{ content: GeminiContent; model: string; finishReason?: string }> {
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: opts.systemInstruction }] },
