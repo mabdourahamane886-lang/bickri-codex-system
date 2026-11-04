@@ -57,6 +57,8 @@ export async function generateWithGemini(opts: {
   systemInstruction: string;
   messages: ChatMessage[];
   maxOutputTokens?: number;
+  timeoutMs?: number;
+  maxAttempts?: number;
 }): Promise<{ answer: string; model: string }> {
   const payload = JSON.stringify({
     systemInstruction: { parts: [{ text: opts.systemInstruction }] },
@@ -69,15 +71,15 @@ export async function generateWithGemini(opts: {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": opts.apiKey },
       body: payload,
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: AbortSignal.timeout(opts.timeoutMs ?? timeoutMs),
       cache: "no-store",
     });
 
   async function callWithRetry(modelName: string): Promise<Response | null> {
-    for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_MODEL; attempt++) {
+    for (let attempt = 0; attempt < (opts.maxAttempts ?? MAX_ATTEMPTS_PER_MODEL); attempt++) {
       try {
         const response = await call(modelName, 25000);
-        if (!RETRYABLE.has(response.status) || attempt === MAX_ATTEMPTS_PER_MODEL - 1) {
+        if (!RETRYABLE.has(response.status) || attempt === (opts.maxAttempts ?? MAX_ATTEMPTS_PER_MODEL) - 1) {
           return response;
         }
         console.warn(`Gemini : HTTP ${response.status} sur ${modelName}; nouvelle tentative ${attempt + 2}/${MAX_ATTEMPTS_PER_MODEL}.`);
