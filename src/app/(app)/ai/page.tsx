@@ -101,7 +101,7 @@ export default function CodeAIPage() {
   const [pending, setPending] = useState<Pending[] | null>(null);
   const [prompt, setPrompt] = useState("");
   const [language, setLanguage] = useState(LANGUAGES[0]);
-  const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("auto");
+  const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("fast");
   const [loading, setLoading] = useState(false);
   const [thinkingStep, setThinkingStep] = useState(0);
   const [error, setError] = useState("");
