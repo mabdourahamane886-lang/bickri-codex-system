@@ -1,6 +1,7 @@
 import "server-only";
 import { generateContent, type GeminiContent, type GeminiPart } from "@/lib/ai/gemini-raw";
 import { buildSystemInstruction } from "@/lib/ai/prompt";
+import { getThinkingInstruction, resolveThinkingMode, type ThinkingMode } from "@/lib/ai/thinking";
 import { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
 import { formatWebSearchResults, searchWeb, shouldSearchWeb } from "@/lib/ai/web-search";
 import { PLUGINS } from "./plugins";
@@ -94,6 +95,7 @@ export async function runAgent(opts: {
   language: string;
   projectContext: string;
   decision?: "approve" | "reject";
+  thinkingMode?: ThinkingMode;
 }): Promise<AgentResult> {
   const started = Date.now();
   const events: AgentEvent[] = [];
@@ -156,6 +158,7 @@ export async function runAgent(opts: {
       events.push({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "error" });
     }
   }
+  const thinkingMode = resolveThinkingMode(latestUserQuery, opts.thinkingMode);
   const system = buildSystemInstruction(
     opts.language,
     opts.projectContext,
@@ -163,7 +166,7 @@ export async function runAgent(opts: {
     latestUserQuery,
     formatRetrievedKnowledge(retrieved),
     authorizedMemory,
-  ) + (webContext ? `\n\nRECHERCHE WEB — SOURCES À UTILISER :\n${webContext}\n\nConsignes : réponds à la question en t’appuyant sur ces résultats, distingue les faits confirmés des éléments incertains et ajoute les URL des sources pertinentes dans ta réponse. Ne prétends pas avoir consulté une page au-delà de son extrait fourni.` : "");
+  ) + getThinkingInstruction(thinkingMode) + (webContext ? `\n\nRECHERCHE WEB — SOURCES À UTILISER :\n${webContext}\n\nConsignes : réponds à la question en t’appuyant sur ces résultats, distingue les faits confirmés des éléments incertains et ajoute les URL des sources pertinentes dans ta réponse. Ne prétends pas avoir consulté une page au-delà de son extrait fourni.` : "");
   let model: string | undefined;
 
   try {
