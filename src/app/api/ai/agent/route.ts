@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
   try {
     const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
     const projectContext = typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "";
-    const requestedThinkingMode: ThinkingMode = body.thinkingMode === "fast" || body.thinkingMode === "deep" ? body.thinkingMode : "auto";
+    const requestedThinkingMode: ThinkingMode = body.thinkingMode === "fast" || body.thinkingMode === "deep" ? body.thinkingMode : "fast";
     const latestUserQuery = [...contents].reverse().find((item) => item.role === "user")?.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n") || "";
     const thinkingMode = resolveThinkingMode(latestUserQuery, requestedThinkingMode);
     try {
