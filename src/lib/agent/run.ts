@@ -103,11 +103,15 @@ export async function runAgent(opts: {
   const closers: Array<() => Promise<void>> = [];
   const statuses: PluginStatus[] = [];
 
-  for (const plugin of PLUGINS) {
-    if (!opts.pluginIds.includes(plugin.id)) { statuses.push({ id: plugin.id, name: plugin.name, description: plugin.description, available: false, reason: "Désactivé", tools: 0, writeTools: 0 }); continue; }
-    const loaded = await plugin.load(opts.ctx);
+  const pluginResults = await Promise.all(PLUGINS.map(async (plugin) => {
+    if (!opts.pluginIds.includes(plugin.id)) return { plugin, loaded: null };
+    try { return { plugin, loaded: await plugin.load(opts.ctx) }; }
+    catch (error) { return { plugin, loaded: { tools: [], reason: error instanceof Error ? error.message : "Connecteur indisponible." } }; }
+  }));
+  for (const { plugin, loaded } of pluginResults) {
+    if (!loaded) { statuses.push({ id: plugin.id, name: plugin.name, description: plugin.description, available: false, reason: "Désactivé", tools: 0, writeTools: 0 }); continue; }
     loaded.tools.forEach((t) => tools.set(t.name, t));
-    if (loaded.close) closers.push(loaded.close);
+    if ("close" in loaded && loaded.close) closers.push(loaded.close);
     statuses.push({ id: plugin.id, name: plugin.name, description: plugin.description, available: loaded.tools.length > 0, reason: loaded.reason, tools: loaded.tools.length, writeTools: loaded.tools.filter((t) => t.write).length });
   }
 
@@ -117,7 +121,9 @@ export async function runAgent(opts: {
     .find((item) => item.role === "user")
     ?.parts.filter((part) => typeof part.text === "string").map((part) => part.text!).join("\n")
     .slice(-8000) ?? "";
-  const retrieved = await retrieveKnowledge(latestUserQuery, 5);
+  const thinkingMode = resolveThinkingMode(latestUserQuery, opts.thinkingMode);
+  // Le mode rapide évite l’appel d’embeddings/RAG avant la génération de la réponse.
+  const retrieved = thinkingMode === "fast" ? [] : await retrieveKnowledge(latestUserQuery, 5);
   // La mémoire n'est chargée que pour l'utilisateur connecté et reste strictement limitée à son compte.
   let authorizedMemory = "";
   if (opts.ctx.user && opts.ctx.supabase) {
@@ -158,7 +164,6 @@ export async function runAgent(opts: {
       events.push({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "error" });
     }
   }
-  const thinkingMode = resolveThinkingMode(latestUserQuery, opts.thinkingMode);
   const system = buildSystemInstruction(
     opts.language,
     opts.projectContext,
@@ -182,10 +187,10 @@ export async function runAgent(opts: {
     for (let step = 0; step < MAX_STEPS; step++) {
       if (Date.now() - started > TIME_BUDGET_MS) return { contents, events, continue: true, model, plugins: statuses };
       compact(contents);
-      const configuredModel = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "";
-      const configuredFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "";
-      const selectedModel = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"].includes(configuredModel) ? "gemini-3.8-flash" : configuredModel || "gemini-3.8-flash";
-      const fallbackModel = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"].includes(configuredFallback) ? "gemini-3.6-flash" : configuredFallback || "gemini-3.6-flash";
+      const configuredModel = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+      const configuredFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite";
+      const selectedModel = thinkingMode === "fast" ? process.env.GEMINI_FAST_MODEL || "gemini-2.5-flash-lite" : configuredModel;
+      const fallbackModel = selectedModel === configuredFallback ? "gemini-2.5-flash" : configuredFallback;
       const res = await generateContent({
         apiKey: opts.apiKey,
         model: selectedModel,
@@ -193,6 +198,8 @@ export async function runAgent(opts: {
         systemInstruction: system,
         contents,
         tools: declarations,
+        timeoutMs: thinkingMode === "fast" ? 15000 : 30000,
+        maxOutputTokens: thinkingMode === "fast" ? 3072 : 8192,
       });
       model = res.model;
       contents.push(res.content);
