@@ -29,10 +29,10 @@ export async function POST(request: NextRequest) {
 
   const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
   const projectContext = typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "";
-  const thinkingMode: ThinkingMode = body.thinkingMode === "fast" || body.thinkingMode === "deep" ? body.thinkingMode : "auto";
+  const thinkingMode: ThinkingMode = body.thinkingMode === "fast" || body.thinkingMode === "deep" ? body.thinkingMode : "fast";
   try {
     const latestUserQuery = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
-    const retrieved = await retrieveKnowledge(latestUserQuery, 5);
+    const retrieved = thinkingMode === "fast" ? [] : await retrieveKnowledge(latestUserQuery, 5);
     const webResults = isWebSearchConfigured() && shouldSearchWeb(latestUserQuery)
       ? await searchWeb(latestUserQuery, 5)
       : [];
