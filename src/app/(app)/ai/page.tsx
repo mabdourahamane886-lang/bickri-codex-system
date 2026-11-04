@@ -644,7 +644,7 @@ export default function CodeAIPage() {
           {imageSource && <div className="bcx-image-attachment"><img src={imageSource.preview} alt="Image à modifier" /><div className="grow"><b>Image à modifier</b><small>{imageSource.file.name}</small></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => { setImageSource(null); setImageMode("create"); }} aria-label="Retirer l’image"><X size={16} /></button></div>}
           <form className="composer" onSubmit={onSubmit}>
             <label htmlFor="ai-input" className="sr-only">Message</label>
-            <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Décris ton application, demande une modification de dépôt ou colle une erreur…"} />
+            <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Demande une question"} />
             <div className="composer-bar bcx-simple-composer-bar">
               <button
                 type="button"
