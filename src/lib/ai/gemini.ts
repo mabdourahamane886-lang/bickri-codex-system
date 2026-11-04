@@ -84,7 +84,7 @@ export async function generateWithGemini(opts: {
         }
         console.warn(`Gemini : HTTP ${response.status} sur ${modelName}; nouvelle tentative ${attempt + 2}/${MAX_ATTEMPTS_PER_MODEL}.`);
       } catch (error) {
-        const isLastAttempt = attempt === MAX_ATTEMPTS_PER_MODEL - 1;
+        const isLastAttempt = attempt === (opts.maxAttempts ?? MAX_ATTEMPTS_PER_MODEL) - 1;
         console.warn(`Gemini : échec réseau sur ${modelName}, tentative ${attempt + 1}/${MAX_ATTEMPTS_PER_MODEL}.`);
         if (isLastAttempt) return null;
       }
