@@ -554,7 +554,6 @@ export default function CodeAIPage() {
                         ) : (
                           <>
                             <ToolEvents events={m.events ?? []} />
-                            {m.thinkingMode && <div style={{ marginBottom: 8 }}><Badge tone="accent">{m.thinkingMode === "deep" ? "Analyse approfondie" : m.thinkingMode === "balanced" ? "Analyse équilibrée" : "Réponse rapide"}</Badge></div>}
                             {m.content && <Markdown>{m.content}</Markdown>}
                             {!!m.images?.length && (
                               <div className="bcx-image-search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 12, marginTop: 14 }}>
@@ -578,7 +577,7 @@ export default function CodeAIPage() {
                                 {isLast && !loading && <button type="button" className="btn btn-ghost btn-sm" onClick={retry} disabled={!lastMessage || Boolean(pending)} aria-label="Régénérer la réponse" title="Régénérer la réponse"><RefreshCw size={15} /> Régénérer</button>}
                               </div>
                             )}
-                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-orbit" aria-hidden="true"><Sparkles size={16} /></span><span key={thinkingStep} className="bcx-thinking-label">{(thinkingMode === "deep" ? ["Analyse approfondie…", "Vérifie les contraintes…", "Contrôle la cohérence…", "Prépare la solution…"] : thinkingMode === "fast" ? ["Réponse rapide…", "Traite la demande…", "Finalise…", "Prépare la réponse…"] : ["Bickri réfléchit…", "Analyse ta demande…", "Évalue la complexité…", "Prépare la réponse…"])[thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
+                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-orbit" aria-hidden="true"><Sparkles size={16} /></span><span key={thinkingStep} className="bcx-thinking-label">{(thinkingMode === "deep" ? ["Analyse approfondie…", "Vérifie les contraintes…", "Contrôle la cohérence…", "Prépare la solution…"] : thinkingMode === "fast" ? ["Bickri prépare la réponse…", "Traite ta demande…", "Finalise…", "Prépare le résultat…"] : ["Bickri réfléchit…", "Analyse ta demande…", "Évalue la complexité…", "Prépare la réponse…"])[thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
                           </>
                         )}
                       </div>
@@ -661,7 +660,7 @@ export default function CodeAIPage() {
                 <Sparkles size={15} aria-hidden="true" />
                 <select value={thinkingMode} onChange={(event) => setThinkingMode(event.target.value as ThinkingMode)} disabled={loading} aria-label="Mode de réflexion" style={{ maxWidth: 145, minHeight: 32, border: "1px solid var(--border)", borderRadius: 8, padding: "4px 7px", background: "var(--surface)", color: "var(--foreground)", fontSize: 12 }}>
                   <option value="auto">Smart · Auto</option>
-                  <option value="fast">Rapide</option>
+                  <option value="fast">Standard</option>
                   <option value="deep">Approfondi</option>
                 </select>
               </label>
