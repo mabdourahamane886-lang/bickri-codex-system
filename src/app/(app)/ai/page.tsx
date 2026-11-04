@@ -15,7 +15,9 @@ type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | 
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
 type PluginStatus = { id: string; name: string; description: string; available: boolean; reason?: string; tools: number; writeTools: number };
 type ImageSearchResult = { title: string; imageUrl: string; thumbnailUrl: string; sourceUrl: string; sourceName: string; width?: number; height?: number };
-type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; images?: ImageSearchResult[] };
+type ThinkingMode = "auto" | "fast" | "deep";
+type ResolvedThinkingMode = "fast" | "balanced" | "deep";
+type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; thinkingMode?: ResolvedThinkingMode; images?: ImageSearchResult[] };
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
@@ -38,7 +40,7 @@ function friendlyError(error: unknown) {
   return "Une difficulté a interrompu cette réponse. Ta conversation est conservée ; tu peux réessayer.";
 }
 type AgentResponse = {
-  contents: unknown[]; events: AgentEvent[]; answer?: string; pending?: Pending[]; continue?: boolean; model?: string; error?: string;
+  contents: unknown[]; events: AgentEvent[]; answer?: string; pending?: Pending[]; continue?: boolean; model?: string; thinkingMode?: ResolvedThinkingMode; error?: string;
 };
 
 const CHAT_KEY = "bcx_ai_chat_v2";
@@ -99,6 +101,7 @@ export default function CodeAIPage() {
   const [pending, setPending] = useState<Pending[] | null>(null);
   const [prompt, setPrompt] = useState("");
   const [language, setLanguage] = useState(LANGUAGES[0]);
+  const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("auto");
   const [loading, setLoading] = useState(false);
   const [thinkingStep, setThinkingStep] = useState(0);
   const [error, setError] = useState("");
@@ -203,13 +206,13 @@ export default function CodeAIPage() {
         const res = await fetch("/api/ai/agent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...body, contents: state, plugins: activePlugins.map((p) => p.id), language }),
+          body: JSON.stringify({ ...body, contents: state, plugins: activePlugins.map((p) => p.id), language, thinkingMode }),
         });
         const data = (await res.json().catch(() => ({}))) as AgentResponse;
         if (!res.ok) throw new Error(data.error || "La requête a échoué.");
         state = data.contents;
         setContents(data.contents);
-        patchAssistant((m) => ({ ...m, model: data.model, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...data.events] }));
+        patchAssistant((m) => ({ ...m, model: data.model, thinkingMode: data.thinkingMode, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...data.events] }));
         if (data.pending?.length) { setPending(data.pending); return; }
         if (data.answer !== undefined) {
           patchAssistant((m) => ({ ...m, content: data.answer! }));
@@ -551,6 +554,7 @@ export default function CodeAIPage() {
                         ) : (
                           <>
                             <ToolEvents events={m.events ?? []} />
+                            {m.thinkingMode && <div style={{ marginBottom: 8 }}><Badge tone="accent">{m.thinkingMode === "deep" ? "Analyse approfondie" : m.thinkingMode === "balanced" ? "Analyse équilibrée" : "Réponse rapide"}</Badge></div>}
                             {m.content && <Markdown>{m.content}</Markdown>}
                             {!!m.images?.length && (
                               <div className="bcx-image-search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 12, marginTop: 14 }}>
@@ -574,7 +578,7 @@ export default function CodeAIPage() {
                                 {isLast && !loading && <button type="button" className="btn btn-ghost btn-sm" onClick={retry} disabled={!lastMessage || Boolean(pending)} aria-label="Régénérer la réponse" title="Régénérer la réponse"><RefreshCw size={15} /> Régénérer</button>}
                               </div>
                             )}
-                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-orbit" aria-hidden="true"><Sparkles size={16} /></span><span key={thinkingStep} className="bcx-thinking-label">{["Réfléchit…", "Analyse ta demande…", "Organise les idées…", "Prépare la réponse…"][thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
+                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-orbit" aria-hidden="true"><Sparkles size={16} /></span><span key={thinkingStep} className="bcx-thinking-label">{(thinkingMode === "deep" ? ["Analyse approfondie…", "Vérifie les contraintes…", "Contrôle la cohérence…", "Prépare la solution…"] : thinkingMode === "fast" ? ["Réponse rapide…", "Traite la demande…", "Finalise…", "Prépare la réponse…"] : ["Bickri réfléchit…", "Analyse ta demande…", "Évalue la complexité…", "Prépare la réponse…"])[thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
                           </>
                         )}
                       </div>
@@ -653,6 +657,14 @@ export default function CodeAIPage() {
               >
                 <Plus size={20} />
               </button>
+              <label className="bcx-thinking-mode-control" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }} title="Choisir la profondeur d’analyse">
+                <Sparkles size={15} aria-hidden="true" />
+                <select value={thinkingMode} onChange={(event) => setThinkingMode(event.target.value as ThinkingMode)} disabled={loading} aria-label="Mode de réflexion" style={{ maxWidth: 145, minHeight: 32, border: "1px solid var(--border)", borderRadius: 8, padding: "4px 7px", background: "var(--surface)", color: "var(--foreground)", fontSize: 12 }}>
+                  <option value="auto">Smart · Auto</option>
+                  <option value="fast">Rapide</option>
+                  <option value="deep">Approfondi</option>
+                </select>
+              </label>
               <VoiceAssistant
                 onSend={(text) => send(text)}
                 assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}

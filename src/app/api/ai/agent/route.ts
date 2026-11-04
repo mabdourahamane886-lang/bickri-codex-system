@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AIError } from "@/lib/ai/gemini";
 import { generateWithRouter } from "@/lib/ai/router";
+import { resolveThinkingMode, type ThinkingMode } from "@/lib/ai/thinking";
 import { buildSystemInstruction } from "@/lib/ai/prompt";
 import { getAgentContext } from "@/lib/agent/context";
 import { runAgent, sanitizeContents } from "@/lib/agent/run";
@@ -61,10 +62,13 @@ export async function POST(request: NextRequest) {
   try {
     const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
     const projectContext = typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "";
+    const requestedThinkingMode: ThinkingMode = body.thinkingMode === "fast" || body.thinkingMode === "deep" ? body.thinkingMode : "auto";
+    const latestUserQuery = [...contents].reverse().find((item) => item.role === "user")?.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n") || "";
+    const thinkingMode = resolveThinkingMode(latestUserQuery, requestedThinkingMode);
     try {
       if (!apiKey) throw new AIError("Gemini n'est pas configuré; bascule vers un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
-      const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext });
-      return NextResponse.json(result);
+      const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext, thinkingMode: requestedThinkingMode });
+      return NextResponse.json({ ...result, thinkingMode });
     } catch (agentError) {
       if (!(agentError instanceof AIError) || !["AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_BUSY", "AI_NETWORK_TIMEOUT", "AI_QUOTA_OR_RATE_LIMIT", "AI_EMPTY_RESPONSE", "AI_PROVIDER_ERROR", "AI_ACCESS_DENIED", "AI_BAD_REQUEST", "AI_MODEL_NOT_FOUND"].includes(agentError.code || "")) {
         throw agentError;
@@ -81,6 +85,7 @@ export async function POST(request: NextRequest) {
       const fallback = await generateWithRouter({
         systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery),
         messages: fallbackMessages,
+        thinkingMode: requestedThinkingMode,
       });
       const fallbackContents = [...contents, { role: "model" as const, parts: [{ text: fallback.answer }] }];
       return NextResponse.json({
@@ -89,6 +94,7 @@ export async function POST(request: NextRequest) {
         answer: fallback.answer,
         model: fallback.model,
         provider: fallback.provider,
+        thinkingMode: fallback.thinkingMode,
         fallbackMode: true,
         plugins: PLUGINS.map((plugin) => ({ id: plugin.id, name: plugin.name, description: plugin.description, available: false, reason: "Réponse textuelle de secours : les outils nécessitent Gemini.", tools: 0, writeTools: 0 })),
       });

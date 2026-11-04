@@ -1,17 +1,19 @@
 import "server-only";
 import { AIError, generateWithGemini, type ChatMessage } from "./gemini";
+import { getThinkingInstruction, resolveThinkingMode, type ThinkingMode, type ResolvedThinkingMode } from "./thinking";
 
 type RouterOptions = {
   systemInstruction: string;
   messages: ChatMessage[];
   maxOutputTokens?: number;
   excludeProviders?: AIProvider[];
+  thinkingMode?: ThinkingMode;
 };
 
 type AIProvider = "google";
-type ProviderResult = { answer: string; model: string; provider: AIProvider };
+type ProviderResult = { answer: string; model: string; provider: AIProvider; thinkingMode: ResolvedThinkingMode };
 
-/** BCX utilise exclusivement Gemini pour les réponses conversationnelles. */
+/** BCX utilise Gemini comme moteur IA ; le mode de réflexion est piloté côté serveur. */
 export function getAIProviderOrder(): AIProvider[] {
   return ["google"];
 }
@@ -30,6 +32,8 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
     throw new AIError("Aucun fournisseur IA disponible pour cette requête.", 503, "AI_PROVIDERS_EXHAUSTED");
   }
 
+  const latestUserQuery = [...opts.messages].reverse().find((message) => message.role === "user")?.content ?? "";
+  const thinkingMode = resolveThinkingMode(latestUserQuery, opts.thinkingMode);
   const primaryModel = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash";
   const fallbackModel =
     process.env.AI_MODEL_FALLBACK ||
@@ -41,11 +45,11 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
       apiKey,
       model: primaryModel,
       fallbackModel,
-      systemInstruction: opts.systemInstruction,
+      systemInstruction: opts.systemInstruction + getThinkingInstruction(thinkingMode),
       messages: opts.messages,
       maxOutputTokens: opts.maxOutputTokens,
     });
-    return { ...result, provider: "google" };
+    return { ...result, provider: "google", thinkingMode };
   } catch (error) {
     if (error instanceof AIError) throw error;
     console.error("Bickri AI: erreur inattendue du routeur Gemini.");
