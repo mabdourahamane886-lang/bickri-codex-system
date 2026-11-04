@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-  ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, GitBranch, ImagePlus, Layers, LogIn, WandSparkles,
+  ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, GitBranch, ImagePlus, Layers, WandSparkles,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon, Search,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
 import { Badge } from "@/components/ui/Badge";
-import { useConfig } from "@/hooks/useConfig";
 
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
@@ -92,7 +91,6 @@ function ToolEvents({ events }: { events: AgentEvent[] }) {
 }
 
 export default function CodeAIPage() {
-  const { config } = useConfig();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contents, setContents] = useState<unknown[]>([]);
   const [history, setHistory] = useState<SavedConversation[]>([]);
@@ -108,7 +106,6 @@ export default function CodeAIPage() {
   const [lastMessage, setLastMessage] = useState("");
   const [copiedPromptIndex, setCopiedPromptIndex] = useState<number | null>(null);
   const [plugins, setPlugins] = useState<PluginStatus[] | null>(null);
-  const [account, setAccount] = useState<{ signedIn: boolean; trusted: boolean } | null>(null);
   const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
   const [showTools, setShowTools] = useState(false);
   const [showNav, setShowNav] = useState(false);
@@ -168,7 +165,6 @@ export default function CodeAIPage() {
       const res = await fetch("/api/ai/agent", { cache: "no-store" });
       const data = await res.json();
       setPlugins(data.plugins ?? []);
-      setAccount({ signedIn: Boolean(data.signedIn), trusted: Boolean(data.trusted) });
     } catch { setPlugins([]); }
   }, []);
   useEffect(() => { void loadPlugins(); }, [loadPlugins]);
@@ -227,15 +223,6 @@ export default function CodeAIPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function handleImageAction() {
-    if (!prompt.trim()) {
-      setShowTools((value) => !value);
-      setError("");
-      return;
-    }
-    void generateImage();
   }
 
   async function chooseImage(event: React.ChangeEvent<HTMLInputElement>) {
@@ -471,10 +458,6 @@ export default function CodeAIPage() {
   function hasStudioCode(answer: string) {
     return /```(html|css|javascript|js)\s*\n[\s\S]*?```/i.test(answer);
   }
-
-  function toggle(id: string) { setEnabled((all) => (all.includes(id) ? all.filter((x) => x !== id) : [...all, id])); }
-
-
 
   return (
     <main className="chat bcx-classic-chat">
