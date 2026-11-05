@@ -273,7 +273,7 @@ export function VoiceAssistant({
       try { recognition.stop(); } catch { /* déjà arrêté */ }
       if (recognitionRef.current === recognition) recognitionRef.current = null;
     };
-  }, [locale]);
+  }, [locale, startListening]);
 
   useEffect(() => {
     if (blocked) {

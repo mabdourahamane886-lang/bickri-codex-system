@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-  ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, GitBranch, ImagePlus, Layers, LogIn, WandSparkles,
+  ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, GitBranch, ImagePlus, Layers, WandSparkles,
   Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon, Search,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
 import { Badge } from "@/components/ui/Badge";
-import { useConfig } from "@/hooks/useConfig";
 
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
@@ -92,7 +91,6 @@ function ToolEvents({ events }: { events: AgentEvent[] }) {
 }
 
 export default function CodeAIPage() {
-  const { config } = useConfig();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contents, setContents] = useState<unknown[]>([]);
   const [history, setHistory] = useState<SavedConversation[]>([]);
@@ -101,14 +99,13 @@ export default function CodeAIPage() {
   const [pending, setPending] = useState<Pending[] | null>(null);
   const [prompt, setPrompt] = useState("");
   const [language, setLanguage] = useState(LANGUAGES[0]);
-  const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("auto");
+  const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("fast");
   const [loading, setLoading] = useState(false);
   const [thinkingStep, setThinkingStep] = useState(0);
   const [error, setError] = useState("");
   const [lastMessage, setLastMessage] = useState("");
   const [copiedPromptIndex, setCopiedPromptIndex] = useState<number | null>(null);
   const [plugins, setPlugins] = useState<PluginStatus[] | null>(null);
-  const [account, setAccount] = useState<{ signedIn: boolean; trusted: boolean } | null>(null);
   const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
   const [showTools, setShowTools] = useState(false);
   const [showNav, setShowNav] = useState(false);
@@ -168,7 +165,6 @@ export default function CodeAIPage() {
       const res = await fetch("/api/ai/agent", { cache: "no-store" });
       const data = await res.json();
       setPlugins(data.plugins ?? []);
-      setAccount({ signedIn: Boolean(data.signedIn), trusted: Boolean(data.trusted) });
     } catch { setPlugins([]); }
   }, []);
   useEffect(() => { void loadPlugins(); }, [loadPlugins]);
@@ -227,15 +223,6 @@ export default function CodeAIPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function handleImageAction() {
-    if (!prompt.trim()) {
-      setShowTools((value) => !value);
-      setError("");
-      return;
-    }
-    void generateImage();
   }
 
   async function chooseImage(event: React.ChangeEvent<HTMLInputElement>) {
@@ -472,10 +459,6 @@ export default function CodeAIPage() {
     return /```(html|css|javascript|js)\s*\n[\s\S]*?```/i.test(answer);
   }
 
-  function toggle(id: string) { setEnabled((all) => (all.includes(id) ? all.filter((x) => x !== id) : [...all, id])); }
-
-
-
   return (
     <main className="chat bcx-classic-chat">
       <aside className="classic-chat-sidebar" aria-label="Historique des conversations">
@@ -554,7 +537,6 @@ export default function CodeAIPage() {
                         ) : (
                           <>
                             <ToolEvents events={m.events ?? []} />
-                            {m.thinkingMode && <div style={{ marginBottom: 8 }}><Badge tone="accent">{m.thinkingMode === "deep" ? "Analyse approfondie" : m.thinkingMode === "balanced" ? "Analyse équilibrée" : "Réponse rapide"}</Badge></div>}
                             {m.content && <Markdown>{m.content}</Markdown>}
                             {!!m.images?.length && (
                               <div className="bcx-image-search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 12, marginTop: 14 }}>
@@ -578,7 +560,7 @@ export default function CodeAIPage() {
                                 {isLast && !loading && <button type="button" className="btn btn-ghost btn-sm" onClick={retry} disabled={!lastMessage || Boolean(pending)} aria-label="Régénérer la réponse" title="Régénérer la réponse"><RefreshCw size={15} /> Régénérer</button>}
                               </div>
                             )}
-                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-orbit" aria-hidden="true"><Sparkles size={16} /></span><span key={thinkingStep} className="bcx-thinking-label">{(thinkingMode === "deep" ? ["Analyse approfondie…", "Vérifie les contraintes…", "Contrôle la cohérence…", "Prépare la solution…"] : thinkingMode === "fast" ? ["Réponse rapide…", "Traite la demande…", "Finalise…", "Prépare la réponse…"] : ["Bickri réfléchit…", "Analyse ta demande…", "Évalue la complexité…", "Prépare la réponse…"])[thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
+                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-orbit" aria-hidden="true"><Sparkles size={16} /></span><span key={thinkingStep} className="bcx-thinking-label">{(thinkingMode === "deep" ? ["Analyse approfondie…", "Vérifie les contraintes…", "Contrôle la cohérence…", "Prépare la solution…"] : thinkingMode === "fast" ? ["Bickri prépare la réponse…", "Traite ta demande…", "Finalise…", "Prépare le résultat…"] : ["Bickri réfléchit…", "Analyse ta demande…", "Évalue la complexité…", "Prépare la réponse…"])[thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
                           </>
                         )}
                       </div>
@@ -645,7 +627,7 @@ export default function CodeAIPage() {
           {imageSource && <div className="bcx-image-attachment"><img src={imageSource.preview} alt="Image à modifier" /><div className="grow"><b>Image à modifier</b><small>{imageSource.file.name}</small></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => { setImageSource(null); setImageMode("create"); }} aria-label="Retirer l’image"><X size={16} /></button></div>}
           <form className="composer" onSubmit={onSubmit}>
             <label htmlFor="ai-input" className="sr-only">Message</label>
-            <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Décris ton application, demande une modification de dépôt ou colle une erreur…"} />
+            <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Demande une question"} />
             <div className="composer-bar bcx-simple-composer-bar">
               <button
                 type="button"
@@ -661,7 +643,7 @@ export default function CodeAIPage() {
                 <Sparkles size={15} aria-hidden="true" />
                 <select value={thinkingMode} onChange={(event) => setThinkingMode(event.target.value as ThinkingMode)} disabled={loading} aria-label="Mode de réflexion" style={{ maxWidth: 145, minHeight: 32, border: "1px solid var(--border)", borderRadius: 8, padding: "4px 7px", background: "var(--surface)", color: "var(--foreground)", fontSize: 12 }}>
                   <option value="auto">Smart · Auto</option>
-                  <option value="fast">Rapide</option>
+                  <option value="fast">Standard</option>
                   <option value="deep">Approfondi</option>
                 </select>
               </label>
