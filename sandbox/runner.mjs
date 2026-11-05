@@ -33,7 +33,9 @@ function runContainer(args, stdin, timeoutMs, containerName) {
     };
     child.stdout.on("data", (chunk) => { stdout = collect(stdout, chunk); });
     child.stderr.on("data", (chunk) => { stderr = collect(stderr, chunk); });
-    const timer = setTimeout(() => {\n      timedOut = true;\n      const killer = spawn("docker", ["kill", containerName], { stdio: "ignore" });\n      killer.on("error", () => {});\n      child.kill("SIGTERM");\n      setTimeout(() => child.kill("SIGKILL"), 1000).unref();\n    }, timeoutMs);
+    const timer = setTimeout(() => {
+      timedOut = true;\n      const killer = spawn("docker", ["kill", containerName], { stdio: "ignore" });\n      killer.on("error", () => {});\n      child.kill("SIGTERM");\n      setTimeout(() => child.kill("SIGKILL"), 1000).unref();
+    }, timeoutMs);
     child.on("error", (error) => {
       if (settled) return; settled = true; clearTimeout(timer);
       resolve({ stdout, stderr: error.message, exitCode: -1, timedOut, durationMs: Date.now() - started });
@@ -42,7 +44,8 @@ function runContainer(args, stdin, timeoutMs, containerName) {
       if (settled) return; settled = true; clearTimeout(timer);
       resolve({ stdout, stderr, exitCode: code ?? -1, timedOut, durationMs: Date.now() - started });
     });
-    child.stdin.on("error", () => {});\n    child.stdin.end(stdin);
+    child.stdin.on("error", () => {});
+    child.stdin.end(stdin);
   });
 }
 const server = http.createServer(async (req, res) => {
@@ -70,7 +73,8 @@ const server = http.createServer(async (req, res) => {
       const command = language === "python" ? ["python", "/workspace/main.py"]
         : language === "typescript" ? ["node", "--experimental-strip-types", "/workspace/main.ts"]
         : ["node", "/workspace/main.js"];
-      const containerName = `bcx-${process.pid}-${randomUUID().slice(0, 12)}`;\n      const args = ["run", "--rm", "--name", containerName, "--network=none", "--memory=128m", "--memory-swap=128m", "--cpus=0.5",
+      const containerName = `bcx-${process.pid}-${randomUUID().slice(0, 12)}`;
+      const args = ["run", "--rm", "--name", containerName, "--network=none", "--memory=128m", "--memory-swap=128m", "--cpus=0.5",
         "--pids-limit=64", "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
         "--cap-drop=ALL", "--security-opt=no-new-privileges", "--user=65534:65534",
         "--mount", `type=bind,src=${dir},dst=/workspace,readonly`, "--workdir=/workspace",
