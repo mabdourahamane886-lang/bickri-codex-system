@@ -3,6 +3,7 @@ import { readZip } from "@/lib/documents/zip";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { generateContent } from "@/lib/ai/gemini-raw";
+import { recordAIUsage } from "@/lib/ai/telemetry";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -62,6 +63,7 @@ function parseWorkbook(buffer: Buffer) {
 }
 
 export async function POST(request: NextRequest) {
+  const startedAt = Date.now();
   const limit = rateLimit(`ai-xlsx:${clientKey(request.headers)}`, 8, 60_000);
   if (!limit.ok) return NextResponse.json({ error: "Trop d'analyses. Réessaie dans un instant." }, { status: 429 });
   const supabase = await createServerSupabase();
@@ -72,7 +74,7 @@ export async function POST(request: NextRequest) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: "JSON invalide." }, { status: 400 }); }
   const filename = typeof body.filename === "string" ? body.filename.slice(0, 180) : "classeur.xlsx";
   const encoded = typeof body.fileData === "string" ? body.fileData : "";
-  if (!/\.xlsx?$/i.test(filename) || !encoded || encoded.length > 18_000_000) return NextResponse.json({ error: "Fournis un fichier Excel .xlsx ou .xls de moins de 13 Mo." }, { status: 400 });
+  if (!/\.xlsx$/i.test(filename) || !encoded || encoded.length > 18_000_000) return NextResponse.json({ error: "Fournis un classeur Excel .xlsx de moins de 13 Mo." }, { status: 400 });
   let report: ReturnType<typeof parseWorkbook>;
   try { report = parseWorkbook(Buffer.from(encoded.replace(/^data:[^,]+,/, ""), "base64")); }
   catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Classeur illisible." }, { status: 422 }); }
@@ -88,5 +90,6 @@ export async function POST(request: NextRequest) {
       analysis = result.content.parts.map((p) => p.text ?? "").join("\n").slice(0, 16000);
     } catch { analysis = "Les statistiques sont disponibles, mais Gemini n'a pas pu terminer l'analyse IA."; }
   }
+  await recordAIUsage({ userId: user.id, capability: "spreadsheet_analysis", provider: apiKey ? "Gemini" : "local", outcome: "success", latencyMs: Date.now() - startedAt });
   return NextResponse.json({ filename, report, analysis, model: apiKey ? "Gemini" : null }, { headers: { "Cache-Control": "no-store" } });
 }
