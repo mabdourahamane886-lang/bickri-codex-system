@@ -47,7 +47,8 @@ export function readZip(buffer: Buffer, maxFiles = 80) {
   const count = buffer.readUInt16LE(eocd + 10);
   let cursor = buffer.readUInt32LE(eocd + 16);
   if (count > maxFiles) throw new Error("Archive contenant trop de fichiers.");
-  const result = new Map<string, Buffer>();\n  let totalUncompressed = 0;
+  const result = new Map<string, Buffer>();
+  let totalUncompressed = 0;
   for (let i = 0; i < count; i++) {
     if (buffer.readUInt32LE(cursor) !== 0x02014b50) throw new Error("Répertoire ZIP invalide.");
     const method = buffer.readUInt16LE(cursor + 10);
@@ -66,7 +67,8 @@ export function readZip(buffer: Buffer, maxFiles = 80) {
     const compressed = buffer.subarray(start, start + compressedSize);
     const data = method === 0 ? Buffer.from(compressed) : method === 8 ? inflateRawSync(compressed, { maxOutputLength: 25 * 1024 * 1024 }) : null;
     if (!data) throw new Error("Méthode de compression XLSX non prise en charge.");
-    totalUncompressed += data.length;\n    if (data.length > 25 * 1024 * 1024 || totalUncompressed > 35 * 1024 * 1024) throw new Error("Archive XLSX trop volumineuse après décompression.");
+    totalUncompressed += data.length;
+    if (data.length > 25 * 1024 * 1024 || totalUncompressed > 35 * 1024 * 1024) throw new Error("Archive XLSX trop volumineuse après décompression.");
     result.set(name, data);
   }
   return result;
