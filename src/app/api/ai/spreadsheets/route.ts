@@ -49,7 +49,7 @@ function parseWorkbook(buffer: Buffer) {
     const normalized = rows.map((r) => Array.from({ length: width }, (_, i) => r[i] ?? null));
     const header = (normalized[0] ?? []).map((v, i) => String(v ?? "").trim() || `Colonne ${i + 1}`);
     const records = normalized.slice(1).map((r) => Object.fromEntries(header.map((h, i) => [h, r[i]])));
-    const columns = header.map((h, i) => {
+    const columns = header.map((h) => {
       const values = records.map((r) => r[h]).filter((v) => v !== null && v !== "");
       const numeric = values.filter((v) => typeof v === "number") as number[];
       return { name: h, nonEmpty: values.length, empty: records.length - values.length,
