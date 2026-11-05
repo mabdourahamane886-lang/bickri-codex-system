@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   const startedAt = Date.now();
   try {
     const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ code, language, stdin: typeof body.stdin === "string" ? body.stdin.slice(0, 5000) : "", limits: { timeoutMs: 5000, memoryMb: 128, network: false }, userId: user.id }),
+      body: JSON.stringify({ code, language, stdin: typeof body.stdin === "string" ? body.stdin.slice(0, 5000) : "", limits: { timeoutMs: 5000, memoryMb: 128, network: false } }),
       signal: AbortSignal.timeout(12000), cache: "no-store" });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) return NextResponse.json({ error: "Le runner a refusé ou échoué l'exécution.", details: typeof result.error === "string" ? result.error.slice(0, 500) : undefined }, { status: 502 });
