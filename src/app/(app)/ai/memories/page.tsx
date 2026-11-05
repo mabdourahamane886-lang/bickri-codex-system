@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Brain, Plus, Save, Trash2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Brain, Save, Trash2, RefreshCw } from "lucide-react";
 
 type Memory = { id: string; title: string; content: string; category: string; updated_at: string };
 export default function MemoriesPage() {
