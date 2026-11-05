@@ -60,3 +60,18 @@ create index if not exists bcx_ai_usage_events_created_idx
 alter table public.bcx_ai_usage_events enable row level security;
 -- Deliberately no client write/read policy for usage events: telemetry writes must be added
 -- through a server-side, authenticated, rate-limited path only.
+
+
+-- Keep the personal-memory ordering accurate after edits.
+create or replace function public.bcx_set_ai_memory_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists bcx_ai_memories_updated_at on public.bcx_ai_memories;
+create trigger bcx_ai_memories_updated_at
+before update on public.bcx_ai_memories
+for each row execute function public.bcx_set_ai_memory_updated_at();
