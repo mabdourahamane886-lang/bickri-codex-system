@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: "JSON invalide." }, { status: 400 }); }
   const filename = typeof body.filename === "string" ? body.filename.slice(0, 180) : "classeur.xlsx";
   const encoded = typeof body.fileData === "string" ? body.fileData : "";
-  if (!/\.xlsx$/i.test(filename) || !encoded || encoded.length > 18_000_000) return NextResponse.json({ error: "Fournis un classeur Excel .xlsx de moins de 13 Mo." }, { status: 400 });
+  if (!/\.xlsx$/i.test(filename) || !encoded || encoded.length > 4_200_000) return NextResponse.json({ error: "Fournis un classeur Excel .xlsx de moins de 3 Mo." }, { status: 400 });
   let report: ReturnType<typeof parseWorkbook>;
   try { report = parseWorkbook(Buffer.from(encoded.replace(/^data:[^,]+,/, ""), "base64")); }
   catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Classeur illisible." }, { status: 422 }); }
