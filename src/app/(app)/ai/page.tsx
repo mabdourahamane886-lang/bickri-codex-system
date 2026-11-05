@@ -53,6 +53,13 @@ const STARTERS = [
   { icon: ImagePlus, text: "Prépare une affiche publicitaire premium pour mon entreprise." },
   { icon: GitBranch, text: "Analyse le dépôt mabdourahamane886-lang/bickri-codex-system." },
 ];
+const WELCOME_MESSAGES = [
+  { title: "Bonjour ! Que souhaites-tu créer aujourd’hui ?", subtitle: "Décris ton idée, pose une question ou partage un problème : Bickri AI t’accompagne." },
+  { title: "Prêt à construire quelque chose de remarquable ?", subtitle: "Du premier concept au code final, travaillons ensemble étape par étape." },
+  { title: "Comment puis-je t’aider aujourd’hui ?", subtitle: "Je peux expliquer, rechercher, analyser des fichiers et t’aider à développer tes projets." },
+  { title: "Bienvenue dans ton espace de création.", subtitle: "Écris librement ta demande. Tu peux aussi joindre un fichier ou une image." },
+  { title: "Quelle idée allons-nous concrétiser ?", subtitle: "Développement, rédaction, analyse ou résolution de problèmes : commençons." },
+];
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -98,6 +105,7 @@ export default function CodeAIPage() {
   const [activeConversationId, setActiveConversationId] = useState("");
   const [pending, setPending] = useState<Pending[] | null>(null);
   const [prompt, setPrompt] = useState("");
+  const [welcomeMessage] = useState(() => WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)]);
   const [language, setLanguage] = useState(LANGUAGES[0]);
   const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("fast");
   const [loading, setLoading] = useState(false);
@@ -488,9 +496,8 @@ export default function CodeAIPage() {
                 <div className="chat-hero">
                   <Badge tone="accent">Bickri AI</Badge>
                   <div className="bcx-welcome-mark" aria-hidden="true"><Sparkles size={32}/></div>
-                  <h1>Bonjour, Mohamed</h1>
-                  <p>
-                    Décris une fonctionnalité, colle une erreur ou demande du code.
+                  <h1>{welcomeMessage.title}</h1>
+                  <p>{welcomeMessage.subtitle}
                     {activePlugins.length ? ` Plugins actifs : ${activePlugins.map((p) => p.name).join(", ")}.` : " Active des plugins pour que l’IA utilise les outils connectés."}
                   </p>
                 </div>
