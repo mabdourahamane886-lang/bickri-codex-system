@@ -47,7 +47,7 @@ export async function GET() {
   const { data, error } = await admin.from("bcx_ai_usage_events").select("capability,provider,outcome,latency_ms,created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(2000);
   if (error) return NextResponse.json({ error: "Lecture des statistiques impossible." }, { status: 503 });
   const events = data ?? [];
-  const byCapability = Object.groupBy ? Object.groupBy(events, (e) => e.capability) : events.reduce((acc: Record<string, typeof events>, e) => ((acc[e.capability] ??= []).push(e), acc), {});
+  const byCapability = events.reduce((acc: Record<string, typeof events>, e) => ((acc[e.capability] ??= []).push(e), acc), {});
   const summary = Object.entries(byCapability).map(([capability, rows]) => ({
     capability, total: rows?.length ?? 0,
     successes: rows?.filter((e) => e.outcome === "success").length ?? 0,
