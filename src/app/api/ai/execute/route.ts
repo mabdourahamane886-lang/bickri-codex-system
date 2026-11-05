@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(12000), cache: "no-store" });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) return NextResponse.json({ error: "Le runner a refusé ou échoué l'exécution.", details: typeof result.error === "string" ? result.error.slice(0, 500) : undefined }, { status: 502 });
-    await recordAIUsage({ userId: user.id, capability: "sandbox_execution", provider: "BCX Sandbox", outcome: "success", latencyMs: Date.now() - startedAt });
+    const exitCode = typeof result.exitCode === "number" ? result.exitCode : 0;
+    await recordAIUsage({ userId: user.id, capability: "sandbox_execution", provider: "BCX Sandbox", outcome: exitCode === 0 ? "success" : "error", latencyMs: Date.now() - startedAt, errorCode: exitCode === 0 ? undefined : "CODE_EXECUTION_FAILED" });
     return NextResponse.json({ result, isolated: true }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Le runner sécurisé est injoignable." }, { status: 503 });
