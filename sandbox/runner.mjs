@@ -1,9 +1,8 @@
 import http from "node:http";
 import { spawn } from "node:child_process";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 
 const PORT = Number(process.env.PORT || 8787);
 const TOKEN = process.env.BCX_SANDBOX_TOKEN;
@@ -50,9 +49,10 @@ const server = http.createServer(async (req, res) => {
   if (req.headers.authorization !== `Bearer ${TOKEN}`) return send(res, 401, { error: "Unauthorized" });
   const address = req.socket.remoteAddress || "unknown";
   if (!limited(address)) return send(res, 429, { error: "Rate limit exceeded" });
-  let raw = "";
-  req.on("data", (chunk) => { raw += chunk; if (raw.length > 50_000) req.destroy(); });
+  let raw = "", tooLarge = false;
+  req.on("data", (chunk) => { if (raw.length + chunk.length > 50_000) { tooLarge = true; raw = ""; } else if (!tooLarge) raw += chunk; });
   req.on("end", async () => {
+    if (tooLarge) return send(res, 413, { error: "Request too large" });
     let body;
     try { body = JSON.parse(raw); } catch { return send(res, 400, { error: "Invalid JSON" }); }
     const language = String(body.language || "");
@@ -63,7 +63,8 @@ const server = http.createServer(async (req, res) => {
     const dir = await mkdtemp(path.join(tmpdir(), "bcx-run-"));
     try {
       const filename = language === "python" ? "main.py" : language === "typescript" ? "main.ts" : "main.js";
-      await writeFile(path.join(dir, filename), code, { mode: 0o400 });
+      await chmod(dir, 0o755);
+      await writeFile(path.join(dir, filename), code, { mode: 0o444 });
       const image = language === "python" ? "bcx-runner-python:latest" : "bcx-runner-node:latest";
       const command = language === "python" ? ["python", "/workspace/main.py"]
         : language === "typescript" ? ["node", "--experimental-strip-types", "/workspace/main.ts"]
@@ -72,7 +73,7 @@ const server = http.createServer(async (req, res) => {
         "--pids-limit=64", "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
         "--cap-drop=ALL", "--security-opt=no-new-privileges", "--user=65534:65534",
         "--mount", `type=bind,src=${dir},dst=/workspace,readonly`, "--workdir=/workspace",
-        "--env", "HOME=/tmp", "--env", "TMPDIR=/tmp", image, ...command];
+        "--env", "HOME=/tmp", "--env", "TMPDIR=/tmp", "--env", "PYTHONDONTWRITEBYTECODE=1", image, ...command];
       const result = await runContainer(args, stdin, 5500);
       return send(res, 200, result);
     } catch (error) {
