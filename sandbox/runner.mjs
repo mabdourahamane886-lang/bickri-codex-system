@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { mkdtemp, writeFile, rm, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 
 const PORT = Number(process.env.PORT || 8787);
 const TOKEN = process.env.BCX_SANDBOX_TOKEN;
@@ -21,7 +22,7 @@ function limited(key) {
   item.count++; buckets.set(key, item);
   return item.count <= 8;
 }
-function runContainer(args, stdin, timeoutMs) {
+function runContainer(args, stdin, timeoutMs, containerName) {
   return new Promise((resolve) => {
     const started = Date.now();
     const child = spawn("docker", args, { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
@@ -32,7 +33,7 @@ function runContainer(args, stdin, timeoutMs) {
     };
     child.stdout.on("data", (chunk) => { stdout = collect(stdout, chunk); });
     child.stderr.on("data", (chunk) => { stderr = collect(stderr, chunk); });
-    const timer = setTimeout(() => { timedOut = true; child.kill("SIGKILL"); }, timeoutMs);
+    const timer = setTimeout(() => {\n      timedOut = true;\n      const killer = spawn("docker", ["kill", containerName], { stdio: "ignore" });\n      killer.on("error", () => {});\n      child.kill("SIGTERM");\n      setTimeout(() => child.kill("SIGKILL"), 1000).unref();\n    }, timeoutMs);
     child.on("error", (error) => {
       if (settled) return; settled = true; clearTimeout(timer);
       resolve({ stdout, stderr: error.message, exitCode: -1, timedOut, durationMs: Date.now() - started });
@@ -41,7 +42,7 @@ function runContainer(args, stdin, timeoutMs) {
       if (settled) return; settled = true; clearTimeout(timer);
       resolve({ stdout, stderr, exitCode: code ?? -1, timedOut, durationMs: Date.now() - started });
     });
-    child.stdin.end(stdin);
+    child.stdin.on("error", () => {});\n    child.stdin.end(stdin);
   });
 }
 const server = http.createServer(async (req, res) => {
@@ -69,12 +70,12 @@ const server = http.createServer(async (req, res) => {
       const command = language === "python" ? ["python", "/workspace/main.py"]
         : language === "typescript" ? ["node", "--experimental-strip-types", "/workspace/main.ts"]
         : ["node", "/workspace/main.js"];
-      const args = ["run", "--rm", "--network=none", "--memory=128m", "--memory-swap=128m", "--cpus=0.5",
+      const containerName = `bcx-${process.pid}-${randomUUID().slice(0, 12)}`;\n      const args = ["run", "--rm", "--name", containerName, "--network=none", "--memory=128m", "--memory-swap=128m", "--cpus=0.5",
         "--pids-limit=64", "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
         "--cap-drop=ALL", "--security-opt=no-new-privileges", "--user=65534:65534",
         "--mount", `type=bind,src=${dir},dst=/workspace,readonly`, "--workdir=/workspace",
         "--env", "HOME=/tmp", "--env", "TMPDIR=/tmp", "--env", "PYTHONDONTWRITEBYTECODE=1", image, ...command];
-      const result = await runContainer(args, stdin, 5500);
+      const result = await runContainer(args, stdin, 5500, containerName);
       return send(res, 200, result);
     } catch (error) {
       return send(res, 500, { error: error instanceof Error ? error.message : "Runner error" });
