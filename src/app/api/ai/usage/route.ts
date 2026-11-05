@@ -6,35 +6,6 @@ import { clientKey, rateLimit } from "@/lib/rate-limit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(request: NextRequest) {
-  const limit = rateLimit(`ai-usage:${clientKey(request.headers)}`, 60, 60_000);
-  if (!limit.ok) return NextResponse.json({ error: "Limite atteinte." }, { status: 429 });
-  const auth = await createServerSupabase();
-  if (!auth) return NextResponse.json({ error: "Supabase indisponible." }, { status: 503 });
-  const { data: { user } } = await auth.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return NextResponse.json({ error: "Télémétrie serveur non configurée." }, { status: 503 });
-  let body: Record<string, unknown>;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "JSON invalide." }, { status: 400 }); }
-  const capability = typeof body.capability === "string" ? body.capability.slice(0, 80) : "";
-  const outcome = ["success", "error", "blocked"].includes(String(body.outcome)) ? String(body.outcome) : "";
-  if (!capability || !outcome) return NextResponse.json({ error: "Événement invalide." }, { status: 400 });
-  const provider = typeof body.provider === "string" ? body.provider.slice(0, 80) : "Gemini";
-  const latency = Number.isInteger(body.latencyMs) ? Math.max(0, Math.min(600000, Number(body.latencyMs))) : null;
-  const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { error } = await admin.from("bcx_ai_usage_events").insert({
-    user_id: user.id, capability, provider, outcome, latency_ms: latency,
-    error_code: typeof body.errorCode === "string" ? body.errorCode.slice(0, 100) : null,
-  });
-  if (error) {
-    console.error("BCX usage telemetry insert failed", error.code);
-    return NextResponse.json({ error: "Enregistrement de métrique impossible." }, { status: 503 });
-  }
-  return NextResponse.json({ ok: true }, { status: 201, headers: { "Cache-Control": "no-store" } });
-}
-
 export async function GET() {
   const auth = await createServerSupabase();
   if (!auth) return NextResponse.json({ error: "Supabase indisponible." }, { status: 503 });
