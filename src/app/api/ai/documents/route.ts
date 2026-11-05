@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   const content = typeof body.content === "string" ? body.content : "";
   const format = body.format === "docx" ? "docx" : body.format === "html" ? "html" : body.format === "txt" ? "txt" : "md";
   if (!content.trim() || content.length > 100000) return NextResponse.json({ error: "Le contenu doit contenir entre 1 et 100 000 caractères." }, { status: 400 });
-  const safe = title.replace(/[^\p{L}\p{N}-]+/gu, "-").replace(/^-|-$/g, "").slice(0, 80) || "document";
+  const safe = title.normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-zA-Z0-9-]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "document";
   await recordAIUsage({ userId: user.id, capability: "document_export", provider: "BCX", outcome: "success" });
   if (format === "docx") {
     const data = makeDocx(title, content);
