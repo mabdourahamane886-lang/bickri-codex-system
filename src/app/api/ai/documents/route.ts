@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { makeZip } from "@/lib/documents/zip";
+import { recordAIUsage } from "@/lib/ai/telemetry";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
   const format = body.format === "docx" ? "docx" : body.format === "html" ? "html" : body.format === "txt" ? "txt" : "md";
   if (!content.trim() || content.length > 100000) return NextResponse.json({ error: "Le contenu doit contenir entre 1 et 100 000 caractères." }, { status: 400 });
   const safe = title.replace(/[^\p{L}\p{N}-]+/gu, "-").replace(/^-|-$/g, "").slice(0, 80) || "document";
+  await recordAIUsage({ userId: user.id, capability: "document_export", provider: "BCX", outcome: "success" });
   if (format === "docx") {
     const data = makeDocx(title, content);
     return new NextResponse(new Uint8Array(data), { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Content-Disposition": `attachment; filename="${safe}.docx"`, "Cache-Control": "no-store" } });
