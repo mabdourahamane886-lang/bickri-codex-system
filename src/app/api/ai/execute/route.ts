@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
+import { recordAIUsage } from "@/lib/ai/telemetry";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -28,12 +29,14 @@ export async function POST(request: NextRequest) {
   const language = typeof body.language === "string" ? body.language.toLowerCase() : "";
   if (!code.trim() || code.length > 30000) return NextResponse.json({ error: "Le code doit contenir au maximum 30 000 caractères." }, { status: 400 });
   if (!["python", "javascript", "typescript"].includes(language)) return NextResponse.json({ error: "Langages autorisés : Python, JavaScript et TypeScript." }, { status: 400 });
+  const startedAt = Date.now();
   try {
     const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ code, language, stdin: typeof body.stdin === "string" ? body.stdin.slice(0, 5000) : "", limits: { timeoutMs: 5000, memoryMb: 128, network: false }, userId: user.id }),
       signal: AbortSignal.timeout(12000), cache: "no-store" });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) return NextResponse.json({ error: "Le runner a refusé ou échoué l'exécution.", details: typeof result.error === "string" ? result.error.slice(0, 500) : undefined }, { status: 502 });
+    await recordAIUsage({ userId: user.id, capability: "sandbox_execution", provider: "BCX Sandbox", outcome: "success", latencyMs: Date.now() - startedAt });
     return NextResponse.json({ result, isolated: true }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Le runner sécurisé est injoignable." }, { status: 503 });
