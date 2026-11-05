@@ -497,8 +497,7 @@ export default function CodeAIPage() {
                   <Badge tone="accent">Bickri AI</Badge>
                   <div className="bcx-welcome-mark" aria-hidden="true"><Sparkles size={32}/></div>
                   <h1>{welcomeMessage.title}</h1>
-                  <p>{welcomeMessage.subtitle} 
-                    Décris une fonctionnalité, colle une erreur ou demande du code.
+                  <p>{welcomeMessage.subtitle}
                     {activePlugins.length ? ` Plugins actifs : ${activePlugins.map((p) => p.name).join(", ")}.` : " Active des plugins pour que l’IA utilise les outils connectés."}
                   </p>
                 </div>
