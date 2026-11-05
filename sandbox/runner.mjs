@@ -34,7 +34,11 @@ function runContainer(args, stdin, timeoutMs, containerName) {
     child.stdout.on("data", (chunk) => { stdout = collect(stdout, chunk); });
     child.stderr.on("data", (chunk) => { stderr = collect(stderr, chunk); });
     const timer = setTimeout(() => {
-      timedOut = true;\n      const killer = spawn("docker", ["kill", containerName], { stdio: "ignore" });\n      killer.on("error", () => {});\n      child.kill("SIGTERM");\n      setTimeout(() => child.kill("SIGKILL"), 1000).unref();
+      timedOut = true;
+      const killer = spawn("docker", ["kill", containerName], { stdio: "ignore" });
+      killer.on("error", () => {});
+      child.kill("SIGTERM");
+      setTimeout(() => child.kill("SIGKILL"), 1000).unref();
     }, timeoutMs);
     child.on("error", (error) => {
       if (settled) return; settled = true; clearTimeout(timer);
