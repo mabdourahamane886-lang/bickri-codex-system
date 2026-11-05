@@ -1744,3 +1744,124 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .bcx-history-search { min-height:42px; }
   .bcx-history-group-title { padding-left:8px; }
 }
+
+
+/* BICKRI AI desktop: strict light palette for history, composer and controls.
+   Mobile layout and its existing styles are intentionally untouched. */
+@media (min-width: 761px) {
+  .bcx-classic-chat {
+    --background: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f7f8fa;
+    --surface-3: #eef1f4;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #202123;
+    --text-muted: #626875;
+    --text-faint: #858b96;
+    background: #ffffff !important;
+    color: #202123 !important;
+  }
+  .bcx-classic-chat > .classic-chat-sidebar {
+    background: #ffffff !important;
+    color: #202123 !important;
+    border-right: 1px solid #e5e7eb !important;
+  }
+  .bcx-classic-chat .classic-sidebar-brand,
+  .bcx-classic-chat .classic-sidebar-brand *,
+  .bcx-classic-chat .classic-history-heading,
+  .bcx-classic-chat .classic-history-empty,
+  .bcx-classic-chat .classic-shortcuts a,
+  .bcx-classic-chat .classic-sidebar-bottom button,
+  .bcx-classic-chat .classic-sidebar-bottom a {
+    color: #343a40 !important;
+  }
+  .bcx-classic-chat .classic-new-chat {
+    background: #ffffff !important;
+    color: #202123 !important;
+    border: 1px solid #dfe3e8 !important;
+  }
+  .bcx-classic-chat .classic-new-chat:hover,
+  .bcx-classic-chat .classic-history-row:hover,
+  .bcx-classic-chat .classic-shortcuts a:hover,
+  .bcx-classic-chat .classic-sidebar-bottom button:hover,
+  .bcx-classic-chat .classic-sidebar-bottom a:hover {
+    background: #f3f4f6 !important;
+  }
+  .bcx-classic-chat .classic-history-row.active {
+    background: #eef1f4 !important;
+  }
+  .bcx-classic-chat .classic-history-row > button:first-child {
+    color: #202123 !important;
+  }
+  .bcx-classic-chat .classic-delete-chat,
+  .bcx-classic-chat .classic-shortcuts a svg {
+    color: #707784 !important;
+  }
+  .bcx-classic-chat .chat-main,
+  .bcx-classic-chat .chat-scroll,
+  .bcx-classic-chat .chat-inner,
+  .bcx-classic-chat .chat-composer,
+  .bcx-classic-chat .composer {
+    background: #ffffff !important;
+    color: #202123 !important;
+  }
+  .bcx-classic-chat .chat-composer {
+    border: 1px solid #dfe3e8 !important;
+    box-shadow: 0 4px 18px rgba(16,24,40,.06) !important;
+  }
+  .bcx-classic-chat .composer textarea,
+  .bcx-classic-chat .chat-composer textarea {
+    background: #ffffff !important;
+    color: #202123 !important;
+    caret-color: #202123;
+  }
+  .bcx-classic-chat .composer textarea::placeholder {
+    color: #9298a2 !important;
+  }
+  .bcx-classic-chat .bcx-thinking-mode-control,
+  .bcx-classic-chat .bcx-thinking-mode-control svg {
+    color: #5f6672 !important;
+  }
+  .bcx-classic-chat .bcx-thinking-mode-control select,
+  .bcx-classic-chat .composer-bar select {
+    appearance: auto !important;
+    background: #ffffff !important;
+    color: #202123 !important;
+    border: 1px solid #d8dde4 !important;
+  }
+  .bcx-classic-chat .bcx-thinking-mode-control option {
+    background: #ffffff !important;
+    color: #202123 !important;
+  }
+  .bcx-classic-chat .bcx-composer-plus,
+  .bcx-classic-chat .composer-bar .btn-ghost {
+    color: #555d69 !important;
+    background: #ffffff !important;
+    border-color: #e1e5ea !important;
+  }
+  .bcx-classic-chat .bcx-tools-popover,
+  .bcx-classic-chat .bcx-nav-popover {
+    background: #ffffff !important;
+    color: #202123 !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 12px 36px rgba(16,24,40,.12) !important;
+  }
+  .bcx-classic-chat .bcx-tools-popover *,
+  .bcx-classic-chat .bcx-nav-popover * {
+    color: #343a40;
+  }
+  .bcx-classic-chat .starter {
+    background: #ffffff !important;
+    color: #343a40 !important;
+    border-color: #e5e7eb !important;
+  }
+  .bcx-classic-chat .starter:hover {
+    background: #f8f9fb !important;
+    border-color: #cfd5de !important;
+  }
+  .bcx-classic-chat .bcx-clean-message.user .msg-text {
+    background: #f1f3f5 !important;
+    color: #202123 !important;
+  }
+}
