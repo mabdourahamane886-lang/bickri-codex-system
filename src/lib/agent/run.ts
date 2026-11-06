@@ -6,6 +6,7 @@ import { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-
 import { formatWebSearchResults, searchWeb, shouldSearchWeb } from "@/lib/ai/web-search";
 import { PLUGINS } from "./plugins";
 import type { AgentContext, PluginStatus, Tool } from "./types";
+import { formatSpecialistReviews, runSpecialistReviews } from "./specialist-orchestrator";
 
 export type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
 export type AgentResult = {
@@ -122,6 +123,27 @@ export async function runAgent(opts: {
     ?.parts.filter((part) => typeof part.text === "string").map((part) => part.text!).join("\n")
     .slice(-8000) ?? "";
   const thinkingMode = resolveThinkingMode(latestUserQuery, opts.thinkingMode);
+  // Les spécialistes sont de vrais appels modèle indépendants, consultatifs et sans outils.
+  let specialistContext = "";
+  if (thinkingMode === "deep" || thinkingMode === "expert") {
+    const specialistModel = process.env.GEMINI_REASONING_MODEL || process.env.GEMINI_EXPERT_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const specialistFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite";
+    const reviews = await runSpecialistReviews({
+      apiKey: opts.apiKey,
+      model: specialistModel,
+      fallbackModel: specialistFallback,
+      query: latestUserQuery,
+      projectContext: opts.projectContext,
+      history: contents,
+    });
+    specialistContext = formatSpecialistReviews(reviews);
+    for (const review of reviews) {
+      events.push({ tool: `specialist_${review.specialist}`, label: `Agent IA : ${review.label}`, write: false, status: "ok" });
+    }
+    if (!reviews.length) {
+      events.push({ tool: "specialist_orchestration", label: "Agents spécialisés indisponibles — poursuite avec Bickri AI", write: false, status: "error" });
+    }
+  }
   // Le mode rapide évite l’appel d’embeddings/RAG avant la génération de la réponse.
   const retrieved = thinkingMode === "fast" ? [] : await retrieveKnowledge(latestUserQuery, 5);
   // La mémoire n'est chargée que pour l'utilisateur connecté et reste strictement limitée à son compte.
@@ -185,7 +207,7 @@ export async function runAgent(opts: {
     latestUserQuery,
     formatRetrievedKnowledge(retrieved),
     authorizedMemory,
-  ) + getThinkingInstruction(thinkingMode) + (webContext ? `\n\nRECHERCHE WEB — SOURCES À UTILISER :\n${webContext}\n\nConsignes : réponds à la question en t’appuyant sur ces résultats, distingue les faits confirmés des éléments incertains et ajoute les URL des sources pertinentes dans ta réponse. Ne prétends pas avoir consulté une page au-delà de son extrait fourni.` : "");
+  ) + getThinkingInstruction(thinkingMode) + (specialistContext ? `\n\n${specialistContext}` : "") + (webContext ? `\n\nRECHERCHE WEB — SOURCES À UTILISER :\n${webContext}\n\nConsignes : réponds à la question en t’appuyant sur ces résultats, distingue les faits confirmés des éléments incertains et ajoute les URL des sources pertinentes dans ta réponse. Ne prétends pas avoir consulté une page au-delà de son extrait fourni.` : "");
   let model: string | undefined;
 
   try {
