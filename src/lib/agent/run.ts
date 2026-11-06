@@ -1,7 +1,7 @@
 import "server-only";
 import { generateContent, type GeminiContent, type GeminiPart } from "@/lib/ai/gemini-raw";
 import { buildSystemInstruction } from "@/lib/ai/prompt";
-import { getThinkingInstruction, getThinkingBudget, resolveThinkingMode, type ThinkingMode } from "@/lib/ai/thinking";
+import { getThinkingInstruction, resolveThinkingMode, type ThinkingMode } from "@/lib/ai/thinking";
 import { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
 import { formatWebSearchResults, searchWeb, shouldSearchWeb } from "@/lib/ai/web-search";
 import { PLUGINS } from "./plugins";
@@ -137,14 +137,15 @@ export async function runAgent(opts: {
       if (!error && Array.isArray(memories)) {
         const stopWords = new Set(["avec", "dans", "pour", "mais", "donc", "cette", "cela", "comment", "pourquoi", "faire", "fait", "veux", "mon", "mes", "une", "des", "les", "the", "and", "that", "this", "from", "your"]);
         const queryTerms = latestUserQuery.toLocaleLowerCase("fr").normalize("NFD")
-          .replace(/[\\u0300-\\u036f]/g, "").match(/[a-z0-9]{3,}/g) ?? [];
+          .replace(/\\p{M}/gu, "").match(/[a-z0-9]{3,}/g) ?? [];
         const terms = [...new Set(queryTerms.filter((term) => !stopWords.has(term)))].slice(0, 24);
         const ranked = memories.map((memory: { title?: string; content?: string; category?: string; updated_at?: string }) => {
           const title = String(memory.title || "").toLocaleLowerCase("fr").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
           const content = String(memory.content || "").toLocaleLowerCase("fr").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
           const category = String(memory.category || "general").toLocaleLowerCase("fr");
           const score = terms.reduce((sum, term) => sum + (title.includes(term) ? 3 : 0) + (content.includes(term) ? 1 : 0) + (category.includes(term) ? 0.5 : 0), 0);
-          const ageDays = memory.updated_at ? Math.max(0, (Date.now() - Date.parse(memory.updated_at)) / 86_400_000) : 365;
+          const updatedAt = memory.updated_at ? Date.parse(memory.updated_at) : Number.NaN;
+          const ageDays = Number.isFinite(updatedAt) ? Math.max(0, (Date.now() - updatedAt) / 86_400_000) : 365;
           return { memory, score: score + Math.max(0, 0.5 - ageDays / 365) };
         }).sort((a, b) => b.score - a.score);
         const selected = ranked.filter((item) => item.score > 0).slice(0, 8);
@@ -202,7 +203,13 @@ export async function runAgent(opts: {
       compact(contents);
       const configuredModel = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash";
       const configuredFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite";
-      const selectedModel = thinkingMode === "fast" ? process.env.GEMINI_FAST_MODEL || "gemini-2.5-flash-lite" : configuredModel;
+      const selectedModel = thinkingMode === "fast"
+        ? process.env.GEMINI_FAST_MODEL || "gemini-2.5-flash-lite"
+        : thinkingMode === "expert"
+          ? process.env.GEMINI_EXPERT_MODEL || process.env.GEMINI_REASONING_MODEL || configuredModel
+          : thinkingMode === "deep"
+            ? process.env.GEMINI_REASONING_MODEL || configuredModel
+            : configuredModel;
       const fallbackModel = selectedModel === configuredFallback ? "gemini-2.5-flash" : configuredFallback;
       const res = await generateContent({
         apiKey: opts.apiKey,
