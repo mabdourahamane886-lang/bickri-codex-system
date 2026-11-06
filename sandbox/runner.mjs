@@ -9,6 +9,7 @@ const PORT = Number(process.env.PORT || 8787);
 const TOKEN = process.env.BCX_SANDBOX_TOKEN;
 const MAX_CODE = 30_000;
 const MAX_OUTPUT = 64 * 1024;
+const MAX_BUCKETS = 5_000;
 const buckets = new Map();
 if (!TOKEN || TOKEN.length < 32) throw new Error("BCX_SANDBOX_TOKEN must be at least 32 characters.");
 
@@ -17,9 +18,22 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 function limited(key) {
-  const now = Date.now(), item = buckets.get(key) || { start: now, count: 0 };
-  if (now - item.start > 60_000) { item.start = now; item.count = 0; }
-  item.count++; buckets.set(key, item);
+  const now = Date.now();
+  let item = buckets.get(key);
+  if (!item || now - item.start > 60_000) {
+    if (buckets.size >= MAX_BUCKETS) {
+      for (const [bucketKey, bucket] of buckets) {
+        if (now - bucket.start > 60_000) buckets.delete(bucketKey);
+      }
+      if (buckets.size >= MAX_BUCKETS) {
+        const oldestKey = buckets.keys().next().value;
+        if (oldestKey !== undefined) buckets.delete(oldestKey);
+      }
+    }
+    item = { start: now, count: 0 };
+  }
+  item.count++;
+  buckets.set(key, item);
   return item.count <= 8;
 }
 function runContainer(args, stdin, timeoutMs, containerName) {
@@ -29,7 +43,7 @@ function runContainer(args, stdin, timeoutMs, containerName) {
     let stdout = "", stderr = "", timedOut = false, settled = false;
     const collect = (target, chunk) => {
       const next = target + chunk.toString("utf8");
-      return next.length > MAX_OUTPUT ? next.slice(0, MAX_OUTPUT) + "\n[sortie tronquée]" : next;
+      return next.length > MAX_OUTPUT ? next.slice(0, MAX_OUTPUT) + "\\n[sortie tronquée]" : next;
     };
     child.stdout.on("data", (chunk) => { stdout = collect(stdout, chunk); });
     child.stderr.on("data", (chunk) => { stderr = collect(stderr, chunk); });
@@ -57,17 +71,24 @@ const server = http.createServer(async (req, res) => {
   if (req.headers.authorization !== `Bearer ${TOKEN}`) return send(res, 401, { error: "Unauthorized" });
   const address = req.socket.remoteAddress || "unknown";
   if (!limited(address)) return send(res, 429, { error: "Rate limit exceeded" });
-  let raw = "", tooLarge = false;
-  req.on("data", (chunk) => { if (raw.length + chunk.length > 50_000) { tooLarge = true; raw = ""; } else if (!tooLarge) raw += chunk; });
+
+  let raw = "", receivedBytes = 0, tooLarge = false;
+  req.on("data", (chunk) => {
+    receivedBytes += chunk.length;
+    if (receivedBytes > 50_000) { tooLarge = true; raw = ""; }
+    else if (!tooLarge) raw += chunk;
+  });
   req.on("end", async () => {
     if (tooLarge) return send(res, 413, { error: "Request too large" });
     let body;
     try { body = JSON.parse(raw); } catch { return send(res, 400, { error: "Invalid JSON" }); }
+    if (!body || typeof body !== "object" || Array.isArray(body)) return send(res, 400, { error: "Invalid request body" });
     const language = String(body.language || "");
     const code = typeof body.code === "string" ? body.code : "";
     const stdin = typeof body.stdin === "string" ? body.stdin.slice(0, 5000) : "";
     if (!["python", "javascript", "typescript"].includes(language)) return send(res, 400, { error: "Unsupported language" });
     if (!code.trim() || code.length > MAX_CODE) return send(res, 400, { error: "Code is empty or too large" });
+
     const dir = await mkdtemp(path.join(tmpdir(), "bcx-run-"));
     try {
       const filename = language === "python" ? "main.py" : language === "typescript" ? "main.ts" : "main.js";
@@ -92,4 +113,7 @@ const server = http.createServer(async (req, res) => {
     }
   });
 });
-server.listen(PORT, "0.0.0.0", () => process.stdout.write(`BCX isolated runner listening on ${PORT}\n`));
+server.requestTimeout = 10_000;
+server.headersTimeout = 5_000;
+server.keepAliveTimeout = 5_000;
+server.listen(PORT, "0.0.0.0", () => process.stdout.write(`BCX isolated runner listening on ${PORT}\\n`));
