@@ -16,7 +16,7 @@ type PluginStatus = { id: string; name: string; description: string; available: 
 type ImageSearchResult = { title: string; imageUrl: string; thumbnailUrl: string; sourceUrl: string; sourceName: string; width?: number; height?: number };
 type ThinkingMode = "auto" | "fast" | "balanced" | "deep" | "expert";
 type ResolvedThinkingMode = "fast" | "balanced" | "deep" | "expert";
-type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; thinkingMode?: ResolvedThinkingMode; images?: ImageSearchResult[] };
+type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; thinkingMode?: ResolvedThinkingMode; images?: ImageSearchResult[]; attachment?: { name: string; mimeType: string; preview?: string } };
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
@@ -246,11 +246,13 @@ export default function CodeAIPage() {
       return;
     }
     try {
-      const data = await fileToDataUrl(file);
-      setImageSource({ file, preview: URL.createObjectURL(file), data });
-      setImageMode("edit");
+      const dataUrl = await fileToDataUrl(file);
+      const data = dataUrl.split(",")[1];
+      if (!data) throw new Error("Lecture de l’image impossible.");
+      setChatAttachment({ name: file.name, mimeType: file.type, data, preview: dataUrl });
       setShowTools(false);
       setError("");
+      inputRef.current?.focus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de lire cette image.");
     }
@@ -349,7 +351,7 @@ export default function CodeAIPage() {
     const baseContents = attachment
       ? [...contents, { role: "user", parts: [{ inlineData: { mimeType: attachment.mimeType, data: attachment.data } }] }]
       : contents;
-    setMessages((all) => [...all, { role: "user", content: visibleContent }, { role: "assistant", content: "", events: [] }]);
+    setMessages((all) => [...all, { role: "user", content: visibleContent, ...(attachment ? { attachment: { name: attachment.name, mimeType: attachment.mimeType, ...(attachment.preview ? { preview: attachment.preview } : {}) } } : {}) }, { role: "assistant", content: "", events: [] }]);
     setPrompt(""); setLastMessage(content || `Analyse la pièce jointe ${attachment?.name ?? ""}`);
     setChatAttachment(null);
     try {
@@ -517,6 +519,8 @@ export default function CodeAIPage() {
                         {m.role === "user" ? (
                           <>
                             <div className="msg-text">{m.content}</div>
+                            {m.attachment?.preview && <img src={m.attachment.preview} alt={`Pièce jointe : ${m.attachment.name}`} loading="lazy" style={{ display: "block", maxWidth: "min(100%, 360px)", maxHeight: 320, objectFit: "contain", borderRadius: 14, border: "1px solid var(--border)", marginTop: 10 }} />}
+                            {m.attachment && <small className="muted" style={{ display: "block", marginTop: 6 }}>{m.attachment.name} · {m.attachment.mimeType}</small>}
                             <div className="row" style={{ gap: 6, marginTop: 8 }}>
                               <button
                                 type="button"
@@ -619,11 +623,9 @@ export default function CodeAIPage() {
           {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Outils de la conversation">
             <div className="row"><b className="grow">Joindre ou créer</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
             <div className="bcx-tool-grid">
-              <button type="button" className={`btn ${imageMode === "create" ? "btn-primary" : ""}`} onClick={() => { setImageMode("create"); setImageIntent(true); setShowTools(false); inputRef.current?.focus(); }}><ImagePlus size={17} /> Créer une image</button>
-              <button type="button" className={`btn bcx-attach-action ${imageMode === "edit" ? "btn-primary" : ""}`} onClick={() => { setImageMode("edit"); setShowTools(false); imageFileRef.current?.click(); }}><ImagePlus size={17} /> Importer une photo à modifier</button>
+              <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); imageFileRef.current?.click(); }}><ImagePlus size={17} /> Joindre une photo à analyser</button>
               <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Importer un fichier ou du code</button>
               <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
-              <button type="button" className="btn" onClick={() => { setImageMode("create"); setImageIntent(true); setPrompt((old) => old || "Crée une affiche publicitaire professionnelle pour mon entreprise. Nom, offre, coordonnées et style souhaité : "); setShowTools(false); inputRef.current?.focus(); }}><Sparkles size={17} /> Créer une affiche</button>
               
             </div>
           </div>}
