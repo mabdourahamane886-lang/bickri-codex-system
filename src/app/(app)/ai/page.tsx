@@ -14,8 +14,8 @@ type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | 
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
 type PluginStatus = { id: string; name: string; description: string; available: boolean; reason?: string; tools: number; writeTools: number };
 type ImageSearchResult = { title: string; imageUrl: string; thumbnailUrl: string; sourceUrl: string; sourceName: string; width?: number; height?: number };
-type ThinkingMode = "auto" | "fast" | "deep";
-type ResolvedThinkingMode = "fast" | "balanced" | "deep";
+type ThinkingMode = "auto" | "fast" | "balanced" | "deep" | "expert";
+type ResolvedThinkingMode = "fast" | "balanced" | "deep" | "expert";
 type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; thinkingMode?: ResolvedThinkingMode; images?: ImageSearchResult[] };
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
@@ -107,7 +107,7 @@ export default function CodeAIPage() {
   const [prompt, setPrompt] = useState("");
   const [welcomeMessage] = useState(() => WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)]);
   const [language, setLanguage] = useState(LANGUAGES[0]);
-  const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("fast");
+  const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("auto");
   const [loading, setLoading] = useState(false);
   const [thinkingStep, setThinkingStep] = useState(0);
   const [error, setError] = useState("");
@@ -571,7 +571,7 @@ export default function CodeAIPage() {
                                 {isLast && !loading && <button type="button" className="btn btn-ghost btn-sm" onClick={retry} disabled={!lastMessage || Boolean(pending)} aria-label="Régénérer la réponse" title="Régénérer la réponse"><RefreshCw size={15} /> Régénérer</button>}
                               </div>
                             )}
-                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-orbit" aria-hidden="true"><Sparkles size={16} /></span><span key={thinkingStep} className="bcx-thinking-label">{(thinkingMode === "deep" ? ["Analyse approfondie…", "Vérifie les contraintes…", "Contrôle la cohérence…", "Prépare la solution…"] : thinkingMode === "fast" ? ["Bickri prépare la réponse…", "Traite ta demande…", "Finalise…", "Prépare le résultat…"] : ["Bickri réfléchit…", "Analyse ta demande…", "Évalue la complexité…", "Prépare la réponse…"])[thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
+                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-orbit" aria-hidden="true"><Sparkles size={16} /></span><span key={thinkingStep} className="bcx-thinking-label">{(thinkingMode === "expert" ? ["Analyse experte en cours…", "Compare les approches…", "Vérifie les risques et les cas limites…", "Prépare une synthèse vérifiée…"] : thinkingMode === "deep" ? ["Analyse approfondie…", "Vérifie les contraintes…", "Contrôle la cohérence…", "Prépare la solution…"] : thinkingMode === "fast" ? ["Bickri prépare la réponse…", "Traite ta demande…", "Finalise…", "Prépare le résultat…"] : ["Bickri réfléchit…", "Analyse ta demande…", "Évalue la complexité…", "Prépare la réponse…"])[thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
                           </>
                         )}
                       </div>
@@ -654,8 +654,10 @@ export default function CodeAIPage() {
                 <Sparkles size={15} aria-hidden="true" />
                 <select value={thinkingMode} onChange={(event) => setThinkingMode(event.target.value as ThinkingMode)} disabled={loading} aria-label="Mode de réflexion" style={{ maxWidth: 145, minHeight: 32, border: "1px solid var(--border)", borderRadius: 8, padding: "4px 7px", background: "var(--surface)", color: "var(--foreground)", fontSize: 12 }}>
                   <option value="auto">Smart · Auto</option>
-                  <option value="fast">Standard</option>
+                  <option value="fast">Rapide</option>
+                  <option value="balanced">Équilibré</option>
                   <option value="deep">Approfondi</option>
+                  <option value="expert">Expert · Réflexion renforcée</option>
                 </select>
               </label>
               <VoiceAssistant
