@@ -1865,3 +1865,18 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
     color: #202123 !important;
   }
 }
+
+
+/* BCX Neural Thinking: distinctive, responsive and accessible processing indicator. */
+.bcx-classic-chat .bcx-thinking-neural{position:relative;isolation:isolate;display:inline-grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:50%;background:radial-gradient(circle,rgba(25,145,255,.16),rgba(25,145,255,.035) 58%,transparent 70%);}
+.bcx-classic-chat .bcx-neural-core{z-index:2;display:grid;place-items:center;width:23px;height:23px;border-radius:50%;color:#fff;background:linear-gradient(145deg,#48c9ff,#1767dc 72%);box-shadow:0 0 14px rgba(45,157,255,.55),inset 0 1px 3px rgba(255,255,255,.7);animation:bcx-core-breathe 1.8s ease-in-out infinite;}
+.bcx-classic-chat .bcx-neural-ring{position:absolute;inset:3px;border:1px solid rgba(44,158,255,.58);border-radius:50%;}
+.bcx-classic-chat .bcx-neural-ring.ring-one{animation:bcx-neural-spin 3.2s linear infinite;transform:rotateX(62deg) rotateZ(0deg);}
+.bcx-classic-chat .bcx-neural-ring.ring-two{inset:7px;border-color:rgba(33,203,220,.72);animation:bcx-neural-spin-reverse 2.4s linear infinite;transform:rotateY(65deg);}
+.bcx-classic-chat .bcx-neural-node{position:absolute;width:5px;height:5px;border-radius:50%;background:#22c8e8;box-shadow:0 0 9px rgba(34,200,232,.9);}
+.bcx-classic-chat .bcx-neural-node.node-one{top:1px;left:18px}.bcx-classic-chat .bcx-neural-node.node-two{right:1px;bottom:10px}.bcx-classic-chat .bcx-neural-node.node-three{left:2px;bottom:9px}
+@keyframes bcx-neural-spin{to{transform:rotateX(62deg) rotateZ(360deg)}}
+@keyframes bcx-neural-spin-reverse{to{transform:rotateY(65deg) rotateZ(-360deg)}}
+@keyframes bcx-core-breathe{0%,100%{transform:scale(.92);filter:brightness(.96)}50%{transform:scale(1.08);filter:brightness(1.18)}}
+@media(prefers-reduced-motion:reduce){.bcx-classic-chat .bcx-thinking-neural *,.bcx-classic-chat .bcx-thinking-neural{animation:none!important}}
+@media(max-width:760px){.bcx-classic-chat .bcx-thinking-mode-control select{background:#fff!important;color:#202123!important;-webkit-text-fill-color:#202123!important;border:1px solid #d8dde4!important;color-scheme:light}.bcx-classic-chat .bcx-thinking-mode-control option{background:#fff!important;color:#202123!important}}
