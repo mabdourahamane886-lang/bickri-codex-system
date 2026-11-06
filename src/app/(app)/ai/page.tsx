@@ -223,14 +223,14 @@ export default function CodeAIPage() {
         let data: AgentResponse | undefined;
         const consume = (block: string) => {
           let eventName = "message";
-          const lines = block.split("\\n");
+          const lines = block.split("\n");
           const payload: string[] = [];
           for (const line of lines) {
             if (line.startsWith("event:")) eventName = line.slice(6).trim();
             else if (line.startsWith("data:")) payload.push(line.slice(5).trim());
           }
           if (!payload.length) return;
-          const value = JSON.parse(payload.join("\\n")) as Record<string, unknown>;
+          const value = JSON.parse(payload.join("\n")) as Record<string, unknown>;
           if (eventName === "activity") {
             const event = value as unknown as AgentEvent;
             patchAssistant((message) => ({ ...message, events: [...(message.events ?? []), event] }));
@@ -248,7 +248,7 @@ export default function CodeAIPage() {
           const chunk = await reader.read();
           if (chunk.done) break;
           buffer += decoder.decode(chunk.value, { stream: true }).replace(/\\r\\n/g, "\\n");
-          const blocks = buffer.split("\\n\\n");
+          const blocks = buffer.split("\n\n");
           buffer = blocks.pop() ?? "";
           for (const block of blocks) consume(block);
         }
