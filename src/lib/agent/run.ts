@@ -70,10 +70,11 @@ function compact(contents: GeminiContent[]) {
 
 const callsOf = (c: GeminiContent | undefined) => (c?.role === "model" ? c.parts.filter((p) => p.functionCall).map((p) => p.functionCall!) : []);
 
-async function execute(call: NonNullable<GeminiPart["functionCall"]>, tools: Map<string, Tool>, ctx: AgentContext, allowWrite: boolean, events: AgentEvent[]): Promise<GeminiPart> {
+async function execute(call: NonNullable<GeminiPart["functionCall"]>, tools: Map<string, Tool>, ctx: AgentContext, allowWrite: boolean, events: AgentEvent[], onProgress?: (event: AgentEvent) => void): Promise<GeminiPart> {
   const tool = tools.get(call.name);
   const args = call.args ?? {};
   const respond = (response: Record<string, unknown>): GeminiPart => ({ functionResponse: { ...(call.id ? { id: call.id } : {}), name: call.name, response } });
+  const emit = (event: AgentEvent) => { events.push(event); onProgress?.(event); };
   if (!tool) { emit({ tool: call.name, label: call.name, write: false, status: "error" }); return respond({ error: "Outil indisponible : le plugin est désactivé ou non autorisé." }); }
   const label = tool.label(args);
   if (tool.write && !allowWrite) { emit({ tool: call.name, label, write: true, status: "refused" }); return respond({ error: "L'utilisateur a refusé cette action. Ne la relance pas sans nouvelle demande." }); }
@@ -140,10 +141,10 @@ export async function runAgent(opts: {
     });
     specialistContext = formatSpecialistReviews(reviews);
     for (const review of reviews) {
-      events.push({ tool: `specialist_${review.specialist}`, label: `Agent IA : ${review.label}`, write: false, status: "ok" });
+      emit({ tool: `specialist_${review.specialist}`, label: `Agent IA : ${review.label}`, write: false, status: "ok" });
     }
     if (!reviews.length) {
-      events.push({ tool: "specialist_orchestration", label: "Agents spécialisés indisponibles — poursuite avec Bickri AI", write: false, status: "error" });
+      emit({ tool: "specialist_orchestration", label: "Agents spécialisés indisponibles — poursuite avec Bickri AI", write: false, status: "error" });
     }
   }
   // Le mode rapide évite l’appel d’embeddings/RAG avant la génération de la réponse.
@@ -193,13 +194,13 @@ export async function runAgent(opts: {
       const webResults = await searchWeb(latestUserQuery, 6);
       webContext = formatWebSearchResults(webResults);
       if (webResults.length) {
-        events.push({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "ok" });
+        emit({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "ok" });
       } else {
-        events.push({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "error" });
+        emit({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "error" });
       }
     } catch (error) {
       console.warn("BCX automatic web search unavailable:", error instanceof Error ? error.message : "unknown");
-      events.push({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "error" });
+      emit({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "error" });
     }
   }
   const system = buildSystemInstruction(
@@ -218,7 +219,7 @@ export async function runAgent(opts: {
     if (pendingCalls.length) {
       const allow = opts.decision === "approve" && Boolean(opts.ctx.user);
       const parts: GeminiPart[] = [];
-      for (const call of pendingCalls) parts.push(await execute(call, tools, opts.ctx, allow, events));
+      for (const call of pendingCalls) parts.push(await execute(call, tools, opts.ctx, allow, events, opts.onProgress));
       contents.push({ role: "user", parts });
     }
 
@@ -258,12 +259,12 @@ export async function runAgent(opts: {
       const writes = calls.filter((c) => tools.get(c.name)?.write);
       if (writes.length) {
         const pending = writes.map((c) => ({ tool: c.name, label: tools.get(c.name)!.label(c.args ?? {}), args: c.args ?? {} }));
-        pending.forEach((p) => events.push({ tool: p.tool, label: p.label, write: true, status: "pending" }));
+        pending.forEach((p) => emit({ tool: p.tool, label: p.label, write: true, status: "pending" }));
         return { contents, events, pending, model, plugins: statuses };
       }
 
       const parts: GeminiPart[] = [];
-      for (const call of calls) parts.push(await execute(call, tools, opts.ctx, false, events));
+      for (const call of calls) parts.push(await execute(call, tools, opts.ctx, false, events, opts.onProgress));
       contents.push({ role: "user", parts });
     }
     return { contents, events, continue: true, model, plugins: statuses };
