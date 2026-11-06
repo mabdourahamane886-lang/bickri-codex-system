@@ -241,8 +241,8 @@ export default function CodeAIPage() {
       setError("Formats image acceptés : JPG, PNG et WebP.");
       return;
     }
-    if (file.size > 8 * 1024 * 1024) {
-      setError("L’image doit faire 8 Mo maximum.");
+    if (file.size > 4 * 1024 * 1024) {
+      setError("L’image doit faire 4 Mo maximum pour être transmise de façon fiable à l’analyse IA.");
       return;
     }
     try {
