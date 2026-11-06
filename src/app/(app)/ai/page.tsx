@@ -16,7 +16,7 @@ type PluginStatus = { id: string; name: string; description: string; available: 
 type ImageSearchResult = { title: string; imageUrl: string; thumbnailUrl: string; sourceUrl: string; sourceName: string; width?: number; height?: number };
 type ThinkingMode = "auto" | "fast" | "balanced" | "deep" | "expert";
 type ResolvedThinkingMode = "fast" | "balanced" | "deep" | "expert";
-type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; thinkingMode?: ResolvedThinkingMode; images?: ImageSearchResult[] };
+type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; thinkingMode?: ResolvedThinkingMode; images?: ImageSearchResult[]; attachment?: { name: string; mimeType: string; preview?: string } };
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
@@ -241,16 +241,21 @@ export default function CodeAIPage() {
       setError("Formats image acceptés : JPG, PNG et WebP.");
       return;
     }
-    if (file.size > 8 * 1024 * 1024) {
-      setError("L’image doit faire 8 Mo maximum.");
+    if (file.size > 4 * 1024 * 1024) {
+      setError("L’image doit faire 4 Mo maximum pour être transmise de façon fiable à l’analyse IA.");
       return;
     }
     try {
-      const data = await fileToDataUrl(file);
-      setImageSource({ file, preview: URL.createObjectURL(file), data });
-      setImageMode("edit");
+      const dataUrl = await fileToDataUrl(file);
+      const data = dataUrl.split(",")[1];
+      if (!data) throw new Error("Lecture de l’image impossible.");
+      setChatAttachment({ name: file.name, mimeType: file.type, data, preview: dataUrl });
+      setImageSource(null);
+      setImageMode("create");
+      setImageIntent(false);
       setShowTools(false);
       setError("");
+      inputRef.current?.focus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de lire cette image.");
     }
@@ -349,7 +354,7 @@ export default function CodeAIPage() {
     const baseContents = attachment
       ? [...contents, { role: "user", parts: [{ inlineData: { mimeType: attachment.mimeType, data: attachment.data } }] }]
       : contents;
-    setMessages((all) => [...all, { role: "user", content: visibleContent }, { role: "assistant", content: "", events: [] }]);
+    setMessages((all) => [...all, { role: "user", content: visibleContent, ...(attachment ? { attachment: { name: attachment.name, mimeType: attachment.mimeType, ...(attachment.preview ? { preview: attachment.preview } : {}) } } : {}) }, { role: "assistant", content: "", events: [] }]);
     setPrompt(""); setLastMessage(content || `Analyse la pièce jointe ${attachment?.name ?? ""}`);
     setChatAttachment(null);
     try {
@@ -484,7 +489,14 @@ export default function CodeAIPage() {
         <div className="classic-sidebar-bottom"><button type="button" onClick={() => { if (confirm("Effacer toutes les conversations enregistrées ?")) { history.forEach((item) => deleteConversation(item.id)); newChat(); } }}>Effacer l’historique</button><Link href="/settings">Paramètres</Link><Link href="/login">Compte</Link></div>
       </aside>
       <div className="row bcx-chat-toolbar" style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", justifyContent: "space-between" }}><button type="button" className="btn btn-ghost btn-icon" aria-label="Ouvrir le menu" onClick={() => setShowNav((v) => !v)}><Menu /></button><strong className="bcx-mobile-plan">Free plan · <span>Upgrade</span></strong><button type="button" className="btn btn-ghost btn-icon" aria-label="Nouvelle conversation" onClick={newChat}><SquarePen /></button></div>
-      {showNav && <div className="plugin-popover bcx-nav-popover" role="dialog" aria-label="Navigation et historique Bickri"><div className="row"><b className="grow">Bickri Codex System</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={newChat}><SquarePen size={18}/> Nouveau chat</button><button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); setShowTools(true); }}><Layers size={18}/> Outils</button><Link href="/plugins" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Plug size={18}/> Plugins</Link><Link href="/ai/memories" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><User size={18}/> Mémoire personnelle</Link><Link href="/ai/spreadsheets" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><FileText size={18}/> Analyse Excel</Link><Link href="/ai/documents" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><FileText size={18}/> Documents</Link><Link href="/ai/execute" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Bug size={18}/> Exécuter du code</Link><Link href="/ai" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><Layers size={18}/> Codex BCX</Link><Link href="/cloud" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><WandSparkles size={18}/> BCX Cloud</Link><Link href="/settings" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => setShowNav(false)}><User size={18}/> Paramètres</Link><hr className="divider"/><div className="row"><b className="grow">Historique</b><span className="muted">{history.length}</span></div><label className="bcx-history-search bcx-mobile-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher…" aria-label="Rechercher dans l’historique"/></label>{history.length ? <div className="bcx-history-list">{history.filter((item) => item.title.toLocaleLowerCase("fr").includes(historySearch.toLocaleLowerCase("fr"))).map((item) => <div className={`bcx-history-item ${item.id === activeConversationId ? "active" : ""}`} key={item.id}><button type="button" className="bcx-history-open" title={item.title} onClick={() => openConversation(item)}>{item.title}</button><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={`Supprimer ${item.title}`} title="Supprimer" onClick={() => deleteConversation(item.id)}><X size={14}/></button></div>)}</div> : <p className="muted" style={{fontSize:12}}>Tes conversations apparaîtront ici.</p>}</div>}
+      {showNav && <div className="plugin-popover bcx-nav-popover" role="dialog" aria-label="Historique des conversations">
+        <div className="row"><b className="grow">Historique</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div>
+        <button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); newChat(); }}><SquarePen size={18}/> Nouvelle conversation</button>
+        <button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); setShowTools(true); }}><Layers size={18}/> Tous les outils</button>
+        <label className="bcx-history-search bcx-mobile-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher dans l’historique…" aria-label="Rechercher dans l’historique"/></label>
+        {history.length ? <div className="bcx-history-list">{history.filter((item) => item.title.toLocaleLowerCase("fr").includes(historySearch.toLocaleLowerCase("fr"))).map((item) => <div className={`bcx-history-item ${item.id === activeConversationId ? "active" : ""}`} key={item.id}><button type="button" className="bcx-history-open" title={item.title} onClick={() => { openConversation(item); setShowNav(false); }}>{item.title}</button><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={`Supprimer ${item.title}`} title="Supprimer" onClick={() => deleteConversation(item.id)}><X size={14}/></button></div>)}</div> : <p className="muted" style={{fontSize:12}}>Tes conversations apparaîtront ici.</p>}
+        <div className="row"><span className="muted">{history.length} conversation(s)</span><Link href="/settings" onClick={() => setShowNav(false)}>Paramètres</Link></div>
+      </div>}
       <div className="chat-main">
         <div className="chat-scroll">
           <div className="chat-inner">
@@ -517,6 +529,8 @@ export default function CodeAIPage() {
                         {m.role === "user" ? (
                           <>
                             <div className="msg-text">{m.content}</div>
+                            {m.attachment?.preview && <img src={m.attachment.preview} alt={`Pièce jointe : ${m.attachment.name}`} loading="lazy" style={{ display: "block", maxWidth: "min(100%, 360px)", maxHeight: 320, objectFit: "contain", borderRadius: 14, border: "1px solid var(--border)", marginTop: 10 }} />}
+                            {m.attachment && <small className="muted" style={{ display: "block", marginTop: 6 }}>{m.attachment.name} · {m.attachment.mimeType}</small>}
                             <div className="row" style={{ gap: 6, marginTop: 8 }}>
                               <button
                                 type="button"
@@ -616,14 +630,19 @@ export default function CodeAIPage() {
         <div className="chat-composer">
           <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log,.pdf,image/jpeg,image/png,image/webp" hidden onChange={readDocument} />
           <input ref={imageFileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={chooseImage} />
-          {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Outils de la conversation">
-            <div className="row"><b className="grow">Joindre ou créer</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
+          {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Ajouter à la conversation">
+            <div className="row"><b className="grow">Ajouter à la conversation</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
             <div className="bcx-tool-grid">
-              <button type="button" className={`btn ${imageMode === "create" ? "btn-primary" : ""}`} onClick={() => { setImageMode("create"); setImageIntent(true); setShowTools(false); inputRef.current?.focus(); }}><ImagePlus size={17} /> Créer une image</button>
-              <button type="button" className={`btn bcx-attach-action ${imageMode === "edit" ? "btn-primary" : ""}`} onClick={() => { setImageMode("edit"); setShowTools(false); imageFileRef.current?.click(); }}><ImagePlus size={17} /> Importer une photo à modifier</button>
+              <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); imageFileRef.current?.click(); }}><ImagePlus size={17} /> Joindre une photo à analyser</button>
               <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Importer un fichier ou du code</button>
               <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
-              <button type="button" className="btn" onClick={() => { setImageMode("create"); setImageIntent(true); setPrompt((old) => old || "Crée une affiche publicitaire professionnelle pour mon entreprise. Nom, offre, coordonnées et style souhaité : "); setShowTools(false); inputRef.current?.focus(); }}><Sparkles size={17} /> Créer une affiche</button>
+              <Link className="btn bcx-attach-action" href="/plugins" onClick={() => setShowTools(false)}><Plug size={17} /> Plugins et intégrations</Link>
+              <Link className="btn bcx-attach-action" href="/ai/memories" onClick={() => setShowTools(false)}><User size={17} /> Mémoire personnelle</Link>
+              <Link className="btn bcx-attach-action" href="/ai/spreadsheets" onClick={() => setShowTools(false)}><FileText size={17} /> Analyse Excel</Link>
+              <Link className="btn bcx-attach-action" href="/ai/documents" onClick={() => setShowTools(false)}><FileText size={17} /> Documents</Link>
+              <Link className="btn bcx-attach-action" href="/ai/execute" onClick={() => setShowTools(false)}><Bug size={17} /> Exécuter du code</Link>
+              <Link className="btn bcx-attach-action" href="/cloud" onClick={() => setShowTools(false)}><WandSparkles size={17} /> BCX Cloud</Link>
+              <Link className="btn bcx-attach-action" href="/settings" onClick={() => setShowTools(false)}><User size={17} /> Paramètres</Link>
               
             </div>
           </div>}
