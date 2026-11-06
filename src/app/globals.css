@@ -1865,3 +1865,25 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
     color: #202123 !important;
   }
 }
+
+
+/* BCX mobile: match desktop light styling for the thinking-mode selector. */
+@media (max-width: 760px) {
+  .bcx-classic-chat .bcx-thinking-mode-control,
+  .bcx-classic-chat .bcx-thinking-mode-control svg {
+    color: #5f6672 !important;
+  }
+  .bcx-classic-chat .bcx-thinking-mode-control select,
+  .bcx-classic-chat .composer-bar select {
+    appearance: auto !important;
+    background-color: #ffffff !important;
+    color: #202123 !important;
+    border: 1px solid #d8dde4 !important;
+    -webkit-text-fill-color: #202123 !important;
+    color-scheme: light;
+  }
+  .bcx-classic-chat .bcx-thinking-mode-control option {
+    background-color: #ffffff !important;
+    color: #202123 !important;
+  }
+}
