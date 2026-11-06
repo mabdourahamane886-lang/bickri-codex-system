@@ -216,6 +216,33 @@ export default function CodeAIPage() {
           const failure = await res.json().catch(() => ({}));
           throw new Error(failure.error || "La requête a échoué.");
         }
+        const contentType = res.headers.get("content-type") ?? "";
+        if (!contentType.includes("text/event-stream")) {
+          const fallbackData = await res.json().catch(() => null) as AgentResponse | null;
+          if (!fallbackData || !Array.isArray(fallbackData.contents)) {
+            throw new Error("Le serveur a renvoyé une réponse illisible.");
+          }
+          if (fallbackData.error) throw new Error(fallbackData.error);
+          state = fallbackData.contents;
+          setContents(fallbackData.contents);
+          patchAssistant((message) => ({
+            ...message,
+            model: fallbackData.model,
+            thinkingMode: fallbackData.thinkingMode,
+            events: [...(message.events ?? []), ...(fallbackData.events ?? [])],
+          }));
+          if (fallbackData.pending?.length) {
+            setPending(fallbackData.pending);
+            return;
+          }
+          if (typeof fallbackData.answer === "string") {
+            patchAssistant((message) => ({ ...message, content: fallbackData.answer! }));
+            return;
+          }
+          if (!fallbackData.continue) return;
+          body = {};
+          continue;
+        }
         if (!res.body) throw new Error("Le flux de progression n’est pas disponible dans ce navigateur.");
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
