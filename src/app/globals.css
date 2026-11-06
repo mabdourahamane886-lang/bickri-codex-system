@@ -1904,3 +1904,37 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .bcx-classic-chat > .bcx-nav-popover,
   .bcx-classic-chat > .bcx-nav-popover .bcx-history-item { animation: none !important; }
 }
+
+
+/* BCX mobile composer menu — clean white professional surface. */
+.bcx-classic-chat .bcx-tools-popover {
+  color: #172033; background: #ffffff; border: 1px solid #e5eaf1;
+  border-radius: 20px; box-shadow: 0 18px 48px rgba(15, 23, 42, .14); padding: 16px;
+}
+.bcx-classic-chat .bcx-tools-popover > .row {
+  padding: 2px 2px 12px; margin-bottom: 10px; border-bottom: 1px solid #edf0f4;
+}
+.bcx-classic-chat .bcx-tools-popover > .row b {
+  color: #111827; font-size: 14px; font-weight: 700; letter-spacing: -.01em;
+}
+.bcx-classic-chat .bcx-tool-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.bcx-classic-chat .bcx-tool-grid > .btn {
+  min-height: 58px; padding: 11px 12px; justify-content: flex-start; gap: 10px;
+  color: #263449; background: #fff; border: 1px solid #e7ebf1; border-radius: 14px;
+  font-size: 13px; font-weight: 600; line-height: 1.35; white-space: normal; text-align: left;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .035);
+  transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.bcx-classic-chat .bcx-tool-grid > .btn svg { width: 19px; height: 19px; flex: 0 0 19px; color: #2563eb; }
+.bcx-classic-chat .bcx-tool-grid > .btn:hover,
+.bcx-classic-chat .bcx-tool-grid > .btn:focus-visible {
+  color: #172554; background: #f7faff; border-color: #bfdbfe;
+  box-shadow: 0 5px 16px rgba(37, 99, 235, .08); transform: translateY(-1px);
+}
+.bcx-classic-chat .bcx-tools-popover .btn-icon { color: #64748b; background: #f8fafc; border: 1px solid #e8edf3; }
+@media (max-width: 560px) {
+  .bcx-classic-chat .bcx-tools-popover { width: calc(100% - 12px); margin-inline: auto; padding: 13px; border-radius: 18px; }
+  .bcx-classic-chat .bcx-tool-grid { grid-template-columns: 1fr; gap: 8px; }
+  .bcx-classic-chat .bcx-tool-grid > .btn { min-height: 52px; padding: 10px 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .bcx-classic-chat .bcx-tool-grid > .btn { transition: none; } }
