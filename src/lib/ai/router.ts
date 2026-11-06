@@ -53,7 +53,7 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
       fallbackModel,
       systemInstruction: opts.systemInstruction + getThinkingInstruction(thinkingMode),
       messages: opts.messages,
-      maxOutputTokens: opts.maxOutputTokens ?? (thinkingMode === "fast" ? 3072 : thinkingMode === "balanced" ? 4096 : 8192),
+      maxOutputTokens: opts.maxOutputTokens ?? (thinkingMode === "fast" ? 3072 : thinkingMode === "balanced" ? 4096 : thinkingMode === "deep" ? 12288 : 16384),
       timeoutMs: thinkingMode === "fast" ? 15000 : thinkingMode === "expert" ? 40000 : thinkingMode === "deep" ? 30000 : 25000,
       maxAttempts: thinkingMode === "fast" ? 1 : 3,
       thinkingMode,
