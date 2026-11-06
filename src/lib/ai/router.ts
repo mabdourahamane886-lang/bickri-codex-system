@@ -37,7 +37,11 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
   const configuredPrimary = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash";
   const primaryModel = thinkingMode === "fast"
     ? process.env.GEMINI_FAST_MODEL || "gemini-2.5-flash-lite"
-    : configuredPrimary;
+    : thinkingMode === "expert"
+      ? process.env.GEMINI_EXPERT_MODEL || process.env.GEMINI_REASONING_MODEL || configuredPrimary
+      : thinkingMode === "deep"
+        ? process.env.GEMINI_REASONING_MODEL || configuredPrimary
+        : configuredPrimary;
   const fallbackModel = thinkingMode === "fast"
     ? configuredPrimary
     : process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite";
@@ -49,9 +53,10 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
       fallbackModel,
       systemInstruction: opts.systemInstruction + getThinkingInstruction(thinkingMode),
       messages: opts.messages,
-      maxOutputTokens: opts.maxOutputTokens ?? (thinkingMode === "fast" ? 3072 : 4096),
-      timeoutMs: thinkingMode === "fast" ? 15000 : 25000,
+      maxOutputTokens: opts.maxOutputTokens ?? (thinkingMode === "fast" ? 3072 : thinkingMode === "balanced" ? 4096 : 8192),
+      timeoutMs: thinkingMode === "fast" ? 15000 : thinkingMode === "expert" ? 40000 : thinkingMode === "deep" ? 30000 : 25000,
       maxAttempts: thinkingMode === "fast" ? 1 : 3,
+      thinkingMode,
     });
     return { ...result, provider: "google", thinkingMode };
   } catch (error) {
