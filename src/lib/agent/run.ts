@@ -207,7 +207,7 @@ export async function runAgent(opts: {
     latestUserQuery,
     formatRetrievedKnowledge(retrieved),
     authorizedMemory,
-  ) + getThinkingInstruction(thinkingMode) + (specialistContext ? `\\n\\n${specialistContext}` : "") + (webContext ? `\n\nRECHERCHE WEB — SOURCES À UTILISER :\n${webContext}\n\nConsignes : réponds à la question en t’appuyant sur ces résultats, distingue les faits confirmés des éléments incertains et ajoute les URL des sources pertinentes dans ta réponse. Ne prétends pas avoir consulté une page au-delà de son extrait fourni.` : "");
+  ) + getThinkingInstruction(thinkingMode) + (specialistContext ? `\n\n${specialistContext}` : "") + (webContext ? `\n\nRECHERCHE WEB — SOURCES À UTILISER :\n${webContext}\n\nConsignes : réponds à la question en t’appuyant sur ces résultats, distingue les faits confirmés des éléments incertains et ajoute les URL des sources pertinentes dans ta réponse. Ne prétends pas avoir consulté une page au-delà de son extrait fourni.` : "");
   let model: string | undefined;
 
   try {
