@@ -12,6 +12,6 @@ describe("BCX specialist orchestration", () => {
   });
 
   it("does not claim independent agents were executed", () => {
-    expect(getThinkingInstruction("expert")).toContain("il s'agit d'une méthode de revue coordonnée dans le modèle");
+    expect(getThinkingInstruction("expert")).toContain("revues indépendantes en lecture seule");
   });
 });
