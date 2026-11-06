@@ -1,5 +1,7 @@
 import "server-only";
 import { AIError } from "./gemini";
+import type { ResolvedThinkingMode } from "./thinking";
+import { getThinkingBudget } from "./thinking";
 
 /** Contenu Gemini brut (conservé tel quel, y compris les thoughtSignature). */
 export type GeminiPart = {
@@ -32,12 +34,15 @@ export async function generateContent(opts: {
   tools?: FunctionDeclaration[];
   maxOutputTokens?: number;
   timeoutMs?: number;
+  thinkingMode?: ResolvedThinkingMode;
 }): Promise<{ content: GeminiContent; model: string; finishReason?: string }> {
+  const generationConfig: Record<string, unknown> = { temperature: 0.2, maxOutputTokens: opts.maxOutputTokens ?? 8192 };
+  if (/^gemini-2\.5-/i.test(opts.model) && opts.thinkingMode) generationConfig.thinkingConfig = { thinkingBudget: getThinkingBudget(opts.thinkingMode) };
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: opts.systemInstruction }] },
     contents: opts.contents,
     ...(opts.tools?.length ? { tools: [{ functionDeclarations: opts.tools }], toolConfig: { functionCallingConfig: { mode: "AUTO" } } } : {}),
-    generationConfig: { temperature: 0.2, maxOutputTokens: opts.maxOutputTokens ?? 8192 },
+    generationConfig,
   });
 
   const call = async (model: string) => {

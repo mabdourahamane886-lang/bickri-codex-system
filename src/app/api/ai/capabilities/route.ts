@@ -16,8 +16,11 @@ export async function GET() {
     memoryStorage: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
     feedbackCollection: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
     modelRouting: true,
-    secureSandbox: false,
-    usageTelemetry: false,
+    secureSandbox: Boolean(process.env.BCX_SANDBOX_URL && process.env.BCX_SANDBOX_TOKEN),
+    spreadsheetAnalysis: true,
+    documentExport: true,
+    memoryManagement: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
+    usageTelemetry: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
   };
   return NextResponse.json({
     product: "BICKRI CODEX SYSTEM",
@@ -26,8 +29,8 @@ export async function GET() {
     notes: {
       memoryStorage: "La mémoire persistante requiert la migration SQL BCX et l'authentification utilisateur.",
       feedbackCollection: "Les retours nécessitent la migration SQL BCX et une session utilisateur.",
-      secureSandbox: "L'exécution arbitraire de code exige un worker isolé dédié; ne pas l'exécuter dans la route web.",
-      usageTelemetry: "Les métriques serveur détaillées ne sont pas encore activées.",
+      secureSandbox: "L'exécution est déléguée à un worker externe isolé et nécessite BCX_SANDBOX_URL et BCX_SANDBOX_TOKEN.",
+      usageTelemetry: "Les métriques nécessitent SUPABASE_SERVICE_ROLE_KEY côté serveur et le rôle admin dans app_metadata.",
     },
   }, { headers: { "Cache-Control": "no-store" } });
 }

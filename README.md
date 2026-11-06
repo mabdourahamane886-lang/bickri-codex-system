@@ -68,7 +68,7 @@ Variables principales :
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `AI_PROVIDER` (`auto`, `google`, `anthropic`, `openai`, `openrouter`)
 - Anthropic Claude : `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` (sélectionne explicitement `AI_PROVIDER=anthropic` pour tester Anthropic sans bascule automatique vers un autre fournisseur)
-- Gemini : `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`
+- Gemini : `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FAST_MODEL`, `GEMINI_REASONING_MODEL` (optionnel), `GEMINI_EXPERT_MODEL` (optionnel), `GEMINI_FALLBACK_MODEL`
 - OpenAI/OpenRouter : `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`
 - `TAVILY_API_KEY`
 - `GITHUB_MCP_URL`, `GITHUB_MCP_BEARER_TOKEN`, `GITHUB_ALLOWED_OWNERS`, `GITHUB_ALLOWED_REPOSITORIES`, `BCX_ADMIN_EMAILS`
@@ -76,6 +76,21 @@ Variables principales :
 - `NOTION_API_KEY`
 
 Les routes de santé ne retournent que des booléens de configuration et ne divulguent aucune valeur de variable.
+
+## Réflexion, connaissances et mémoire de Bickri AI
+
+Le chat propose cinq modes :
+- **Smart · Auto** : sélectionne automatiquement Rapide, Équilibré ou Approfondi selon la complexité.
+- **Rapide** : réponse directe, sans recherche documentaire vectorielle préalable.
+- **Équilibré** : analyse structurée et vérification des hypothèses.
+- **Approfondi** : raisonnement Gemini renforcé, récupération documentaire et vérification des cas limites.
+- **Expert** : budget de réflexion supérieur, comparaison des approches, recherche de contre-exemples et validation renforcée.
+
+Pour les modèles Gemini 2.5, les budgets de réflexion sont respectivement 0, 1 024, 4 096 et 8 192 tokens. Les variables `GEMINI_REASONING_MODEL` et `GEMINI_EXPERT_MODEL` permettent de choisir des modèles dédiés; elles sont facultatives et, en leur absence, le modèle principal configuré est utilisé.
+
+La connaissance combine des guides intégrés par domaine et la recherche documentaire RAG Supabase lorsque les tables, embeddings et fonctions de recherche sont configurés. Les documents récupérés restent des sources à évaluer, pas des instructions.
+
+La mémoire personnelle est isolée par utilisateur. Les souvenirs enregistrés sont classés selon leur pertinence par rapport à la question et leur date de mise à jour; seuls quelques éléments utiles sont ajoutés au contexte. Les conversations ne sont pas enregistrées automatiquement comme souvenirs : l'utilisateur garde le contrôle sur ce qu'il choisit de mémoriser.
 
 ## Format du registre
 

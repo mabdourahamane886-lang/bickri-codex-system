@@ -19,6 +19,9 @@ describe("contextual AI knowledge", () => {
     expect(knowledge).toContain("[DOMAINE : database]");
     expect(knowledge).toContain("[DOMAINE : security]");
     expect(listKnowledgeDomains()).toContain("ai-llm-rag");
-    expect(listKnowledgeDomains().length).toBeGreaterThanOrEqual(10);
+    expect(listKnowledgeDomains()).toContain("reasoning-research");
+    expect(listKnowledgeDomains()).toContain("data-science");
+    expect(listKnowledgeDomains()).toContain("cloud-devops");
+    expect(listKnowledgeDomains().length).toBeGreaterThanOrEqual(13);
   });
 });

@@ -7,6 +7,7 @@ import { getAgentContext } from "@/lib/agent/context";
 import { runAgent, sanitizeContents } from "@/lib/agent/run";
 import { PLUGINS } from "@/lib/agent/plugins";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
+import { recordAIUsage } from "@/lib/ai/telemetry";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -35,6 +36,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const startedAt = Date.now();
   const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "GEMINI_API_KEY est manquante dans les variables serveur Vercel.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
 
@@ -62,12 +64,13 @@ export async function POST(request: NextRequest) {
   try {
     const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
     const projectContext = typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "";
-    const requestedThinkingMode: ThinkingMode = body.thinkingMode === "fast" || body.thinkingMode === "deep" ? body.thinkingMode : "fast";
+    const requestedThinkingMode: ThinkingMode = body.thinkingMode === "fast" || body.thinkingMode === "balanced" || body.thinkingMode === "deep" || body.thinkingMode === "expert" || body.thinkingMode === "auto" ? body.thinkingMode : "auto";
     const latestUserQuery = [...contents].reverse().find((item) => item.role === "user")?.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n") || "";
     const thinkingMode = resolveThinkingMode(latestUserQuery, requestedThinkingMode);
     try {
       if (!apiKey) throw new AIError("Gemini n'est pas configuré; bascule vers un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
       const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext, thinkingMode: requestedThinkingMode });
+      if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
       return NextResponse.json({ ...result, thinkingMode });
     } catch (agentError) {
       if (!(agentError instanceof AIError) || !["AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_BUSY", "AI_NETWORK_TIMEOUT", "AI_QUOTA_OR_RATE_LIMIT", "AI_EMPTY_RESPONSE", "AI_PROVIDER_ERROR", "AI_ACCESS_DENIED", "AI_BAD_REQUEST", "AI_MODEL_NOT_FOUND"].includes(agentError.code || "")) {
@@ -87,6 +90,7 @@ export async function POST(request: NextRequest) {
         messages: fallbackMessages,
         thinkingMode: requestedThinkingMode,
       });
+      await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: fallback.provider || "fallback", outcome: "success", latencyMs: Date.now() - startedAt });
       const fallbackContents = [...contents, { role: "model" as const, parts: [{ text: fallback.answer }] }];
       return NextResponse.json({
         contents: fallbackContents,

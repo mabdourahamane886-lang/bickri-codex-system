@@ -1,4 +1,6 @@
 import "server-only";
+import type { ResolvedThinkingMode } from "./thinking";
+import { getThinkingBudget } from "./thinking";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -59,11 +61,14 @@ export async function generateWithGemini(opts: {
   maxOutputTokens?: number;
   timeoutMs?: number;
   maxAttempts?: number;
+  thinkingMode?: ResolvedThinkingMode;
 }): Promise<{ answer: string; model: string }> {
+  const generationConfig: Record<string, unknown> = { temperature: 0.2, maxOutputTokens: opts.maxOutputTokens ?? 4096 };
+  if (/^gemini-2\.5-/i.test(opts.model) && opts.thinkingMode) generationConfig.thinkingConfig = { thinkingBudget: getThinkingBudget(opts.thinkingMode) };
   const payload = JSON.stringify({
     systemInstruction: { parts: [{ text: opts.systemInstruction }] },
     contents: opts.messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
-    generationConfig: { temperature: 0.2, maxOutputTokens: opts.maxOutputTokens ?? 4096 },
+    generationConfig,
   });
 
   const call = (model: string, timeoutMs: number) =>
