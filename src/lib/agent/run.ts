@@ -152,7 +152,7 @@ export async function runAgent(opts: {
         const fallback = selected.length ? selected : ranked.slice(0, 3);
         authorizedMemory = fallback.map(({ memory }) =>
           `[${String(memory.category || "general").slice(0, 40)} | mise à jour : ${String(memory.updated_at || "date inconnue").slice(0, 10)}] ${String(memory.title || "").slice(0, 120)}: ${String(memory.content || "").slice(0, 1200)}`)
-          .join("\\n")
+          .join("\n")
           .slice(0, 10000);
       } else if (error) {
         console.error("BCX memory context read failed", error.code);
