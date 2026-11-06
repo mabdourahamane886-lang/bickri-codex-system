@@ -250,6 +250,9 @@ export default function CodeAIPage() {
       const data = dataUrl.split(",")[1];
       if (!data) throw new Error("Lecture de l’image impossible.");
       setChatAttachment({ name: file.name, mimeType: file.type, data, preview: dataUrl });
+      setImageSource(null);
+      setImageMode("create");
+      setImageIntent(false);
       setShowTools(false);
       setError("");
       inputRef.current?.focus();
@@ -620,8 +623,8 @@ export default function CodeAIPage() {
         <div className="chat-composer">
           <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log,.pdf,image/jpeg,image/png,image/webp" hidden onChange={readDocument} />
           <input ref={imageFileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={chooseImage} />
-          {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Outils de la conversation">
-            <div className="row"><b className="grow">Joindre ou créer</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
+          {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Ajouter à la conversation">
+            <div className="row"><b className="grow">Ajouter à la conversation</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
             <div className="bcx-tool-grid">
               <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); imageFileRef.current?.click(); }}><ImagePlus size={17} /> Joindre une photo à analyser</button>
               <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Importer un fichier ou du code</button>
