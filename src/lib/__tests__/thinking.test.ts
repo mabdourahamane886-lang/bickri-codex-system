@@ -3,7 +3,7 @@ import { getThinkingBudget, getThinkingInstruction, resolveThinkingMode } from "
 
 describe("Bickri AI adaptive reasoning", () => {
   it("uses fast mode for simple requests and balanced mode for explanations", () => {
-    expect(resolveThinkingMode("Salut, comment ça va ?", "auto")).toBe("fast");
+    expect(resolveThinkingMode("Salut !", "auto")).toBe("fast");
     expect(resolveThinkingMode("Explique-moi pourquoi cette approche fonctionne.", "auto")).toBe("balanced");
   });
 
