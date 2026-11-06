@@ -247,7 +247,7 @@ export default function CodeAIPage() {
         while (true) {
           const chunk = await reader.read();
           if (chunk.done) break;
-          buffer += decoder.decode(chunk.value, { stream: true }).replace(/\\r\\n/g, "\\n");
+          buffer += decoder.decode(chunk.value, { stream: true }).replace(/\r\n/g, "\n");
           const blocks = buffer.split("\n\n");
           buffer = blocks.pop() ?? "";
           for (const block of blocks) consume(block);
