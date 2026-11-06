@@ -472,15 +472,8 @@ export default function CodeAIPage() {
       <aside className="classic-chat-sidebar" aria-label="Historique des conversations">
         <div className="classic-sidebar-brand"><span className="classic-brand-mark">B</span><strong>Bickri AI</strong></div>
         <button type="button" className="classic-new-chat" onClick={newChat}><SquarePen size={17}/> Nouveau chat</button>
-        <nav className="classic-shortcuts" aria-label="Outils BCX">
-          <Link href="/plugins" onClick={() => setShowNav(false)}><Plug size={17}/> Plugins</Link>
-          <Link href="/ai/memories" onClick={() => setShowNav(false)}><User size={17}/> Mémoire personnelle</Link>
-          <Link href="/ai/spreadsheets" onClick={() => setShowNav(false)}><FileText size={17}/> Analyse Excel</Link>
-          <Link href="/ai/documents" onClick={() => setShowNav(false)}><FileText size={17}/> Documents</Link>
-          <Link href="/ai/execute" onClick={() => setShowNav(false)}><Bug size={17}/> Exécuter du code</Link>
-          <Link href="/ai" onClick={() => setShowNav(false)}><Layers size={17}/> Codex BCX</Link>
-          <Link href="/cloud" onClick={() => setShowNav(false)}><WandSparkles size={17}/> BCX Cloud</Link>
-          <Link href="/settings" onClick={() => setShowNav(false)}><User size={17}/> Paramètres</Link>
+        <nav className="classic-shortcuts" aria-label="Navigation principale">
+          <Link href="/studio" onClick={() => setShowNav(false)}><Layers size={17}/> Projets</Link>
         </nav>
         <div className="classic-history-heading">Historique</div>
         <label className="bcx-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher une conversation…" aria-label="Rechercher dans l’historique"/></label>
@@ -571,7 +564,7 @@ export default function CodeAIPage() {
                                 {isLast && !loading && <button type="button" className="btn btn-ghost btn-sm" onClick={retry} disabled={!lastMessage || Boolean(pending)} aria-label="Régénérer la réponse" title="Régénérer la réponse"><RefreshCw size={15} /> Régénérer</button>}
                               </div>
                             )}
-                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-orbit" aria-hidden="true"><Sparkles size={16} /></span><span key={thinkingStep} className="bcx-thinking-label">{(thinkingMode === "expert" ? ["Analyse experte en cours…", "Compare les approches…", "Vérifie les risques et les cas limites…", "Prépare une synthèse vérifiée…"] : thinkingMode === "deep" ? ["Analyse approfondie…", "Vérifie les contraintes…", "Contrôle la cohérence…", "Prépare la solution…"] : thinkingMode === "fast" ? ["Bickri prépare la réponse…", "Traite ta demande…", "Finalise…", "Prépare le résultat…"] : ["Bickri réfléchit…", "Analyse ta demande…", "Évalue la complexité…", "Prépare la réponse…"])[thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
+                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-neural" aria-hidden="true"><span className="bcx-neural-core"><Sparkles size={15} /></span><i className="bcx-neural-ring ring-one" /><i className="bcx-neural-ring ring-two" /><i className="bcx-neural-node node-one" /><i className="bcx-neural-node node-two" /><i className="bcx-neural-node node-three" /></span><span key={thinkingStep} className="bcx-thinking-label">{(thinkingMode === "expert" ? ["Analyse experte en cours…", "Compare les approches…", "Vérifie les risques et les cas limites…", "Prépare une synthèse vérifiée…"] : thinkingMode === "deep" ? ["Analyse approfondie…", "Vérifie les contraintes…", "Contrôle la cohérence…", "Prépare la solution…"] : thinkingMode === "fast" ? ["Bickri prépare la réponse…", "Traite ta demande…", "Finalise…", "Prépare le résultat…"] : ["Bickri réfléchit…", "Analyse ta demande…", "Évalue la complexité…", "Prépare la réponse…"])[thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
                           </>
                         )}
                       </div>
@@ -653,11 +646,11 @@ export default function CodeAIPage() {
               <label className="bcx-thinking-mode-control" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }} title="Choisir la profondeur d’analyse">
                 <Sparkles size={15} aria-hidden="true" />
                 <select value={thinkingMode} onChange={(event) => setThinkingMode(event.target.value as ThinkingMode)} disabled={loading} aria-label="Mode de réflexion" style={{ maxWidth: 145, minHeight: 32, border: "1px solid var(--border)", borderRadius: 8, padding: "4px 7px", background: "var(--surface)", color: "var(--foreground)", fontSize: 12 }}>
-                  <option value="auto">Smart · Auto</option>
-                  <option value="fast">Rapide</option>
-                  <option value="balanced">Équilibré</option>
-                  <option value="deep">Approfondi</option>
-                  <option value="expert">Expert · Réflexion renforcée</option>
+                  <option value="auto">BCX Auto · Intelligent</option>
+                  <option value="fast">BCX 1 · Rapide</option>
+                  <option value="balanced">BCX 2 · Équilibré</option>
+                  <option value="deep">BCX 3 · Approfondi</option>
+                  <option value="expert">BCX 4 · Expert</option>
                 </select>
               </label>
               <VoiceAssistant
