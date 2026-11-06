@@ -146,8 +146,8 @@ export async function runAgent(opts: {
           const score = terms.reduce((sum, term) => sum + (title.includes(term) ? 3 : 0) + (content.includes(term) ? 1 : 0) + (category.includes(term) ? 0.5 : 0), 0);
           const updatedAt = memory.updated_at ? Date.parse(memory.updated_at) : Number.NaN;
           const ageDays = Number.isFinite(updatedAt) ? Math.max(0, (Date.now() - updatedAt) / 86_400_000) : 365;
-          return { memory, score: score + Math.max(0, 0.5 - ageDays / 365) };
-        }).sort((a, b) => b.score - a.score);
+          return { memory, score, recency: Math.max(0, 365 - ageDays) };
+        }).sort((a, b) => b.score - a.score || b.recency - a.recency);
         const selected = ranked.filter((item) => item.score > 0).slice(0, 8);
         const fallback = selected.length ? selected : ranked.slice(0, 3);
         authorizedMemory = fallback.map(({ memory }) =>
@@ -219,7 +219,7 @@ export async function runAgent(opts: {
         contents,
         tools: declarations,
         timeoutMs: thinkingMode === "fast" ? 15000 : thinkingMode === "expert" ? 40000 : thinkingMode === "deep" ? 30000 : 25000,
-        maxOutputTokens: thinkingMode === "fast" ? 3072 : thinkingMode === "balanced" ? 4096 : 8192,
+        maxOutputTokens: thinkingMode === "fast" ? 3072 : thinkingMode === "balanced" ? 4096 : thinkingMode === "deep" ? 12288 : 16384,
         thinkingMode,
       });
       model = res.model;
