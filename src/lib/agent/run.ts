@@ -208,7 +208,7 @@ export async function runAgent(opts: {
       sources = webResults.map((item) => {
         const page = opened.find((entry) => entry.item.url === item.url)?.page;
         return {
-          title: page?.title || item.title,
+          title: page && "title" in page && typeof page.title === "string" ? page.title : item.title,
           url: item.url,
           snippet: page && "content" in page && typeof page.content === "string"
             ? page.content.slice(0, 900)
