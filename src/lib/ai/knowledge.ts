@@ -99,6 +99,38 @@ const PACKS: KnowledgePack[] = [
 - Évalue la qualité avec des cas tests représentatifs : exactitude, citations, refus sûrs, résistance aux prompt injections, coût et latence. Ne présente pas une estimation comme un résultat mesuré.`
   },
   {
+    id: "reasoning-research",
+    triggers: ["raisonnement", "réflexion", "analyse", "recherche", "preuve", "hypothèse", "décision", "stratégie", "comparaison", "risque", "méthode scientifique"],
+    content: `ANALYSE, RECHERCHE ET DÉCISION
+- Formule le problème sous forme d'objectif observable, de contraintes, de parties prenantes et de critères de réussite.
+- Sépare données, faits vérifiés, hypothèses, interprétations et opinions. Attribue un niveau de confiance proportionné à la qualité des preuves.
+- Compare plusieurs options selon des critères explicites : qualité, coût total, délai, risque, maintenabilité, réversibilité et impact.
+- Cherche les contre-exemples, les biais de confirmation, les causes alternatives et les informations qui pourraient invalider la conclusion.
+- Pour une recherche, privilégie les sources primaires, la date de publication, la méthode, la taille d'échantillon et les limites; recoupe les affirmations importantes.
+- Pour une recommandation, indique pourquoi elle est préférable, dans quelles conditions elle ne le serait plus et quelle prochaine vérification réduirait le plus l'incertitude.`
+  },
+  {
+    id: "data-science",
+    triggers: ["data", "données", "excel", "csv", "statistique", "statistiques", "analyse de données", "machine learning", "apprentissage automatique", "dataset", "modèle prédictif", "visualisation"],
+    content: `SCIENCE DES DONNÉES ET ANALYSE
+- Commence par inspecter le schéma, les types, les valeurs manquantes, doublons, unités, plages, distributions et biais d'échantillonnage.
+- Distingue statistiques descriptives, corrélation, causalité et prédiction. Une corrélation ne prouve pas une relation causale.
+- Vérifie les hypothèses des tests statistiques, les intervalles de confiance, la taille d'échantillon et les facteurs de confusion.
+- Évite les fuites de données entre entraînement et test; établis une baseline avant de comparer des modèles.
+- Documente les transformations, les unités, les filtres, les limites et la provenance. N'invente jamais de valeurs absentes ni de résultats d'exécution.`
+  },
+  {
+    id: "cloud-devops",
+    triggers: ["docker", "container", "conteneur", "cloud", "devops", "ci", "cd", "pipeline", "kubernetes", "observabilité", "monitoring", "logs", "infrastructure", "serverless"],
+    content: `CLOUD, DEVOPS ET FIABILITÉ
+- Sépare développement, preview/staging et production; protège les secrets par environnement et applique le moindre privilège aux identités de déploiement.
+- Rends les déploiements reproductibles : dépendances verrouillées, migrations versionnées, artefacts identifiables et configuration déclarative.
+- Pour les conteneurs, limite CPU, mémoire, PIDs, réseau, capacités Linux et système de fichiers; exécute en non-root et isole les workloads non fiables.
+- Observabilité : corrèle logs structurés, métriques et traces avec identifiants de requête; surveille latence, taux d'erreur, saturation et coût.
+- Prévois health checks, timeouts, retries avec backoff, idempotence, sauvegardes testées, rollback et runbooks d'incident.
+- Vérifie le statut réel du déploiement et teste les parcours critiques après publication; un build réussi ne prouve pas le bon fonctionnement en production.`
+  },
+  {
     id: "design-content",
     triggers: ["design", "logo", "affiche", "image", "visuel", "branding", "marque", "typographie", "couleur", "ux", "ui", "figma", "créatif", "création de contenu"],
     content: `DESIGN, UX ET CONTENU VISUEL
