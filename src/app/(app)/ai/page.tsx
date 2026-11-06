@@ -629,6 +629,13 @@ export default function CodeAIPage() {
               <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); imageFileRef.current?.click(); }}><ImagePlus size={17} /> Joindre une photo à analyser</button>
               <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Importer un fichier ou du code</button>
               <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
+              <Link className="btn bcx-attach-action" href="/plugins" onClick={() => setShowTools(false)}><Plug size={17} /> Plugins et intégrations</Link>
+              <Link className="btn bcx-attach-action" href="/ai/memories" onClick={() => setShowTools(false)}><User size={17} /> Mémoire personnelle</Link>
+              <Link className="btn bcx-attach-action" href="/ai/spreadsheets" onClick={() => setShowTools(false)}><FileText size={17} /> Analyse Excel</Link>
+              <Link className="btn bcx-attach-action" href="/ai/documents" onClick={() => setShowTools(false)}><FileText size={17} /> Documents</Link>
+              <Link className="btn bcx-attach-action" href="/ai/execute" onClick={() => setShowTools(false)}><Bug size={17} /> Exécuter du code</Link>
+              <Link className="btn bcx-attach-action" href="/cloud" onClick={() => setShowTools(false)}><WandSparkles size={17} /> BCX Cloud</Link>
+              <Link className="btn bcx-attach-action" href="/settings" onClick={() => setShowTools(false)}><User size={17} /> Paramètres</Link>
               
             </div>
           </div>}
