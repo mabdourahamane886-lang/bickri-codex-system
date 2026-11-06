@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         const stream = new ReadableStream<Uint8Array>({
           start(controller) {
             const send = (type: string, data: unknown) => {
-              controller.enqueue(encoder.encode(`event: ${type}\\ndata: ${JSON.stringify(data)}\\n\\n`));
+              controller.enqueue(encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`));
             };
             void (async () => {
               try {
