@@ -74,16 +74,16 @@ async function execute(call: NonNullable<GeminiPart["functionCall"]>, tools: Map
   const tool = tools.get(call.name);
   const args = call.args ?? {};
   const respond = (response: Record<string, unknown>): GeminiPart => ({ functionResponse: { ...(call.id ? { id: call.id } : {}), name: call.name, response } });
-  if (!tool) { events.push({ tool: call.name, label: call.name, write: false, status: "error" }); return respond({ error: "Outil indisponible : le plugin est désactivé ou non autorisé." }); }
+  if (!tool) { emit({ tool: call.name, label: call.name, write: false, status: "error" }); return respond({ error: "Outil indisponible : le plugin est désactivé ou non autorisé." }); }
   const label = tool.label(args);
-  if (tool.write && !allowWrite) { events.push({ tool: call.name, label, write: true, status: "refused" }); return respond({ error: "L'utilisateur a refusé cette action. Ne la relance pas sans nouvelle demande." }); }
+  if (tool.write && !allowWrite) { emit({ tool: call.name, label, write: true, status: "refused" }); return respond({ error: "L'utilisateur a refusé cette action. Ne la relance pas sans nouvelle demande." }); }
   try {
     const out = (await tool.run(args, ctx)) as Record<string, unknown>;
     const failed = Boolean(out && typeof out === "object" && "error" in out);
-    events.push({ tool: call.name, label, write: tool.write, status: failed ? "error" : "ok" });
+    emit({ tool: call.name, label, write: tool.write, status: failed ? "error" : "ok" });
     return respond(out && typeof out === "object" ? out : { result: out });
   } catch (err) {
-    events.push({ tool: call.name, label, write: tool.write, status: "error" });
+    emit({ tool: call.name, label, write: tool.write, status: "error" });
     return respond({ error: err instanceof Error ? err.message.slice(0, 500) : "Erreur inconnue." });
   }
 }
@@ -97,9 +97,11 @@ export async function runAgent(opts: {
   projectContext: string;
   decision?: "approve" | "reject";
   thinkingMode?: ThinkingMode;
+  onProgress?: (event: AgentEvent) => void;
 }): Promise<AgentResult> {
   const started = Date.now();
   const events: AgentEvent[] = [];
+  const emit = (event: AgentEvent) => { events.push(event); opts.onProgress?.(event); };
   const tools = new Map<string, Tool>();
   const closers: Array<() => Promise<void>> = [];
   const statuses: PluginStatus[] = [];
