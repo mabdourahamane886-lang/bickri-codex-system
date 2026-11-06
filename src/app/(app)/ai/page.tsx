@@ -747,6 +747,7 @@ export default function CodeAIPage() {
                 <Plus size={20} />
               </button>
               <button type="button" className={`btn btn-sm bcx-research-toggle ${researchMode ? "is-active" : ""}`} aria-pressed={researchMode} onClick={() => setResearchMode((value) => !value)} disabled={loading} title="Activer la recherche Web approfondie"><Search size={15}/> Rechercher</button>
+              <button type="button" className={`btn btn-sm bcx-research-toggle ${thinkingMode === "deep" || thinkingMode === "expert" ? "is-active" : ""}`} aria-pressed={thinkingMode === "deep" || thinkingMode === "expert"} onClick={() => setThinkingMode((mode) => mode === "deep" || mode === "expert" ? "auto" : "deep")} disabled={loading} title="Activer la réflexion approfondie"><Sparkles size={15}/> Réflexion</button>
               <label className="bcx-thinking-mode-control" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }} title="Choisir la profondeur d’analyse">
                 <Sparkles size={15} aria-hidden="true" />
                 <select value={thinkingMode} onChange={(event) => setThinkingMode(event.target.value as ThinkingMode)} disabled={loading} aria-label="Mode de réflexion" style={{ maxWidth: 145, minHeight: 32, border: "1px solid var(--border)", borderRadius: 8, padding: "4px 7px", background: "var(--surface)", color: "var(--foreground)", fontSize: 12 }}>
