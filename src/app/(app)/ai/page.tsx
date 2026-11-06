@@ -209,11 +209,53 @@ export default function CodeAIPage() {
       for (let round = 0; round <= MAX_CONTINUATIONS; round++) {
         const res = await fetch("/api/ai/agent", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...body, contents: state, plugins: activePlugins.map((p) => p.id), language, thinkingMode }),
+          headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
+          body: JSON.stringify({ ...body, contents: state, plugins: activePlugins.map((p) => p.id), language, thinkingMode, stream: true }),
         });
-        const data = (await res.json().catch(() => ({}))) as AgentResponse;
-        if (!res.ok) throw new Error(data.error || "La requête a échoué.");
+        if (!res.ok) {
+          const failure = await res.json().catch(() => ({}));
+          throw new Error(failure.error || "La requête a échoué.");
+        }
+        if (!res.body) throw new Error("Le flux de progression n’est pas disponible dans ce navigateur.");
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let data: AgentResponse | undefined;
+        const consume = (block: string) => {
+          let eventName = "message";
+          const lines = block.split("\\n");
+          const payload: string[] = [];
+          for (const line of lines) {
+            if (line.startsWith("event:")) eventName = line.slice(6).trim();
+            else if (line.startsWith("data:")) payload.push(line.slice(5).trim());
+          }
+          if (!payload.length) return;
+          const value = JSON.parse(payload.join("\\n")) as Record<string, unknown>;
+          if (eventName === "activity") {
+            const event = value as unknown as AgentEvent;
+            patchAssistant((message) => ({ ...message, events: [...(message.events ?? []), event] }));
+          } else if (eventName === "phase") {
+            const phase = value as { phase?: string; label?: string; status?: string };
+            const event: AgentEvent = { tool: `phase_${phase.phase ?? "work"}`, label: phase.label ?? "Traitement en cours", write: false, status: phase.status === "ok" ? "ok" : "pending" };
+            patchAssistant((message) => ({ ...message, events: [...(message.events ?? []), event] }));
+          } else if (eventName === "result") {
+            data = value as unknown as AgentResponse;
+          } else if (eventName === "stream_error") {
+            throw new Error(typeof value.error === "string" ? value.error : "Erreur pendant le traitement.");
+          }
+        };
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          buffer += decoder.decode(chunk.value, { stream: true }).replace(/\\r\\n/g, "\\n");
+          const blocks = buffer.split("\\n\\n");
+          buffer = blocks.pop() ?? "";
+          for (const block of blocks) consume(block);
+        }
+        buffer += decoder.decode();
+        if (buffer.trim()) consume(buffer);
+        if (!data) throw new Error("Le flux s’est terminé sans résultat final.");
+        const finalData = data;
         state = data.contents;
         setContents(data.contents);
         patchAssistant((m) => ({ ...m, model: data.model, thinkingMode: data.thinkingMode, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...data.events] }));
@@ -222,7 +264,7 @@ export default function CodeAIPage() {
           patchAssistant((m) => ({ ...m, content: data.answer! }));
           return;
         }
-        if (!data.continue) return;
+        if (!finalData.continue) return;
         body = {}; // poursuite automatique sans nouveau message
       }
       patchAssistant((m) => ({ ...m, content: m.content || "La tâche est longue : écris « continue » pour que je poursuive." }));
