@@ -430,7 +430,7 @@ export default function CodeAIPage() {
     setPrompt(""); setLastMessage(content || `Analyse la pièce jointe ${attachment?.name ?? ""}`);
     setChatAttachment(null);
     try {
-      await runAgent({ message: content || `Analyse la pièce jointe ${attachment?.name ?? ""} et explique son contenu.` }, baseContents);
+      await runAgent({ message: content || `Analyse la pièce jointe ${attachment?.name ?? ""} et explique son contenu.`, researchMode: forceResearch || researchMode }, baseContents);
     } catch (err) { setError(err instanceof Error ? err.message : "Une erreur est survenue."); }
     finally { setLoading(false); sendLockRef.current = false; }
   }
