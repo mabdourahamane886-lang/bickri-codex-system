@@ -69,6 +69,41 @@ export async function POST(request: NextRequest) {
     const thinkingMode = resolveThinkingMode(latestUserQuery, requestedThinkingMode);
     try {
       if (!apiKey) throw new AIError("Gemini n'est pas configuré; bascule vers un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
+      if (body.stream === true) {
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            const send = (type: string, data: unknown) => {
+              controller.enqueue(encoder.encode(`event: ${type}\\ndata: ${JSON.stringify(data)}\\n\\n`));
+            };
+            void (async () => {
+              try {
+                send("phase", { phase: "analysis", label: "Analyse de la demande", status: "started", at: new Date().toISOString() });
+                const result = await runAgent({
+                  ctx, apiKey, contents, pluginIds, decision, language, projectContext,
+                  thinkingMode: requestedThinkingMode,
+                  onProgress: (event) => send("activity", { ...event, at: new Date().toISOString() }),
+                });
+                send("phase", { phase: "complete", label: "Traitement terminé", status: "ok", at: new Date().toISOString() });
+                if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
+                send("result", { ...result, thinkingMode });
+              } catch (error) {
+                send("stream_error", { error: error instanceof Error ? error.message : "Erreur pendant le traitement." });
+              } finally {
+                controller.close();
+              }
+            })();
+          },
+        });
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/event-stream; charset=utf-8",
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+          },
+        });
+      }
       const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext, thinkingMode: requestedThinkingMode });
       if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
       return NextResponse.json({ ...result, thinkingMode });
