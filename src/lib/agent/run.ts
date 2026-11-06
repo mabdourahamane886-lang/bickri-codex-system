@@ -3,7 +3,8 @@ import { generateContent, type GeminiContent, type GeminiPart } from "@/lib/ai/g
 import { buildSystemInstruction } from "@/lib/ai/prompt";
 import { getThinkingInstruction, resolveThinkingMode, type ThinkingMode } from "@/lib/ai/thinking";
 import { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
-import { formatWebSearchResults, searchWeb, shouldSearchWeb } from "@/lib/ai/web-search";
+import { formatWebSearchResults, searchWeb, shouldSearchWeb, type WebSearchResult } from "@/lib/ai/web-search";
+import { fetchPublic } from "./plugins/web";
 import { PLUGINS } from "./plugins";
 import type { AgentContext, PluginStatus, Tool } from "./types";
 import { formatSpecialistReviews, runSpecialistReviews } from "./specialist-orchestrator";
@@ -17,6 +18,7 @@ export type AgentResult = {
   continue?: boolean;
   model?: string;
   plugins: PluginStatus[];
+  sources?: Array<{ title: string; url: string; snippet: string; provider: string; opened: boolean; status?: number }>;
 };
 
 const MAX_STEPS = 12;
@@ -99,6 +101,7 @@ export async function runAgent(opts: {
   decision?: "approve" | "reject";
   thinkingMode?: ThinkingMode;
   onProgress?: (event: AgentEvent) => void;
+  researchMode?: boolean;
 }): Promise<AgentResult> {
   const started = Date.now();
   const events: AgentEvent[] = [];
@@ -189,18 +192,46 @@ export async function runAgent(opts: {
   // Recherche Web automatique pour les demandes explicites ou les sujets d'actualité.
   // Elle ne dépend pas de l'activation manuelle du plugin dans l'interface.
   let webContext = "";
-  if (shouldSearchWeb(latestUserQuery)) {
+  let sources: AgentResult["sources"] = [];
+  if (opts.researchMode || shouldSearchWeb(latestUserQuery)) {
+    emit({ tool: "web_search_started", label: "Recherche Web en cours", write: false, status: "pending" });
     try {
-      const webResults = await searchWeb(latestUserQuery, 6);
-      webContext = formatWebSearchResults(webResults);
-      if (webResults.length) {
-        emit({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "ok" });
-      } else {
-        emit({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "error" });
-      }
+      const webResults = await searchWeb(latestUserQuery, opts.researchMode ? 8 : 6);
+      const opened = await Promise.all(webResults.slice(0, opts.researchMode ? 5 : 3).map(async (item) => {
+        try {
+          const page = await fetchPublic(item.url);
+          return { item, page };
+        } catch {
+          return { item, page: null };
+        }
+      }));
+      sources = webResults.map((item) => {
+        const page = opened.find((entry) => entry.item.url === item.url)?.page;
+        return {
+          title: page?.title || item.title,
+          url: item.url,
+          snippet: page && "content" in page && typeof page.content === "string"
+            ? page.content.slice(0, 900)
+            : item.snippet,
+          provider: item.source,
+          opened: Boolean(page && "content" in page && typeof page.content === "string" && page.status >= 200 && page.status < 400),
+          ...(page && "status" in page ? { status: page.status } : {}),
+        };
+      });
+      const pageContext = opened.flatMap(({ item, page }) =>
+        page && "content" in page && typeof page.content === "string" && page.status >= 200 && page.status < 400
+          ? [`[PAGE LUE — ${page.title || item.title}]\nURL : ${page.url}\nContenu : ${page.content.slice(0, 12000)}`]
+          : []
+      ).join("\n\n");
+      webContext = [
+        formatWebSearchResults(webResults),
+        pageContext ? `CONTENU DES PAGES OUVERTES :\n${pageContext}` : "",
+      ].filter(Boolean).join("\n\n");
+      emit({ tool: "web_search", label: `${webResults.length} résultats Web trouvés`, write: false, status: webResults.length ? "ok" : "error" });
+      if (opened.length) emit({ tool: "web_open", label: `${opened.filter((entry) => entry.page && "content" in entry.page && entry.page.status >= 200 && entry.page.status < 400).length} pages Web ouvertes`, write: false, status: "ok" });
     } catch (error) {
       console.warn("BCX automatic web search unavailable:", error instanceof Error ? error.message : "unknown");
-      emit({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "error" });
+      emit({ tool: "web_search", label: "Recherche Web indisponible", write: false, status: "error" });
     }
   }
   const system = buildSystemInstruction(
@@ -224,7 +255,7 @@ export async function runAgent(opts: {
     }
 
     for (let step = 0; step < MAX_STEPS; step++) {
-      if (Date.now() - started > TIME_BUDGET_MS) return { contents, events, continue: true, model, plugins: statuses };
+      if (Date.now() - started > TIME_BUDGET_MS) return { contents, events, continue: true, model, plugins: statuses, sources };
       compact(contents);
       const configuredModel = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash";
       const configuredFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite";
@@ -253,14 +284,14 @@ export async function runAgent(opts: {
       const calls = callsOf(res.content);
       if (!calls.length) {
         const answer = res.content.parts.filter((p) => p.text && !p.thought).map((p) => p.text).join("").trim();
-        return { contents, events, answer: answer || "(Réponse vide.)", model, plugins: statuses };
+        return { contents, events, answer: answer || "(Réponse vide.)", model, plugins: statuses, sources };
       }
 
       const writes = calls.filter((c) => tools.get(c.name)?.write);
       if (writes.length) {
         const pending = writes.map((c) => ({ tool: c.name, label: tools.get(c.name)!.label(c.args ?? {}), args: c.args ?? {} }));
         pending.forEach((p) => emit({ tool: p.tool, label: p.label, write: true, status: "pending" }));
-        return { contents, events, pending, model, plugins: statuses };
+        return { contents, events, pending, model, plugins: statuses, sources };
       }
 
       const parts: GeminiPart[] = [];
