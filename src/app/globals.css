@@ -1880,3 +1880,27 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
 @keyframes bcx-core-breathe{0%,100%{transform:scale(.92);filter:brightness(.96)}50%{transform:scale(1.08);filter:brightness(1.18)}}
 @media(prefers-reduced-motion:reduce){.bcx-classic-chat .bcx-thinking-neural *,.bcx-classic-chat .bcx-thinking-neural{animation:none!important}}
 @media(max-width:760px){.bcx-classic-chat .bcx-thinking-mode-control select{background:#fff!important;color:#202123!important;-webkit-text-fill-color:#202123!important;border:1px solid #d8dde4!important;color-scheme:light}.bcx-classic-chat .bcx-thinking-mode-control option{background:#fff!important;color:#202123!important}}
+
+
+/* BCX mobile history drawer: smooth, accessible entrance animation. */
+@keyframes bcx-history-drawer-in {
+  from { opacity: 0; transform: translate3d(-18px, 0, 0) scale(.985); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@media (max-width: 760px) {
+  .bcx-classic-chat > .bcx-nav-popover {
+    transform-origin: left center;
+    animation: bcx-history-drawer-in .24s cubic-bezier(.2,.75,.25,1) both;
+    will-change: transform, opacity;
+  }
+  .bcx-classic-chat > .bcx-nav-popover .bcx-history-item {
+    animation: bcx-history-drawer-in .22s cubic-bezier(.2,.75,.25,1) both;
+  }
+  .bcx-classic-chat > .bcx-nav-popover .bcx-history-item:nth-child(2) { animation-delay: 25ms; }
+  .bcx-classic-chat > .bcx-nav-popover .bcx-history-item:nth-child(3) { animation-delay: 45ms; }
+  .bcx-classic-chat > .bcx-nav-popover .bcx-history-item:nth-child(4) { animation-delay: 65ms; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bcx-classic-chat > .bcx-nav-popover,
+  .bcx-classic-chat > .bcx-nav-popover .bcx-history-item { animation: none !important; }
+}
