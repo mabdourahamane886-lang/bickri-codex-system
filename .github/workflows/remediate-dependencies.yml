@@ -27,25 +27,27 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      - name: Install locked dependencies
-        run: npm ci
+      - name: Clear npm cache to avoid stale dependency graph
+        run: npm cache clean --force
 
-      - name: Apply non-breaking security updates
-        run: npm audit fix
+      - name: Regenerate lockfile from compatible package ranges
+        run: npm install --package-lock-only --ignore-scripts --no-audit --legacy-peer-deps
 
-      - name: Commit updated dependency lockfile
+      - name: Install exact regenerated lockfile
+        run: npm ci --legacy-peer-deps
+
+      - name: Verify no high or critical npm advisories remain
+        run: npm audit --audit-level=high
+
+      - name: Commit updated dependency manifests
         run: |
           if ! git diff --quiet -- package.json package-lock.json; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add package.json package-lock.json
-            git commit -m "fix(security): update vulnerable npm dependencies"
+            git commit -m "fix(security): refresh vulnerable npm dependency lockfile"
             git push origin HEAD:${{ github.ref_name }}
           else
-            echo "No dependency changes were required."
+            echo "Lockfile already resolves to current compatible versions."
           fi
-
-      - name: Verify high and critical advisories are resolved
-        run: npm audit --audit-level=high
