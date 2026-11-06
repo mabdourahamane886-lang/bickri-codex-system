@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
                 const result = await runAgent({
                   ctx, apiKey, contents, pluginIds, decision, language, projectContext,
                   thinkingMode: requestedThinkingMode,
+                  researchMode: body.researchMode === true,
                   onProgress: (event) => send("activity", { ...event, at: new Date().toISOString() }),
                 });
                 send("phase", { phase: "complete", label: "Traitement terminé", status: "ok", at: new Date().toISOString() });
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
           },
         });
       }
-      const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext, thinkingMode: requestedThinkingMode });
+      const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext, thinkingMode: requestedThinkingMode, researchMode: body.researchMode === true });
       if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
       return NextResponse.json({ ...result, thinkingMode });
     } catch (agentError) {
