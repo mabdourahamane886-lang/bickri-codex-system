@@ -16,7 +16,8 @@ type PluginStatus = { id: string; name: string; description: string; available: 
 type ImageSearchResult = { title: string; imageUrl: string; thumbnailUrl: string; sourceUrl: string; sourceName: string; width?: number; height?: number };
 type ThinkingMode = "auto" | "fast" | "balanced" | "deep" | "expert";
 type ResolvedThinkingMode = "fast" | "balanced" | "deep" | "expert";
-type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; thinkingMode?: ResolvedThinkingMode; images?: ImageSearchResult[]; attachment?: { name: string; mimeType: string; preview?: string } };
+type WebSource = { title: string; url: string; snippet: string; provider: string; opened: boolean; status?: number };
+type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; sources?: WebSource[]; model?: string; thinkingMode?: ResolvedThinkingMode; images?: ImageSearchResult[]; attachment?: { name: string; mimeType: string; preview?: string } };
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
@@ -39,7 +40,7 @@ function friendlyError(error: unknown) {
   return "Une difficulté a interrompu cette réponse. Ta conversation est conservée ; tu peux réessayer.";
 }
 type AgentResponse = {
-  contents: unknown[]; events: AgentEvent[]; answer?: string; pending?: Pending[]; continue?: boolean; model?: string; thinkingMode?: ResolvedThinkingMode; error?: string;
+  contents: unknown[]; events: AgentEvent[]; sources?: WebSource[]; answer?: string; pending?: Pending[]; continue?: boolean; model?: string; thinkingMode?: ResolvedThinkingMode; error?: string;
 };
 
 const CHAT_KEY = "bcx_ai_chat_v2";
@@ -108,6 +109,7 @@ export default function CodeAIPage() {
   const [welcomeMessage] = useState(() => WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)]);
   const [language, setLanguage] = useState(LANGUAGES[0]);
   const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("auto");
+  const [researchMode, setResearchMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [thinkingStep, setThinkingStep] = useState(0);
   const [error, setError] = useState("");
@@ -209,20 +211,90 @@ export default function CodeAIPage() {
       for (let round = 0; round <= MAX_CONTINUATIONS; round++) {
         const res = await fetch("/api/ai/agent", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...body, contents: state, plugins: activePlugins.map((p) => p.id), language, thinkingMode }),
+          headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
+          body: JSON.stringify({ ...body, contents: state, plugins: activePlugins.map((p) => p.id), language, thinkingMode, researchMode, stream: true }),
         });
-        const data = (await res.json().catch(() => ({}))) as AgentResponse;
-        if (!res.ok) throw new Error(data.error || "La requête a échoué.");
-        state = data.contents;
-        setContents(data.contents);
-        patchAssistant((m) => ({ ...m, model: data.model, thinkingMode: data.thinkingMode, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...data.events] }));
-        if (data.pending?.length) { setPending(data.pending); return; }
-        if (data.answer !== undefined) {
-          patchAssistant((m) => ({ ...m, content: data.answer! }));
+        if (!res.ok) {
+          const failure = await res.json().catch(() => ({}));
+          throw new Error(failure.error || "La requête a échoué.");
+        }
+        const contentType = res.headers.get("content-type") ?? "";
+        if (!contentType.includes("text/event-stream")) {
+          const fallbackData = await res.json().catch(() => null) as AgentResponse | null;
+          if (!fallbackData || !Array.isArray(fallbackData.contents)) {
+            throw new Error("Le serveur a renvoyé une réponse illisible.");
+          }
+          if (fallbackData.error) throw new Error(fallbackData.error);
+          state = fallbackData.contents;
+          setContents(fallbackData.contents);
+          patchAssistant((message) => ({
+            ...message,
+            model: fallbackData.model,
+            thinkingMode: fallbackData.thinkingMode,
+            events: [...(message.events ?? []), ...(fallbackData.events ?? [])],
+            sources: fallbackData.sources ?? message.sources,
+          }));
+          if (fallbackData.pending?.length) {
+            setPending(fallbackData.pending);
+            return;
+          }
+          if (typeof fallbackData.answer === "string") {
+            patchAssistant((message) => ({ ...message, content: fallbackData.answer!, sources: fallbackData.sources ?? message.sources }));
+            return;
+          }
+          if (!fallbackData.continue) return;
+          body = {};
+          continue;
+        }
+        if (!res.body) throw new Error("Le flux de progression n’est pas disponible dans ce navigateur.");
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let data: AgentResponse | undefined;
+        const consume = (block: string) => {
+          let eventName = "message";
+          const lines = block.split("\n");
+          const payload: string[] = [];
+          for (const line of lines) {
+            if (line.startsWith("event:")) eventName = line.slice(6).trim();
+            else if (line.startsWith("data:")) payload.push(line.slice(5).trim());
+          }
+          if (!payload.length) return;
+          const value = JSON.parse(payload.join("\n")) as Record<string, unknown>;
+          if (eventName === "activity") {
+            const event = value as unknown as AgentEvent;
+            patchAssistant((message) => ({ ...message, events: [...(message.events ?? []), event] }));
+          } else if (eventName === "phase") {
+            const phase = value as { phase?: string; label?: string; status?: string };
+            const event: AgentEvent = { tool: `phase_${phase.phase ?? "work"}`, label: phase.label ?? "Traitement en cours", write: false, status: phase.status === "ok" ? "ok" : "pending" };
+            patchAssistant((message) => ({ ...message, events: [...(message.events ?? []), event] }));
+          } else if (eventName === "result") {
+            data = value as unknown as AgentResponse;
+          } else if (eventName === "stream_error") {
+            throw new Error(typeof value.error === "string" ? value.error : "Erreur pendant le traitement.");
+          }
+        };
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          buffer += decoder.decode(chunk.value, { stream: true }).replace(/\r\n/g, "\n");
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() ?? "";
+          for (const block of blocks) consume(block);
+        }
+        buffer += decoder.decode();
+        if (buffer.trim()) consume(buffer);
+        if (!data) throw new Error("Le flux s’est terminé sans résultat final.");
+        const finalData = data;
+        state = finalData.contents;
+        setContents(finalData.contents);
+        patchAssistant((m) => ({ ...m, model: finalData.model, thinkingMode: finalData.thinkingMode, sources: finalData.sources ?? m.sources, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...finalData.events] }));
+        if (finalData.pending?.length) { setPending(finalData.pending); return; }
+        if (finalData.answer !== undefined) {
+          patchAssistant((m) => ({ ...m, content: finalData.answer!, sources: finalData.sources ?? m.sources }));
           return;
         }
-        if (!data.continue) return;
+        if (!finalData.continue) return;
         body = {}; // poursuite automatique sans nouveau message
       }
       patchAssistant((m) => ({ ...m, content: m.content || "La tâche est longue : écris « continue » pour que je poursuive." }));
@@ -326,7 +398,7 @@ export default function CodeAIPage() {
     }
   }
 
-  async function send(text: string) {
+  async function send(text: string, forceResearch = false) {
     const content = text.trim();
     if ((!content && !chatAttachment) || loading || pending || sendLockRef.current) return;
     sendLockRef.current = true;
@@ -358,7 +430,7 @@ export default function CodeAIPage() {
     setPrompt(""); setLastMessage(content || `Analyse la pièce jointe ${attachment?.name ?? ""}`);
     setChatAttachment(null);
     try {
-      await runAgent({ message: content || `Analyse la pièce jointe ${attachment?.name ?? ""} et explique son contenu.` }, baseContents);
+      await runAgent({ message: content || `Analyse la pièce jointe ${attachment?.name ?? ""} et explique son contenu.`, researchMode: forceResearch || researchMode }, baseContents);
     } catch (err) { setError(err instanceof Error ? err.message : "Une erreur est survenue."); }
     finally { setLoading(false); sendLockRef.current = false; }
   }
@@ -554,7 +626,19 @@ export default function CodeAIPage() {
                           </>
                         ) : (
                           <>
-                            <ToolEvents events={m.events ?? []} />
+                            {!!m.events?.length && <details className="bcx-research-timeline" open={isLast && loading}>
+                              <summary><span>{isLast && loading ? "Réflexion en cours" : "Réflexion terminée"}</span><small>{m.events.length} opérations · journal opérationnel</small></summary>
+                              <ToolEvents events={m.events} />
+                            </details>}
+                            {!!m.sources?.length && <section className="bcx-research-sources" aria-label="Sources Web consultées">
+                              <header><b>Sources de la recherche</b><span>{m.sources.length} résultats · {m.sources.filter((source) => source.opened).length} pages ouvertes</span></header>
+                              <ol>{m.sources.map((source, sourceIndex) => <li key={source.url}>
+                                <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title || source.url}<span aria-hidden="true"> ↗</span></a>
+                                <small>{source.opened ? "Page consultée" : "Résultat de recherche"} · {source.provider}</small>
+                                {source.snippet && <p>{source.snippet.slice(0, 320)}</p>}
+                              </li>)}</ol>
+                            </section>}
+
                             {m.content && <Markdown>{m.content}</Markdown>}
                             {!!m.images?.length && (
                               <div className="bcx-image-search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 12, marginTop: 14 }}>
@@ -662,6 +746,8 @@ export default function CodeAIPage() {
               >
                 <Plus size={20} />
               </button>
+              <button type="button" className={`btn btn-sm bcx-research-toggle ${researchMode ? "is-active" : ""}`} aria-pressed={researchMode} onClick={() => setResearchMode((value) => !value)} disabled={loading} title="Activer la recherche Web approfondie"><Search size={15}/> Rechercher</button>
+              <button type="button" className={`btn btn-sm bcx-research-toggle ${thinkingMode === "deep" || thinkingMode === "expert" ? "is-active" : ""}`} aria-pressed={thinkingMode === "deep" || thinkingMode === "expert"} onClick={() => setThinkingMode((mode) => mode === "deep" || mode === "expert" ? "auto" : "deep")} disabled={loading} title="Activer la réflexion approfondie"><Sparkles size={15}/> Réflexion</button>
               <label className="bcx-thinking-mode-control" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }} title="Choisir la profondeur d’analyse">
                 <Sparkles size={15} aria-hidden="true" />
                 <select value={thinkingMode} onChange={(event) => setThinkingMode(event.target.value as ThinkingMode)} disabled={loading} aria-label="Mode de réflexion" style={{ maxWidth: 145, minHeight: 32, border: "1px solid var(--border)", borderRadius: 8, padding: "4px 7px", background: "var(--surface)", color: "var(--foreground)", fontSize: 12 }}>

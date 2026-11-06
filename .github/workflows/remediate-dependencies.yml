@@ -1,0 +1,53 @@
+name: Remediate vulnerable npm dependencies
+
+on:
+  push:
+    branches:
+      - feat/bcx-live-thinking-sse
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dependency-remediation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Clear npm cache to avoid stale dependency graph
+        run: npm cache clean --force
+
+      - name: Regenerate lockfile from compatible package ranges
+        run: npm install --package-lock-only --ignore-scripts --no-audit --legacy-peer-deps
+
+      - name: Install exact regenerated lockfile
+        run: npm ci --legacy-peer-deps
+
+      - name: Verify no high or critical npm advisories remain
+        run: npm audit --audit-level=high
+
+      - name: Commit updated dependency manifests
+        run: |
+          if ! git diff --quiet -- package.json package-lock.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package.json package-lock.json
+            git commit -m "fix(security): refresh vulnerable npm dependency lockfile"
+            git push origin HEAD:${{ github.ref_name }}
+          else
+            echo "Lockfile already resolves to current compatible versions."
+          fi
