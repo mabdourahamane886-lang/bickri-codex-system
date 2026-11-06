@@ -42,7 +42,8 @@ export async function runSpecialistReviews(opts: {
   const query = opts.query.trim().slice(0, 8000);
   if (!query) return [];
 
-  const history = opts.history.slice(-6).map((item) => ({
+  const lastUserIndex = opts.history.map((item) => item.role).lastIndexOf("user");
+  const history = opts.history.filter((_, index) => index !== lastUserIndex).slice(-6).map((item) => ({
     role: item.role,
     parts: item.parts.filter((part) => typeof part.text === "string").map((part) => ({ text: part.text!.slice(0, 2500) })),
   })).filter((item) => item.parts.length > 0) as GeminiContent[];
