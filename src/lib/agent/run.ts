@@ -137,11 +137,11 @@ export async function runAgent(opts: {
       if (!error && Array.isArray(memories)) {
         const stopWords = new Set(["avec", "dans", "pour", "mais", "donc", "cette", "cela", "comment", "pourquoi", "faire", "fait", "veux", "mon", "mes", "une", "des", "les", "the", "and", "that", "this", "from", "your"]);
         const queryTerms = latestUserQuery.toLocaleLowerCase("fr").normalize("NFD")
-          .replace(/\\p{M}/gu, "").match(/[a-z0-9]{3,}/g) ?? [];
+          .replace(/\p{M}/gu, "").match(/[a-z0-9]{3,}/g) ?? [];
         const terms = [...new Set(queryTerms.filter((term) => !stopWords.has(term)))].slice(0, 24);
         const ranked = memories.map((memory: { title?: string; content?: string; category?: string; updated_at?: string }) => {
-          const title = String(memory.title || "").toLocaleLowerCase("fr").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
-          const content = String(memory.content || "").toLocaleLowerCase("fr").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
+          const title = String(memory.title || "").toLocaleLowerCase("fr").normalize("NFD").replace(/\p{M}/gu, "");
+          const content = String(memory.content || "").toLocaleLowerCase("fr").normalize("NFD").replace(/\p{M}/gu, "");
           const category = String(memory.category || "general").toLocaleLowerCase("fr");
           const score = terms.reduce((sum, term) => sum + (title.includes(term) ? 3 : 0) + (content.includes(term) ? 1 : 0) + (category.includes(term) ? 0.5 : 0), 0);
           const updatedAt = memory.updated_at ? Date.parse(memory.updated_at) : Number.NaN;
