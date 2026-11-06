@@ -256,12 +256,12 @@ export default function CodeAIPage() {
         if (buffer.trim()) consume(buffer);
         if (!data) throw new Error("Le flux s’est terminé sans résultat final.");
         const finalData = data;
-        state = data.contents;
-        setContents(data.contents);
-        patchAssistant((m) => ({ ...m, model: data.model, thinkingMode: data.thinkingMode, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...data.events] }));
-        if (data.pending?.length) { setPending(data.pending); return; }
-        if (data.answer !== undefined) {
-          patchAssistant((m) => ({ ...m, content: data.answer! }));
+        state = finalData.contents;
+        setContents(finalData.contents);
+        patchAssistant((m) => ({ ...m, model: finalData.model, thinkingMode: finalData.thinkingMode, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...finalData.events] }));
+        if (finalData.pending?.length) { setPending(finalData.pending); return; }
+        if (finalData.answer !== undefined) {
+          patchAssistant((m) => ({ ...m, content: finalData.answer! }));
           return;
         }
         if (!finalData.continue) return;
