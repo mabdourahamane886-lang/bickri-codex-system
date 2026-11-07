@@ -196,7 +196,8 @@ const server = http.createServer(async (req, res) => {
       if (!session) return send(res, 404, { error: "Session not found" });
       session.lastUsedAt = Date.now();
       return send(res, 200, { alive: true, expiresInSeconds: SESSION_TTL_MS / 1000 });
-    }\n
+    }
+
     if (req.method === "DELETE" && req.url === "/terminal/session") {
       const body = await readJson(req, 4000), ownerId = safeOwner(body.ownerId), id = typeof body.sessionId === "string" ? body.sessionId : "";
       if (!getSession(ownerId, id)) return send(res, 404, { error: "Session not found" });
