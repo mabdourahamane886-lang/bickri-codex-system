@@ -43,12 +43,12 @@ Configure these server-only Vercel variables:
 
 The build service accepts a Flutter source tree containing `pubspec.yaml`, then runs `flutter pub get` and `flutter build apk --release` or `flutter build appbundle --release` in a disposable builder container.
 
-- Maximum uploaded source size: 8 MB.
+- Maximum uploaded source size through the Next.js/Vercel API: 4 MB. Vercel Functions reject request bodies above 4.5 MB; use direct-to-object-storage uploads for larger projects.
 - Build timeout: 15 minutes.
 - Build concurrency is bounded by runner resources; configure host-level queueing and monitoring for production.
 - APK/AAB artifacts are private to the authenticated owner and retained for up to one hour by the runner.
 - Android signing is not configured by default. A release artifact built without a configured signing keystore is not a Play Store-ready signed release. Never upload keystore files or passwords into project source. Add a dedicated secret-backed signing workflow before Play Store publication.
-- Flutter packages are downloaded during the build. The Flutter builder therefore has outbound network access; keep it isolated from internal networks and host metadata services.
+- Flutter packages are downloaded during the build. The Flutter builder therefore has outbound network access; enforce host firewall egress rules that block RFC1918/private ranges, link-local addresses and cloud metadata endpoints. Do not rely on Docker bridge networking alone to provide this isolation.
 
 ## Vercel Preview deployments
 
