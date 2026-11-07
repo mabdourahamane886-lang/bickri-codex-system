@@ -191,7 +191,7 @@ export async function runAgent(opts: {
   if (shouldSearchWeb(latestUserQuery)) {
     try {
       const webResults = await searchWeb(latestUserQuery, 6);
-      webSources = webResults.map(({ title, url, snippet, source }) => ({ title, url, snippet, provider: source }));
+      webSources = webResults.map(({ title, url, snippet, source }) => ({ title, url, snippet, source }));
       webContext = formatWebSearchResults(webResults);
       if (webResults.length) {
         events.push({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "ok" });
@@ -210,7 +210,7 @@ export async function runAgent(opts: {
     latestUserQuery,
     formatRetrievedKnowledge(retrieved),
     authorizedMemory,
-  ) + getThinkingInstruction(thinkingMode) + (specialistContext ? `\n\n${specialistContext}` : "") + (webContext ? `\n\nRECHERCHE WEB — SOURCES À UTILISER :\n${webContext}\n\nConsignes : réponds à la question en t’appuyant sur ces résultats, distingue les faits confirmés des éléments incertains et ajoute les URL des sources pertinentes dans ta réponse. Ne prétends pas avoir consulté une page au-delà de son extrait fourni.` : "");
+  ) + getThinkingInstruction(thinkingMode) + (specialistContext ? `\n\n${specialistContext}` : "") + (webContext ? `\n\nRECHERCHE WEB — SOURCES À UTILISER :\n${webContext}\n\nConsignes de citation obligatoires : appuie les affirmations factuelles issues de la recherche sur les sources numérotées [1], [2], etc. Ajoute les marqueurs [n] immédiatement après les phrases qu’elles étayent ; une phrase peut citer plusieurs sources, par exemple [1][3]. N’utilise que les numéros présents dans les résultats ci-dessus et ne crée jamais de référence. Si aucune source ne confirme un détail, indique-le clairement et ne lui associe pas de citation. Distingue explicitement les informations issues du Web de tes explications générales. Les références numérotées correspondent exactement à l’ordre des résultats affichés dans le bloc Sources de l’interface. Ne prétends pas avoir consulté une page au-delà de son extrait fourni.` : "");
   let model: string | undefined;
 
   try {
