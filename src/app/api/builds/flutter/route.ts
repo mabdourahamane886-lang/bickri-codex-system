@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Requête JSON invalide." }, { status: 400 });
   }
-  if (!Array.isArray(body.files) || !body.files.some((f) => f && typeof f === "object" && (f as {path?: string; name?: string}).path === "pubspec.yaml" || f && typeof f === "object" && (f as {name?: string}).name === "pubspec.yaml")) {
+  const hasPubspec = Array.isArray(body.files) && body.files.some((file: unknown) => {\n    if (!file || typeof file !== "object") return false;\n    const item = file as Record<string, unknown>;\n    return item.path === "pubspec.yaml" || item.name === "pubspec.yaml";\n  });\n  if (!hasPubspec) {
     return NextResponse.json({ error: "Le projet doit contenir pubspec.yaml." }, { status: 400 });
   }
   const target = body.target === "aab" ? "aab" : "apk";
