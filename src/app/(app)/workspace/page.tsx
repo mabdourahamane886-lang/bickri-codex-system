@@ -6,7 +6,7 @@ import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { javascript } from "@codemirror/lang-javascript";
 import { EditorView } from "@codemirror/view";
-import { Play, Plus, Save, Sparkles, Terminal, Eye, Code2, Loader2, FileCode2, RefreshCw } from "lucide-react";
+import { Play, Plus, Save, Sparkles, Terminal, Eye, Code2, Loader2, FileCode2, RefreshCw, Download, Rocket, Smartphone, XCircle } from "lucide-react";
 
 type WorkspaceFile = { id: string; name: string; language: "html" | "css" | "javascript" | "typescript" | "python"; content: string };
 type RunResult = { stdout?: string; stderr?: string; exitCode?: number; timedOut?: boolean; durationMs?: number };
@@ -40,6 +40,16 @@ export default function WorkspacePage() {
   const [answer, setAnswer] = useState("");
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState("");
+  const [terminalSessionId, setTerminalSessionId] = useState<string | null>(null);
+  const [terminalInput, setTerminalInput] = useState("");
+  const [terminalBusy, setTerminalBusy] = useState(false);
+  const [terminalOutput, setTerminalOutput] = useState("Terminal persistant : démarre une session pour ouvrir un conteneur isolé.");
+  const [buildTarget, setBuildTarget] = useState<"apk" | "aab">("apk");
+  const [buildId, setBuildId] = useState<string | null>(null);
+  const [buildStatus, setBuildStatus] = useState("idle");
+  const [buildOutput, setBuildOutput] = useState("");
+  const [deployBusy, setDeployBusy] = useState(false);
+  const [deployMessage, setDeployMessage] = useState("");
 
   const activeFile = files.find((file) => file.id === activeId) ?? files[0];
   const htmlFile = files.find((file) => file.language === "html");
@@ -119,6 +129,107 @@ export default function WorkspacePage() {
     return () => window.clearTimeout(timer);
   }, [files, activeId, loaded, workspaceId]);
 
+  async function startTerminal() {
+    if (terminalBusy || terminalSessionId) return;
+    setTerminalBusy(true); setError("");
+    try {
+      const response = await fetch("/api/terminal", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "open", files: files.map((file) => ({ path: file.name, content: file.content })) }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Impossible de démarrer le terminal.");
+      setTerminalSessionId(data.sessionId);
+      setTerminalOutput("Session démarrée. Conteneur isolé prêt dans /workspace.\n");
+    } catch (e) { setTerminalOutput(e instanceof Error ? e.message : "Terminal indisponible."); }
+    finally { setTerminalBusy(false); }
+  }
+
+  async function runTerminalCommand(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const command = terminalInput.trim();
+    if (!command || !terminalSessionId || terminalBusy) return;
+    setTerminalBusy(true); setTerminalInput("");
+    setTerminalOutput((old) => old + "\n$ " + command + "\n");
+    try {
+      const response = await fetch("/api/terminal", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "command", sessionId: terminalSessionId, command }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Commande refusée.");
+      setTerminalOutput((old) => old + (data.stdout || "") + (data.stderr ? "\n" + data.stderr : "") + "\n[exit " + data.exitCode + "] " + (data.cwd || "") + "\n");
+    } catch (e) { setTerminalOutput((old) => old + (e instanceof Error ? e.message : "Erreur terminal.") + "\n"); }
+    finally { setTerminalBusy(false); }
+  }
+
+  async function closeTerminal() {
+    if (!terminalSessionId) return;
+    setTerminalBusy(true);
+    try {
+      await fetch("/api/terminal?sessionId=" + encodeURIComponent(terminalSessionId), { method: "DELETE" });
+      setTerminalSessionId(null);
+      setTerminalOutput((old) => old + "\nSession fermée.\n");
+    } finally { setTerminalBusy(false); }
+  }
+
+  async function startFlutterBuild() {
+    if (buildStatus === "building" || buildStatus === "queued") return;
+    if (!files.some((file) => file.name === "pubspec.yaml")) {
+      setBuildOutput("Ajoute le fichier pubspec.yaml et les sources Flutter avant de compiler.");
+      setBuildStatus("error"); return;
+    }
+    setBuildStatus("queued"); setBuildOutput("Envoi du projet au compilateur Flutter isolé…");
+    try {
+      const response = await fetch("/api/builds/flutter", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target: buildTarget, files: files.map((file) => ({ path: file.name, content: file.content })) }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Compilation non démarrée.");
+      setBuildId(data.buildId); setBuildStatus(data.status || "queued");
+      setBuildOutput("Compilation ajoutée à la file. Le statut sera actualisé automatiquement.");
+    } catch (e) { setBuildStatus("error"); setBuildOutput(e instanceof Error ? e.message : "Service Flutter indisponible."); }
+  }
+
+  useEffect(() => {
+    if (!buildId || !["queued", "building"].includes(buildStatus)) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/builds/flutter?buildId=" + encodeURIComponent(buildId), { cache: "no-store" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Statut de compilation indisponible.");
+        if (cancelled) return;
+        setBuildStatus(data.status);
+        setBuildOutput([data.output, data.error].filter(Boolean).join("\n").slice(-12000) || "Compilation en cours…");
+      } catch (e) {
+        if (!cancelled) { setBuildStatus("error"); setBuildOutput(e instanceof Error ? e.message : "Erreur de suivi."); }
+      }
+    }, 3500);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [buildId, buildStatus]);
+
+  async function deployPreview() {
+    if (deployBusy) return;
+    setDeployBusy(true); setDeployMessage("Déclenchement du déploiement Preview…");
+    try {
+      const response = await fetch("/api/deployments/preview", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Déploiement refusé.");
+      setDeployMessage(data.message || "Hook Preview accepté par Vercel.");
+    } catch (e) { setDeployMessage(e instanceof Error ? e.message : "Déploiement indisponible."); }
+    finally { setDeployBusy(false); }
+  }
+
+  function downloadFlutterArtifact() {
+    if (!buildId) return;
+    const link = document.createElement("a");
+    link.href = "/api/builds/flutter/artifact?buildId=" + encodeURIComponent(buildId);
+    link.download = buildTarget === "apk" ? "app-release.apk" : "app-release.aab";
+    link.click();
+  }
+
   function updateFile(content: string) {
     setFiles((current) => current.map((file) => file.id === activeId ? { ...file, content } : file));
   }
@@ -191,6 +302,7 @@ export default function WorkspacePage() {
         <div><div className="bcx-eyebrow">BICKRI CODEX SYSTEM</div><h1>Cloud IDE</h1><p>Édite, exécute et prévisualise ton projet depuis un seul espace.</p><div className="bcx-cloud-status" aria-live="polite">{cloudStatus === "checking" ? "Vérification du cloud…" : cloudStatus === "saving" ? "Synchronisation…" : cloudStatus === "synced" ? "✓ Projet synchronisé" : cloudStatus === "offline" ? "Cloud indisponible · copie locale conservée" : "Mode local · connexion requise pour le cloud"}</div></div>
         <div className="bcx-head-actions">
           <button className="bcx-btn bcx-btn-quiet" onClick={downloadProject}><Save size={16}/> Exporter</button>
+          <button className="bcx-btn bcx-btn-quiet" onClick={deployPreview} disabled={deployBusy}><Rocket size={16}/> Preview</button>
           <button className="bcx-btn bcx-btn-primary" onClick={execute} disabled={running}>{running ? <Loader2 className="bcx-spin" size={16}/> : <Play size={16}/>} Exécuter</button>
         </div>
       </header>
@@ -215,7 +327,20 @@ export default function WorkspacePage() {
               <button onClick={() => { setPanel("preview"); setError(""); }}><RefreshCw size={14}/> Actualiser</button>
             </div>
             <div className="bcx-panel-content">
-              {panel === "preview" ? <iframe title="Aperçu du projet BCX" sandbox="allow-scripts" srcDoc={preview} /> : <pre>{output}</pre>}
+              {panel === "preview" ? <iframe title="Aperçu du projet BCX" sandbox="allow-scripts" srcDoc={preview} /> : (
+                <div className="bcx-terminal-panel">
+                  <div className="bcx-terminal-toolbar">
+                    <span>{terminalSessionId ? "Session active · /workspace" : "Aucune session active"}</span>
+                    {terminalSessionId ? <button onClick={closeTerminal} disabled={terminalBusy}><XCircle size={13}/> Fermer</button> : <button onClick={startTerminal} disabled={terminalBusy}>{terminalBusy ? <Loader2 size={13} className="bcx-spin"/> : <Terminal size={13}/>} Démarrer</button>}
+                  </div>
+                  <pre>{terminalSessionId ? terminalOutput : output + "\n" + terminalOutput}</pre>
+                  <form className="bcx-terminal-form" onSubmit={runTerminalCommand}>
+                    <span>$</span>
+                    <input value={terminalInput} onChange={(event) => setTerminalInput(event.target.value)} placeholder={terminalSessionId ? "Commande (ex. ls, npm test, python main.py)" : "Démarre une session pour saisir des commandes"} disabled={!terminalSessionId || terminalBusy}/>
+                    <button type="submit" disabled={!terminalSessionId || terminalBusy || !terminalInput.trim()}>{terminalBusy ? <Loader2 size={14} className="bcx-spin"/> : <Play size={14}/>}</button>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -229,6 +354,15 @@ export default function WorkspacePage() {
           </form>
           {error && <div className="bcx-error" role="alert">{error}</div>}
           <div className="bcx-ai-answer">{answer || "Les réponses de BCX AI apparaîtront ici. Les modifications de fichiers restent sous ton contrôle."}</div>
+          <section className="bcx-build-card">
+            <div className="bcx-build-title"><Smartphone size={15}/> Compilation Flutter / Android</div>
+            <select value={buildTarget} onChange={(event) => setBuildTarget(event.target.value as "apk" | "aab")}><option value="apk">APK · Android</option><option value="aab">AAB · Google Play</option></select>
+            <button className="bcx-btn bcx-btn-primary" onClick={startFlutterBuild} disabled={["queued","building"].includes(buildStatus)}>{["queued","building"].includes(buildStatus) ? <Loader2 size={14} className="bcx-spin"/> : <Play size={14}/>} Compiler</button>
+            <div className="bcx-build-status" aria-live="polite">État : {buildStatus === "idle" ? "en attente" : buildStatus}</div>
+            {buildOutput && <pre className="bcx-build-output">{buildOutput}</pre>}
+            {buildStatus === "ready" && <button className="bcx-btn bcx-btn-quiet" onClick={downloadFlutterArtifact}><Download size={14}/> Télécharger {buildTarget.toUpperCase()}</button>}
+          </section>
+          {deployMessage && <div className="bcx-deploy-message" role="status">{deployMessage}</div>}
         </aside>
       </section>
 
@@ -266,6 +400,19 @@ export default function WorkspacePage() {
         .bcx-panel-content{flex:1;min-height:0;background:var(--bg)}
         .bcx-panel-content iframe{width:100%;height:100%;border:0;background:white}
         .bcx-panel-content pre{height:100%;overflow:auto;margin:0;padding:14px;color:var(--text-muted);font:11px/1.6 var(--font-mono);white-space:pre-wrap}
+        .bcx-terminal-panel{height:100%;display:flex;flex-direction:column;min-height:0}
+        .bcx-terminal-toolbar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);font-size:10px;color:var(--text-faint)}
+        .bcx-terminal-toolbar button,.bcx-terminal-form button{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:7px;padding:5px 8px;font-size:10px;cursor:pointer}
+        .bcx-terminal-panel>pre{flex:1;min-height:0}
+        .bcx-terminal-form{display:flex!important;grid-template-columns:none!important;align-items:center;gap:8px!important;padding:9px 12px;border-top:1px solid var(--border);color:var(--accent)}
+        .bcx-terminal-form input{flex:1;min-width:0;background:transparent;border:0;outline:none;color:var(--text);font:11px var(--font-mono)}
+        .bcx-terminal-form button:disabled{opacity:.45}
+        .bcx-build-card{display:grid;gap:8px;border:1px solid var(--border);border-radius:10px;padding:11px}
+        .bcx-build-title{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800}
+        .bcx-build-card select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px;font-size:11px}
+        .bcx-build-status{font-size:10px;color:var(--text-faint);text-transform:capitalize}
+        .bcx-build-output{max-height:140px;overflow:auto;background:var(--bg);padding:8px;border-radius:7px;font:10px/1.5 var(--font-mono);white-space:pre-wrap}
+        .bcx-deploy-message{font-size:10px;color:var(--text-muted);line-height:1.5}
         .bcx-assistant{border-left:1px solid var(--border);display:flex;flex-direction:column;gap:12px}
         .bcx-assistant-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800}
         .bcx-assistant-title svg{color:var(--accent)}
