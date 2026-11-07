@@ -21,6 +21,8 @@ type ChatMessage = { role: "user" | "assistant"; content: string; events?: Agent
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
+/** Masque les marqueurs de citation internes : les références restent accessibles dans la barre Sources. */
+function hideInlineSourceMarkers(value: string) { return value.replace(/\\s*\\[\\d+\\](?:\\s*\\[\\d+\\])*/g, ""); }
 function conversationGroup(value: string) {
   const date = new Date(value);
   const today = new Date();
@@ -556,7 +558,7 @@ export default function CodeAIPage() {
                         ) : (
                           <>
                             <ToolEvents events={m.events ?? []} />
-                            {m.content && <Markdown>{m.content}</Markdown>}
+                            {m.content && <Markdown>{hideInlineSourceMarkers(m.content)}</Markdown>}
                             {!!m.sources?.length && (
                               <details className="bcx-answer-sources" aria-label="Sources utilisées pour cette réponse">
                                 <summary className="bcx-sources-strip">
