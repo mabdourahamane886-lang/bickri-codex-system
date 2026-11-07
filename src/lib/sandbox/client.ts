@@ -7,7 +7,8 @@ export function getSandboxEndpoint(path: string): { url: URL; token: string } | 
   try {
     const base = new URL(endpoint);
     if (base.protocol !== "https:" && base.hostname !== "localhost" && base.hostname !== "127.0.0.1") return null;
-    const prefix = base.pathname.endsWith("/") ? base.pathname.slice(0, -1) : base.pathname;
+    let prefix = base.pathname.endsWith("/") ? base.pathname.slice(0, -1) : base.pathname;
+    if (prefix.endsWith("/execute")) prefix = prefix.slice(0, -8);
     base.pathname = prefix + path;
     base.search = "";
     base.hash = "";
