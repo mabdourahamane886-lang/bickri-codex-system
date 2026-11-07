@@ -19,17 +19,25 @@ The Flutter builder is a large image and requires enough disk space and RAM. The
 
 ### Start the runner
 
+Create the host directory, generate a long random token, and start the runner container:
+
 ```bash
+sudo mkdir -p /srv/bcx-sandbox/tmp
+sudo chmod 700 /srv/bcx-sandbox/tmp
 export BCX_SANDBOX_TOKEN="$(openssl rand -hex 32)"
-PORT=8787 node sandbox/runner.mjs
+docker compose -f sandbox/docker-compose.yml up -d --build
 ```
 
-Keep the Docker host isolated, patched and behind HTTPS. Firewall the runner so only the BCX web backend can access it. Do not expose the Docker socket or runner port to the public internet.
+The compose service binds port 8787 to localhost only and mounts the Docker socket plus a host-shared temporary directory. The socket is effectively root-equivalent: run this service only on a dedicated, patched Linux execution host with no application secrets or unrelated workloads.
 
-Configure these server-only Vercel variables:
+Publish localhost:8787 through a Cloudflare Tunnel and protect the hostname with a Cloudflare Access Service Auth policy. Configure these server-only Vercel variables:
 
-- `BCX_SANDBOX_URL=https://runner.example.internal` (base URL; the service exposes /execute, /terminal/* and /build/flutter/*)
+- `BCX_SANDBOX_URL=https://runner-bcx.example.com`
 - `BCX_SANDBOX_TOKEN=<same random secret>`
+- `BCX_SANDBOX_ACCESS_CLIENT_ID=<Cloudflare Access service token ID>`
+- `BCX_SANDBOX_ACCESS_CLIENT_SECRET=<Cloudflare Access service token secret>`
+
+The Cloudflare Access variables may be omitted only when another private HTTPS gateway authenticates the BCX backend. Never expose the Docker socket or runner port 8787 directly to the public internet.
 
 ### Persistent terminal
 
