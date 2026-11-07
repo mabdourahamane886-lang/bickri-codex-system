@@ -558,8 +558,17 @@ export default function CodeAIPage() {
                             <ToolEvents events={m.events ?? []} />
                             {m.content && <Markdown>{m.content}</Markdown>}
                             {!!m.sources?.length && (
-                              <section className="bcx-answer-sources" aria-label="Sources utilisées pour cette réponse">
-                                <div className="bcx-answer-sources-heading"><Search size={15} /><strong>Sources</strong><span>{m.sources.length} références consultées</span></div>
+                              <details className="bcx-answer-sources" aria-label="Sources utilisées pour cette réponse">
+                                <summary className="bcx-sources-strip">
+                                  <strong>Sources</strong>
+                                  <span className="bcx-source-favicons">
+                                    {m.sources.slice(0, 4).map((source, sourceIndex) => (
+                                      <img key={`${source.url}-icon-${sourceIndex}`} src={`https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(source.url)}&sz=64`} alt="" loading="lazy" />
+                                    ))}
+                                  </span>
+                                  {m.sources.length > 4 && <span className="bcx-sources-more">+{m.sources.length - 4}</span>}
+                                  <span className="bcx-sources-count">{m.sources.length} références</span>
+                                </summary>
                                 <ol>
                                   {m.sources.map((source, sourceIndex) => (
                                     <li key={`${source.url}-${sourceIndex}`}>
@@ -571,8 +580,8 @@ export default function CodeAIPage() {
                                     </li>
                                   ))}
                                 </ol>
-                                <p className="bcx-sources-note">Les liens ci-dessus correspondent aux résultats réellement renvoyés par la recherche Web.</p>
-                              </section>
+                                <p className="bcx-sources-note">Ouvre une source pour consulter la page d’origine. Les références affichées proviennent des résultats réellement renvoyés par la recherche Web.</p>
+                              </details>
                             )}
                             {!!m.images?.length && (
                               <div className="bcx-image-search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 12, marginTop: 14 }}>
