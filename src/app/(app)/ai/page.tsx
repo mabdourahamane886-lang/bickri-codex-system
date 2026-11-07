@@ -220,7 +220,7 @@ export default function CodeAIPage() {
         patchAssistant((m) => ({ ...m, model: data.model, thinkingMode: data.thinkingMode, sources: data.sources?.length ? data.sources : m.sources, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...data.events] }));
         if (data.pending?.length) { setPending(data.pending); return; }
         if (data.answer !== undefined) {
-          patchAssistant((m) => ({ ...m, content: data.answer!, sources: data.sources ?? [] }));
+          patchAssistant((m) => ({ ...m, content: data.answer!, sources: data.sources?.length ? data.sources : m.sources ?? [] }));
           return;
         }
         if (!data.continue) return;
