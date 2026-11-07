@@ -1,4 +1,4 @@
-import { Code, MessageSquare, type LucideIcon } from "lucide-react";
+import { Code, MessageSquare, TerminalSquare, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; short: string; icon: LucideIcon };
 
@@ -12,7 +12,8 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Espace de travail",
     items: [
       { href: "/ai", label: "Chat", short: "Chat", icon: MessageSquare },
-      { href: "/studio", label: "Codex", short: "Codex", icon: Code },
+      { href: "/studio", label: "Codex Studio", short: "Studio", icon: Code },
+      { href: "/workspace", label: "IDE Cloud", short: "IDE", icon: TerminalSquare },
     ],
   },
 ];
