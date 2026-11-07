@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAgentContext } from "@/lib/agent/context";
 import { rateLimit } from "@/lib/rate-limit";
+import { isSameOriginWrite } from "@/lib/http/security";
 
 export const runtime = "nodejs";
 export const maxDuration = 20;
 
 /** Déclenche uniquement un hook Vercel explicitement configuré pour Preview. */
-export async function POST() {
+export async function POST(request: NextRequest) {
+  if (!isSameOriginWrite(request)) return NextResponse.json({ error: "Origine de requête non autorisée." }, { status: 403 });
   const context = await getAgentContext();
   if (!context.user) return NextResponse.json({ error: "Connecte-toi pour déclencher un déploiement." }, { status: 401 });
   if (!context.trusted) return NextResponse.json({ error: "Action réservée aux administrateurs et éditeurs BCX." }, { status: 403 });
