@@ -59,7 +59,7 @@ async function writeFiles(dir, files) {
     if (!rel) throw new Error("Invalid workspace file path");
     const dest = path.join(dir, rel);
     await mkdir(path.dirname(dest), { recursive: true });
-    await writeFile(dest, f.content, { mode: 0o644 });
+    await writeFile(dest, f.content, { mode: 0o666 });
   }
 }
 function collect(target, chunk) {
@@ -92,7 +92,7 @@ async function openTerminal(body) {
   const sessionId = randomUUID(), dir = await mkdtemp(path.join(tmpdir(), "bcx-terminal-"));
   const containerName = "bcx-term-" + randomUUID().replaceAll("-", "").slice(0, 18);
   try {
-    await writeFiles(dir, files); await chmod(dir, 0o755);
+    await writeFiles(dir, files); await chmod(dir, 0o777);
     const started = await runDocker([
       "run", "-d", "--name", containerName, "--network=none", "--memory=512m", "--memory-swap=512m", "--cpus=1", "--pids-limit=128",
       "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--user=65534:65534",
@@ -129,6 +129,7 @@ async function startFlutterBuild(body) {
   const ownerId = safeOwner(body.ownerId), files = body.files, target = body.target === "aab" ? "appbundle" : "apk";
   if (!ownerId || !validateFiles(files, 8_000_000) || !files.some((f) => (f.path ?? f.name) === "pubspec.yaml"))
     throw Object.assign(new Error("A Flutter project with pubspec.yaml is required"), { status: 400 });
+  if ([...builds.values()].filter((job) => job.status === "queued" || job.status === "building").length >= 1) throw Object.assign(new Error("One Flutter build is already running. Wait for it to finish."), { status: 429 });
   if (builds.size >= MAX_BUILDS) {
     for (const [id, job] of builds) if (job.finishedAt && Date.now() - job.finishedAt > BUILD_TTL_MS) builds.delete(id);
     if (builds.size >= MAX_BUILDS) throw Object.assign(new Error("Build queue is full"), { status: 429 });
