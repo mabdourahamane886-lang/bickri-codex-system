@@ -5,6 +5,7 @@ import { SessionProvider } from "@/components/providers/SessionProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { themeScript } from "@/components/providers/ThemeToggle";
 import "./globals.css";
+import "./bcx-light-theme.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://bickri-codex-system.vercel.app"),
@@ -35,14 +36,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [{ media: "(prefers-color-scheme: dark)", color: "#0a0d13" }, { media: "(prefers-color-scheme: light)", color: "#f6f7f9" }],
+  themeColor: [{ media: "(prefers-color-scheme: dark)", color: "#0a0d13" }, { media: "(prefers-color-scheme: light)", color: "#f7f9fc" }],
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr" data-theme="dark" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
+    <html lang="fr" data-theme="light" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
