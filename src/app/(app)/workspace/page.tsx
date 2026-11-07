@@ -42,8 +42,9 @@ export default function WorkspacePage() {
   const activeFile = files.find((file) => file.id === activeId) ?? files[0];
   const htmlFile = files.find((file) => file.language === "html");
   const cssFile = files.find((file) => file.language === "css");
+  const jsFile = files.find((file) => file.name === "script.js" || file.name === "app.js");
   const preview = useMemo(() => htmlFile
-    ? htmlFile.content.replace("</head>", `<style>${(cssFile?.content ?? "").replace(/<\\/style/gi, "")}</style></head>`)
+    ? htmlFile.content.replace("</head>", `<style>${(cssFile?.content ?? "").replace(/<\\/style/gi, "")}</style></head>`).replace("</body>", `<script>${(jsFile?.content ?? "").replace(/<\\/script/gi, "")}</script></body>`)
     : "<!doctype html><html><body><p>Ajoute un fichier HTML pour afficher l’aperçu.</p></body></html>",
   [htmlFile, cssFile, jsFile]);
 
