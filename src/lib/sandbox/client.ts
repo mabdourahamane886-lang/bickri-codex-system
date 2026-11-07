@@ -23,6 +23,10 @@ export async function sandboxFetch(path: string, init: RequestInit = {}, timeout
   if (!config) throw new Error("BCX sandbox service is not configured.");
   const headers = new Headers(init.headers);
   headers.set("Authorization", "Bearer " + config.token);
+  if (process.env.BCX_SANDBOX_ACCESS_CLIENT_ID && process.env.BCX_SANDBOX_ACCESS_CLIENT_SECRET) {
+    headers.set("CF-Access-Client-Id", process.env.BCX_SANDBOX_ACCESS_CLIENT_ID);
+    headers.set("CF-Access-Client-Secret", process.env.BCX_SANDBOX_ACCESS_CLIENT_SECRET);
+  }
   return fetch(config.url, {
     ...init,
     headers,
