@@ -73,9 +73,30 @@ export async function POST(request: NextRequest) {
         const encoder = new TextEncoder();
         const stream = new ReadableStream<Uint8Array>({
           start(controller) {
-            const send = (type: string, data: unknown) => {
-              controller.enqueue(encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`));
+            let closed = false;
+            let heartbeat: ReturnType<typeof setInterval> | undefined;
+            const stopHeartbeat = () => {
+              if (heartbeat) clearInterval(heartbeat);
+              heartbeat = undefined;
             };
+            const send = (type: string, data: unknown) => {
+              if (closed) return;
+              try {
+                controller.enqueue(encoder.encode(`event: ${type}\\ndata: ${JSON.stringify(data)}\\n\\n`));
+              } catch {
+                closed = true;
+                stopHeartbeat();
+              }
+            };
+            heartbeat = setInterval(() => {
+              if (closed) return;
+              try {
+                controller.enqueue(encoder.encode(": bcx-keepalive\\n\\n"));
+              } catch {
+                closed = true;
+                stopHeartbeat();
+              }
+            }, 12_000);
             void (async () => {
               try {
                 send("phase", { phase: "analysis", label: "Analyse de la demande", status: "started", at: new Date().toISOString() });
@@ -91,7 +112,9 @@ export async function POST(request: NextRequest) {
               } catch (error) {
                 send("stream_error", { error: error instanceof Error ? error.message : "Erreur pendant le traitement." });
               } finally {
-                controller.close();
+                closed = true;
+                stopHeartbeat();
+                try { controller.close(); } catch { /* Le navigateur a déjà fermé le flux. */ }
               }
             })();
           },

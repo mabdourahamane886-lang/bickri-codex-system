@@ -203,9 +203,10 @@ export default function CodeAIPage() {
     });
   }
 
-  async function runAgent(body: Record<string, unknown>, baseContents: unknown[]) {
+  async function runAgent(body: Record<string, unknown>, baseContents: unknown[], retryAttempt = 0) {
     setLoading(true); setError("");
     let state = baseContents;
+    let serverReportedError = false;
     try {
       for (;;) {
         const res = await fetch("/api/ai/agent", {
@@ -270,6 +271,7 @@ export default function CodeAIPage() {
           } else if (eventName === "result") {
             data = value as unknown as AgentResponse;
           } else if (eventName === "stream_error") {
+            serverReportedError = true;
             throw new Error(typeof value.error === "string" ? value.error : "Erreur pendant le traitement.");
           }
         };
@@ -297,6 +299,22 @@ export default function CodeAIPage() {
         body = {}; // poursuite automatique sans nouveau message
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      const transportFailure = !serverReportedError && /network|fetch|connexion|connection|stream|flux|socket|timed out|timeout|interrupted|interrompue/i.test(message);
+      if (transportFailure && retryAttempt < 2) {
+        const waitMs = 1200 * (2 ** retryAttempt);
+        patchAssistant((current) => ({
+          ...current,
+          events: [...(current.events ?? []), {
+            tool: "connection_retry",
+            label: `Reconnexion automatique dans ${Math.ceil(waitMs / 1000)} s (tentative ${retryAttempt + 1}/2)`,
+            write: false,
+            status: "pending",
+          }],
+        }));
+        await new Promise((resolve) => window.setTimeout(resolve, waitMs));
+        return await runAgent(body, state, retryAttempt + 1);
+      }
       setError(friendlyError(err));
     } finally {
       setLoading(false);
