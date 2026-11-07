@@ -648,7 +648,20 @@ export default function CodeAIPage() {
                               <details className="bcx-research-sources bcx-sources-footer">
                                 <summary>
                                   <span className="bcx-sources-title"><BookOpen size={15} aria-hidden="true" /> Sources</span>
-                                  <span>{m.sources?.length ? `${m.sources.length} références · ${m.sources.filter((source) => source.opened).length} pages ouvertes` : "Aucune source externe consultée"}</span>
+                                  {!!m.sources?.length ? (
+                                    <span className="bcx-source-logos" aria-label={`${m.sources.length} sources consultées`}>
+                                      {m.sources.map((source) => {
+                                        let host = "";
+                                        try { host = new URL(source.url).hostname.replace(/^www\\./, ""); } catch { host = source.provider || "source"; }
+                                        const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+                                        return (
+                                          <a key={source.url} className="bcx-source-logo" href={source.url} target="_blank" rel="noopener noreferrer" title={source.title || host} aria-label={`Ouvrir la source : ${source.title || host}`}>
+                                            <img src={favicon} alt="" loading="lazy" />
+                                          </a>
+                                        );
+                                      })}
+                                    </span>
+                                  ) : <span>Aucune source externe consultée</span>}
                                 </summary>
                                 {!!m.sources?.length ? (
                                   <ol>{m.sources.map((source) => <li key={source.url}>
