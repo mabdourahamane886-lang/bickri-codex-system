@@ -10,15 +10,14 @@ import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
 import { Badge } from "@/components/ui/Badge";
 
-type AnswerSource = { title: string; url: string; snippet: string; source: "Google" | "Tavily" };
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
 type PluginStatus = { id: string; name: string; description: string; available: boolean; reason?: string; tools: number; writeTools: number };
 type ImageSearchResult = { title: string; imageUrl: string; thumbnailUrl: string; sourceUrl: string; sourceName: string; width?: number; height?: number };
 type ThinkingMode = "auto" | "fast" | "balanced" | "deep" | "expert";
 type ResolvedThinkingMode = "fast" | "balanced" | "deep" | "expert";
-type AnswerSource = { title: string; url: string; snippet?: string; provider?: "Google" | "Tavily" };
-type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; sources?: AnswerSource[]; model?: string; thinkingMode?: ResolvedThinkingMode; sources?: AnswerSource[]; images?: ImageSearchResult[]; attachment?: { name: string; mimeType: string; preview?: string } };
+type AnswerSource = { title: string; url: string; snippet?: string; source?: "Google" | "Tavily" };
+type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; thinkingMode?: ResolvedThinkingMode; sources?: AnswerSource[]; images?: ImageSearchResult[]; attachment?: { name: string; mimeType: string; preview?: string } };
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
@@ -41,7 +40,7 @@ function friendlyError(error: unknown) {
   return "Une difficulté a interrompu cette réponse. Ta conversation est conservée ; tu peux réessayer.";
 }
 type AgentResponse = {
-  contents: unknown[]; events: AgentEvent[]; answer?: string; sources?: AnswerSource[]; sources?: AnswerSource[]; pending?: Pending[]; continue?: boolean; model?: string; thinkingMode?: ResolvedThinkingMode; error?: string;
+  contents: unknown[]; events: AgentEvent[]; answer?: string; sources?: AnswerSource[]; pending?: Pending[]; continue?: boolean; model?: string; thinkingMode?: ResolvedThinkingMode; error?: string;
 };
 
 const CHAT_KEY = "bcx_ai_chat_v2";
