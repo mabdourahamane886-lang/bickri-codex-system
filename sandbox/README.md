@@ -9,6 +9,8 @@ From the repository root:
 ```bash
 docker build -t bcx-runner-python:latest -f sandbox/images/python.Dockerfile .
 docker build -t bcx-runner-node:latest -f sandbox/images/node.Dockerfile .
+docker build -t bcx-runner-workspace:latest -f sandbox/images/workspace.Dockerfile .
+docker build -t bcx-flutter-builder:stable -f sandbox/images/flutter-builder.Dockerfile .
 ```
 
 The runner uses Python 3.12, Node 22 and Node's built-in TypeScript stripping. It supports Python, JavaScript and TypeScript.
@@ -44,3 +46,8 @@ Every execution starts a fresh disposable container with:
 - container removal after execution.
 
 This is a baseline isolation profile, not a guarantee against every container escape. Keep the host kernel and Docker patched, isolate the runner host, monitor resource use, and never mount sensitive host paths into execution containers.
+
+
+## Additional BCX Cloud IDE services
+
+The same runner service also exposes owner-scoped persistent terminal containers and asynchronous Flutter APK/AAB builds. See [`docs/cloud-ide-execution.md`](../docs/cloud-ide-execution.md) for build images, limits, deployment-hook configuration and operational security requirements.

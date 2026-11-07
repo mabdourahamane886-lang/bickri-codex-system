@@ -1,0 +1,18 @@
+services:
+  bcx-sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bcx-sandbox
+    restart: unless-stopped
+    environment:
+      PORT: "8787"
+      BCX_SANDBOX_TOKEN: ${BCX_SANDBOX_TOKEN:?Set BCX_SANDBOX_TOKEN in the host environment}
+      TMPDIR: /srv/bcx-sandbox/tmp
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/bcx-sandbox/tmp:/srv/bcx-sandbox/tmp
+    ports:
+      - "127.0.0.1:8787:8787"
+    mem_limit: 1g
+    cpus: 1.0

@@ -26,6 +26,8 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      - name: Vérifier la syntaxe du runner isolé
+        run: node --check sandbox/runner.mjs
       - name: Installer les dépendances
         run: npm ci
       - name: Vérifier le projet
