@@ -115,7 +115,7 @@ export default function WorkspacePage() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, activeId })); }
     catch { setError("Stockage local indisponible ou quota atteint."); }
     if (!workspaceId) return;
-    const timer = window.setTimeout(async () => {
+    const timer = window.setInterval(async () => {
       setCloudStatus("saving");
       try {
         const response = await fetch("/api/workspaces", {
@@ -207,7 +207,7 @@ export default function WorkspacePage() {
         if (!cancelled) { setBuildStatus("error"); setBuildOutput(e instanceof Error ? e.message : "Erreur de suivi."); }
       }
     }, 3500);
-    return () => { cancelled = true; window.clearTimeout(timer); };
+    return () => { cancelled = true; window.clearInterval(timer); };
   }, [buildId, buildStatus]);
 
   async function deployPreview() {
