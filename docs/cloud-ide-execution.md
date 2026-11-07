@@ -55,8 +55,11 @@ The build service accepts a Flutter source tree containing `pubspec.yaml`, then 
 BCX triggers a Vercel Deploy Hook configured for a non-production branch. Create the hook in the Vercel project settings and set:
 
 - `VERCEL_PREVIEW_DEPLOY_HOOK_URL=<preview-only-deploy-hook>`
+- `VERCEL_API_TOKEN=<project-scoped-token-with-deployment-read-access>` (for status polling)
+- `VERCEL_PROJECT_ID=<linked-project-id>` (for status polling)
+- `VERCEL_TEAM_ID=<team-id>` (only when the project belongs to a team)
 
-The API route is `POST /api/deployments/preview`. It requires a signed-in BCX administrator/editor and is rate-limited. It cannot trigger production. A successful HTTP response means Vercel accepted the trigger, not that the build completed successfully. Follow the deployment in the Vercel dashboard or through the Vercel deployment integration.
+The API route is `POST /api/deployments/preview`. It requires a signed-in BCX administrator/editor and is rate-limited. It cannot trigger production. A successful HTTP response means Vercel accepted the trigger, not that the build completed successfully. `GET /api/deployments/preview` reads the latest Preview deployments using the optional Vercel API token and project ID; the IDE can show the state and open the Preview URL.
 
 For repository-connected Vercel projects, Git pushes and pull requests can also trigger Preview deployments automatically. Avoid triggering both a hook and a Git integration for the same commit unless duplicate builds are intended.
 
