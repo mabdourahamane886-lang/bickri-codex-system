@@ -188,7 +188,6 @@ export async function runAgent(opts: {
   // Elle ne dépend pas de l'activation manuelle du plugin dans l'interface.
   let webContext = "";
   let webSources: WebSearchResult[] = [];
-  let webSources: Array<{ title: string; url: string; snippet: string; provider: "Google" | "Tavily" }> = [];
   if (shouldSearchWeb(latestUserQuery)) {
     try {
       const webResults = await searchWeb(latestUserQuery, 6);
@@ -268,7 +267,7 @@ export async function runAgent(opts: {
       for (const call of calls) parts.push(await execute(call, tools, opts.ctx, false, events));
       contents.push({ role: "user", parts });
     }
-    return { contents, events, continue: true, model, plugins: statuses };
+    return { contents, events, continue: true, sources: webSources, model, plugins: statuses };
   } finally {
     await Promise.all(closers.map((c) => c()));
   }
