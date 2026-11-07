@@ -186,9 +186,11 @@ export async function runAgent(opts: {
   // Recherche Web automatique pour les demandes explicites ou les sujets d'actualité.
   // Elle ne dépend pas de l'activation manuelle du plugin dans l'interface.
   let webContext = "";
+  let webSources: Array<{ title: string; url: string; snippet: string; provider: "Google" | "Tavily" }> = [];
   if (shouldSearchWeb(latestUserQuery)) {
     try {
       const webResults = await searchWeb(latestUserQuery, 6);
+      webSources = webResults.map(({ title, url, snippet, source }) => ({ title, url, snippet, provider: source }));
       webContext = formatWebSearchResults(webResults);
       if (webResults.length) {
         events.push({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "ok" });
@@ -221,7 +223,7 @@ export async function runAgent(opts: {
     }
 
     for (let step = 0; step < MAX_STEPS; step++) {
-      if (Date.now() - started > TIME_BUDGET_MS) return { contents, events, continue: true, model, plugins: statuses };
+      if (Date.now() - started > TIME_BUDGET_MS) return { contents, events, continue: true, sources: webSources, model, plugins: statuses };
       compact(contents);
       const configuredModel = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash";
       const configuredFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite";
@@ -250,14 +252,14 @@ export async function runAgent(opts: {
       const calls = callsOf(res.content);
       if (!calls.length) {
         const answer = res.content.parts.filter((p) => p.text && !p.thought).map((p) => p.text).join("").trim();
-        return { contents, events, answer: answer || "(Réponse vide.)", model, plugins: statuses };
+        return { contents, events, answer: answer || "(Réponse vide.)", sources: webSources, model, plugins: statuses };
       }
 
       const writes = calls.filter((c) => tools.get(c.name)?.write);
       if (writes.length) {
         const pending = writes.map((c) => ({ tool: c.name, label: tools.get(c.name)!.label(c.args ?? {}), args: c.args ?? {} }));
         pending.forEach((p) => events.push({ tool: p.tool, label: p.label, write: true, status: "pending" }));
-        return { contents, events, pending, model, plugins: statuses };
+        return { contents, events, pending, sources: webSources, model, plugins: statuses };
       }
 
       const parts: GeminiPart[] = [];
