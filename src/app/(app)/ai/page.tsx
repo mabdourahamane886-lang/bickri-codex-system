@@ -589,20 +589,6 @@ export default function CodeAIPage() {
                                 ))}
                               </div>
                             )}
-                            {!!m.sources?.length && (
-                              <section className="bcx-answer-sources" aria-label="Sources consultées" style={{ marginTop: 16, padding: 14, border: "1px solid var(--border)", borderRadius: 14, background: "var(--surface-2)", color: "var(--text)" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontWeight: 650, fontSize: 13 }}><Search size={15} aria-hidden="true" /> Sources consultées <span style={{ color: "var(--text-muted)", fontWeight: 450 }}>({m.sources.length})</span></div>
-                                <ol style={{ margin: 0, paddingLeft: 22, display: "grid", gap: 10 }}>
-                                  {m.sources.map((source, sourceIndex) => (
-                                    <li key={source.url + sourceIndex} style={{ paddingLeft: 3 }}>
-                                      <a href={source.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "none", overflowWrap: "anywhere" }}>{source.title} ↗</a>
-                                      <div style={{ color: "var(--text-muted)", fontSize: 11, marginTop: 2 }}>{new URL(source.url).hostname} · {source.source}</div>
-                                      {source.snippet && <p style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5, margin: "4px 0 0" }}>{source.snippet}</p>}
-                                    </li>
-                                  ))}
-                                </ol>
-                              </section>
-                            )}
                             {m.content && (
                               <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: "wrap" }} aria-label="Actions sur la réponse">
                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => { void navigator.clipboard.writeText(m.content).catch(() => setError("Impossible de copier la réponse sur cet appareil.")); }} aria-label="Copier la réponse" title="Copier la réponse"><Copy size={15} /> Copier</button>
