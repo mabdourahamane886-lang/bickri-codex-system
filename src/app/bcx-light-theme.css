@@ -1,0 +1,32 @@
+/* BCX light theme: white surfaces with restrained blue and gold accents. */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f7f9fc;
+  --surface: #ffffff;
+  --surface-2: #f3f6fb;
+  --surface-3: #e9eef6;
+  --overlay: rgba(15, 23, 42, 0.38);
+  --border: #dce4ef;
+  --border-strong: #c4d0df;
+  --text: #172033;
+  --text-muted: #526078;
+  --text-faint: #77849a;
+  --accent: #2457a7;
+  --accent-hover: #1d478b;
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(36, 87, 167, 0.09);
+  --accent-ring: rgba(36, 87, 167, 0.28);
+  --gold: #a77a20;
+  --gold-soft: rgba(167, 122, 32, 0.10);
+  --success: #13845b;
+  --success-soft: rgba(19, 132, 91, 0.08);
+  --warning: #98620b;
+  --warning-soft: rgba(152, 98, 11, 0.09);
+  --danger: #bd3544;
+  --danger-soft: rgba(189, 53, 68, 0.08);
+  --info: #3159c7;
+  --info-soft: rgba(49, 89, 199, 0.08);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 18px 50px rgba(16, 24, 40, 0.12);
+}
