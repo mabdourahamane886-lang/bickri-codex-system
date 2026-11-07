@@ -144,7 +144,7 @@ async function startFlutterBuild(body) {
       "run", "--rm", "--name", "bcx-flutter-" + buildId.slice(0, 12), "--network=bridge", "--memory=5g", "--memory-swap=5g",
       "--cpus=2.5", "--pids-limit=512", "--cap-drop=ALL", "--security-opt=no-new-privileges",
       "--mount", "type=bind,src=" + dir + ",dst=/workspace", "--workdir=/workspace", "--tmpfs", "/tmp:rw,size=1g",
-      "bcx-flutter-builder:stable", "/bin/sh", "-lc", "if [ ! -d android ]; then flutter create --platforms=android --project-name bcx_app .; fi && flutter pub get && flutter build " + target + " --release"
+      "bcx-flutter-builder:stable", "/bin/sh", "-lc", "if [ ! -d android ]; then flutter create --platforms=android --project-name bcx_app --org com.bickri /tmp/bcx_android_scaffold && cp -a /tmp/bcx_android_scaffold/android ./android; fi && flutter pub get && flutter build " + target + " --release"
     ];
     const result = await runDocker(args, 15 * 60_000);
     job.output = [result.stdout, result.stderr].filter(Boolean).join("\n").slice(-MAX_OUTPUT);
