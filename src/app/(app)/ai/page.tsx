@@ -16,7 +16,8 @@ type PluginStatus = { id: string; name: string; description: string; available: 
 type ImageSearchResult = { title: string; imageUrl: string; thumbnailUrl: string; sourceUrl: string; sourceName: string; width?: number; height?: number };
 type ThinkingMode = "auto" | "fast" | "balanced" | "deep" | "expert";
 type ResolvedThinkingMode = "fast" | "balanced" | "deep" | "expert";
-type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; thinkingMode?: ResolvedThinkingMode; images?: ImageSearchResult[]; attachment?: { name: string; mimeType: string; preview?: string } };
+type AnswerSource = { title: string; url: string; snippet?: string; provider?: "Google" | "Tavily" };
+type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; thinkingMode?: ResolvedThinkingMode; sources?: AnswerSource[]; images?: ImageSearchResult[]; attachment?: { name: string; mimeType: string; preview?: string } };
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
@@ -39,7 +40,7 @@ function friendlyError(error: unknown) {
   return "Une difficulté a interrompu cette réponse. Ta conversation est conservée ; tu peux réessayer.";
 }
 type AgentResponse = {
-  contents: unknown[]; events: AgentEvent[]; answer?: string; pending?: Pending[]; continue?: boolean; model?: string; thinkingMode?: ResolvedThinkingMode; error?: string;
+  contents: unknown[]; events: AgentEvent[]; answer?: string; sources?: AnswerSource[]; pending?: Pending[]; continue?: boolean; model?: string; thinkingMode?: ResolvedThinkingMode; error?: string;
 };
 
 const CHAT_KEY = "bcx_ai_chat_v2";
@@ -216,7 +217,7 @@ export default function CodeAIPage() {
         if (!res.ok) throw new Error(data.error || "La requête a échoué.");
         state = data.contents;
         setContents(data.contents);
-        patchAssistant((m) => ({ ...m, model: data.model, thinkingMode: data.thinkingMode, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...data.events] }));
+        patchAssistant((m) => ({ ...m, model: data.model, thinkingMode: data.thinkingMode, sources: data.sources?.length ? data.sources : m.sources, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...data.events] }));
         if (data.pending?.length) { setPending(data.pending); return; }
         if (data.answer !== undefined) {
           patchAssistant((m) => ({ ...m, content: data.answer! }));
@@ -556,6 +557,23 @@ export default function CodeAIPage() {
                           <>
                             <ToolEvents events={m.events ?? []} />
                             {m.content && <Markdown>{m.content}</Markdown>}
+                            {!!m.sources?.length && (
+                              <section className="bcx-answer-sources" aria-label="Sources utilisées pour cette réponse">
+                                <div className="bcx-answer-sources-heading"><Search size={15} /><strong>Sources</strong><span>{m.sources.length} références consultées</span></div>
+                                <ol>
+                                  {m.sources.map((source, sourceIndex) => (
+                                    <li key={`${source.url}-${sourceIndex}`}>
+                                      <a href={source.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
+                                        <span className="bcx-source-number">{sourceIndex + 1}</span>
+                                        <span className="bcx-source-copy"><strong>{source.title}</strong>{source.snippet && <small>{source.snippet}</small>}<em>{(() => { try { return new URL(source.url).hostname.replace(/^www\\./, ""); } catch { return source.url; } })()}</em></span>
+                                        <span className="bcx-source-external" aria-hidden="true">↗</span>
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ol>
+                                <p className="bcx-sources-note">Les liens ci-dessus correspondent aux résultats réellement renvoyés par la recherche Web.</p>
+                              </section>
+                            )}
                             {!!m.images?.length && (
                               <div className="bcx-image-search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 12, marginTop: 14 }}>
                                 {m.images.map((image, imageIndex) => (
