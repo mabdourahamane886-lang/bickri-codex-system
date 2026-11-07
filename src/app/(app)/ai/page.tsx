@@ -313,7 +313,7 @@ export default function CodeAIPage() {
           }],
         }));
         await new Promise((resolve) => window.setTimeout(resolve, waitMs));
-        return await runAgent(body, baseContents, retryAttempt + 1);
+        return await runAgent(body, state, retryAttempt + 1);
       }
       setError(friendlyError(err));
     } finally {
