@@ -133,7 +133,7 @@ export async function runAgent(opts: {
   let specialistContext = "";
   if (thinkingMode === "deep" || thinkingMode === "expert") {
     const specialistModel = process.env.GEMINI_REASONING_MODEL || process.env.GEMINI_EXPERT_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash";
-    const specialistFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite";
+    const specialistFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
     const reviews = await runSpecialistReviews({
       apiKey: opts.apiKey,
       model: specialistModel,
@@ -258,9 +258,9 @@ export async function runAgent(opts: {
       if (Date.now() - started > TIME_BUDGET_MS) return { contents, events, continue: true, model, plugins: statuses, sources };
       compact(contents);
       const configuredModel = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash";
-      const configuredFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite";
+      const configuredFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
       const selectedModel = thinkingMode === "fast"
-        ? process.env.GEMINI_FAST_MODEL || "gemini-2.5-flash-lite"
+        ? process.env.GEMINI_FAST_MODEL || "gemini-3.5-flash-lite"
         : thinkingMode === "expert"
           ? process.env.GEMINI_EXPERT_MODEL || process.env.GEMINI_REASONING_MODEL || configuredModel
           : thinkingMode === "deep"
