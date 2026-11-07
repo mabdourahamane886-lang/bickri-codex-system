@@ -8,7 +8,7 @@ import { javascript } from "@codemirror/lang-javascript";
 import { EditorView } from "@codemirror/view";
 import { Play, Plus, Save, Sparkles, Terminal, Eye, Code2, Loader2, FileCode2, RefreshCw, Download, Rocket, Smartphone, XCircle } from "lucide-react";
 
-type WorkspaceFile = { id: string; name: string; language: "html" | "css" | "javascript" | "typescript" | "python"; content: string };
+type WorkspaceFile = { id: string; name: string; language: "html" | "css" | "javascript" | "typescript" | "python" | "dart" | "yaml"; content: string };
 type RunResult = { stdout?: string; stderr?: string; exitCode?: number; timedOut?: boolean; durationMs?: number };
 
 const STORAGE_KEY = "bcx_cloud_ide_v1";
@@ -195,7 +195,7 @@ export default function WorkspacePage() {
   useEffect(() => {
     if (!buildId || !["queued", "building"].includes(buildStatus)) return;
     let cancelled = false;
-    const timer = window.setTimeout(async () => {
+    const timer = window.setInterval(async () => {
       try {
         const response = await fetch("/api/builds/flutter?buildId=" + encodeURIComponent(buildId), { cache: "no-store" });
         const data = await response.json();
@@ -235,15 +235,27 @@ export default function WorkspacePage() {
   }
 
   function addFile() {
-    const name = window.prompt("Nom du fichier (ex. app.js, main.py, page.html)");
+    const name = window.prompt("Nom ou chemin (ex. app.js, lib/main.dart, pubspec.yaml)");
     if (!name?.trim()) return;
-    const clean = name.trim().replace(/[^a-zA-Z0-9._-]/g, "-");
+    const clean = name.trim().replace(/\\/g, "/").replace(/[^a-zA-Z0-9._/-]/g, "-").replace(/\\/+/g, "/");
+    if (clean.startsWith("/") || clean.split("/").some((part) => !part || part === "." || part === "..")) { setError("Chemin de fichier invalide."); return; }
     if (files.some((file) => file.name === clean)) { setError("Ce fichier existe déjà."); return; }
     const ext = clean.split(".").pop()?.toLowerCase();
-    const language: WorkspaceFile["language"] = ext === "html" ? "html" : ext === "css" ? "css" : ext === "py" ? "python" : ext === "ts" ? "typescript" : "javascript";
+    const language: WorkspaceFile["language"] = ext === "html" ? "html" : ext === "css" ? "css" : ext === "py" ? "python" : ext === "ts" ? "typescript" : ext === "dart" ? "dart" : ext === "yaml" || ext === "yml" ? "yaml" : "javascript";
     const file = { id: crypto.randomUUID(), name: clean, language, content: "" };
     setFiles((current) => [...current, file]);
     setActiveId(file.id);
+    setError("");
+  }
+
+  function createFlutterStarter() {
+    const starter: WorkspaceFile[] = [
+      { id: crypto.randomUUID(), name: "pubspec.yaml", language: "yaml", content: "name: bcx_flutter_app\ndescription: Application Flutter créée avec BICKRI CODEX SYSTEM\npublish_to: 'none'\nversion: 1.0.0+1\nenvironment:\n  sdk: '>=3.3.0 <4.0.0'\ndependencies:\n  flutter:\n    sdk: flutter\ndev_dependencies:\n  flutter_test:\n    sdk: flutter\nflutter:\n  uses-material-design: true\n" },
+      { id: crypto.randomUUID(), name: "lib/main.dart", language: "dart", content: "import 'package:flutter/material.dart';\n\nvoid main() {\n  runApp(const BCXApp());\n}\n\nclass BCXApp extends StatelessWidget {\n  const BCXApp({super.key});\n\n  @override\n  Widget build(BuildContext context) {\n    return MaterialApp(\n      title: 'BCX Flutter App',\n      debugShowCheckedModeBanner: false,\n      theme: ThemeData(colorSchemeSeed: const Color(0xFFC49A45), useMaterial3: true),\n      home: Scaffold(\n        appBar: AppBar(title: const Text('BICKRI CODEX SYSTEM')),\n        body: const Center(child: Text('Mon application Flutter BCX')),\n      ),\n    );\n  }\n}\n" },
+    ];
+    setFiles((current) => [...current.filter((file) => !starter.some((item) => item.name === file.name)), ...starter]);
+    setActiveId(starter[1].id);
+    setBuildStatus("idle"); setBuildId(null); setBuildOutput("");
     setError("");
   }
 
@@ -309,7 +321,7 @@ export default function WorkspacePage() {
 
       <section className="bcx-workspace">
         <aside className="bcx-files">
-          <div className="bcx-section-title"><span>EXPLORATEUR</span><button title="Ajouter un fichier" onClick={addFile}><Plus size={16}/></button></div>
+          <div className="bcx-section-title"><span>EXPLORATEUR</span><div><button title="Nouveau projet Flutter" onClick={createFlutterStarter}><Smartphone size={15}/></button><button title="Ajouter un fichier ou chemin" onClick={addFile}><Plus size={16}/></button></div></div>
           <div className="bcx-project-label"><Code2 size={14}/> mon-projet-bcx</div>
           {files.map((file) => <button key={file.id} className={`bcx-file ${activeId === file.id ? "active" : ""}`} onClick={() => setActiveId(file.id)}><FileCode2 size={15}/><span>{file.name}</span></button>)}
           <div className="bcx-files-foot">Sauvegarde automatique locale</div>
