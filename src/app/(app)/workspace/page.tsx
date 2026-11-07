@@ -31,6 +31,8 @@ export default function WorkspacePage() {
   const [files, setFiles] = useState(STARTER_FILES);
   const [activeId, setActiveId] = useState("html");
   const [loaded, setLoaded] = useState(false);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [cloudStatus, setCloudStatus] = useState<"checking" | "local" | "saving" | "synced" | "offline">("checking");
   const [panel, setPanel] = useState<"preview" | "terminal">("preview");
   const [output, setOutput] = useState("Prêt. Sélectionne un fichier puis lance ton code.");
   const [running, setRunning] = useState(false);
@@ -54,21 +56,68 @@ export default function WorkspacePage() {
   }, [htmlFile, cssFile, jsFile]);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const data = JSON.parse(saved) as { files?: WorkspaceFile[]; activeId?: string };
-        if (Array.isArray(data.files) && data.files.length) setFiles(data.files);
-        if (typeof data.activeId === "string") setActiveId(data.activeId);
-      }
-    } catch { /* workspace corrompu : utiliser le modèle de départ */ }
-    setLoaded(true);
+    let cancelled = false;
+    async function initialize() {
+      let initialFiles = STARTER_FILES;
+      let initialActiveId = "html";
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const data = JSON.parse(saved) as { files?: WorkspaceFile[]; activeId?: string };
+          if (Array.isArray(data.files) && data.files.length) initialFiles = data.files;
+          if (typeof data.activeId === "string") initialActiveId = data.activeId;
+        }
+      } catch { /* données locales illisibles : utiliser le modèle de départ */ }
+      if (cancelled) return;
+      setFiles(initialFiles);
+      setActiveId(initialActiveId);
+      try {
+        const response = await fetch("/api/workspaces", { cache: "no-store" });
+        if (response.ok) {
+          const data = await response.json() as { workspaces?: Array<{ id: string; files: WorkspaceFile[] }> };
+          const current = data.workspaces?.[0];
+          if (current && Array.isArray(current.files) && current.files.length) {
+            setFiles(current.files);
+            setActiveId(current.files.some((file) => file.id === initialActiveId) ? initialActiveId : current.files[0].id);
+            setWorkspaceId(current.id);
+            setCloudStatus("synced");
+          } else {
+            const created = await fetch("/api/workspaces", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: "Mon projet BCX", files: initialFiles }),
+            });
+            const result = await created.json();
+            if (created.ok && result.workspace?.id) {
+              setWorkspaceId(result.workspace.id);
+              setCloudStatus("synced");
+            } else setCloudStatus("local");
+          }
+        } else setCloudStatus("local");
+      } catch { if (!cancelled) setCloudStatus("offline"); }
+      if (!cancelled) setLoaded(true);
+    }
+    void initialize();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
     if (!loaded) return;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, activeId })); } catch { setError("Stockage local indisponible ou quota atteint."); }
-  }, [files, activeId, loaded]);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, activeId })); }
+    catch { setError("Stockage local indisponible ou quota atteint."); }
+    if (!workspaceId) return;
+    const timer = window.setTimeout(async () => {
+      setCloudStatus("saving");
+      try {
+        const response = await fetch("/api/workspaces", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: workspaceId, name: "Mon projet BCX", files }),
+        });
+        if (!response.ok) throw new Error("Cloud sync failed");
+        setCloudStatus("synced");
+      } catch { setCloudStatus("offline"); }
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [files, activeId, loaded, workspaceId]);
 
   function updateFile(content: string) {
     setFiles((current) => current.map((file) => file.id === activeId ? { ...file, content } : file));
@@ -139,7 +188,7 @@ export default function WorkspacePage() {
   return (
     <main className="bcx-ide">
       <header className="bcx-ide-head">
-        <div><div className="bcx-eyebrow">BICKRI CODEX SYSTEM</div><h1>Cloud IDE</h1><p>Édite, exécute et prévisualise ton projet depuis un seul espace.</p></div>
+        <div><div className="bcx-eyebrow">BICKRI CODEX SYSTEM</div><h1>Cloud IDE</h1><p>Édite, exécute et prévisualise ton projet depuis un seul espace.</p><div className="bcx-cloud-status" aria-live="polite">{cloudStatus === "checking" ? "Vérification du cloud…" : cloudStatus === "saving" ? "Synchronisation…" : cloudStatus === "synced" ? "✓ Projet synchronisé" : cloudStatus === "offline" ? "Cloud indisponible · copie locale conservée" : "Mode local · connexion requise pour le cloud"}</div></div>
         <div className="bcx-head-actions">
           <button className="bcx-btn bcx-btn-quiet" onClick={downloadProject}><Save size={16}/> Exporter</button>
           <button className="bcx-btn bcx-btn-primary" onClick={execute} disabled={running}>{running ? <Loader2 className="bcx-spin" size={16}/> : <Play size={16}/>} Exécuter</button>
@@ -189,7 +238,7 @@ export default function WorkspacePage() {
         .bcx-eyebrow{font-size:10px;letter-spacing:.16em;color:var(--accent);font-weight:800}
         .bcx-ide h1{font-size:28px;margin:5px 0;font-weight:750;letter-spacing:-.04em}
         .bcx-ide-head p{color:var(--text-muted);margin:0;font-size:13px}
-        .bcx-head-actions{display:flex;gap:9px}
+        .bcx-cloud-status{font-size:10px;color:var(--text-faint);margin-top:8px}.bcx-head-actions{display:flex;gap:9px}
         .bcx-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);border-radius:10px;padding:10px 13px;font-size:12px;font-weight:700;cursor:pointer}
         .bcx-btn:disabled{opacity:.55;cursor:not-allowed}
         .bcx-btn-primary{background:var(--accent);color:#15120b;border-color:var(--accent)}
