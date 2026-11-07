@@ -50,6 +50,9 @@ export default function WorkspacePage() {
   const [buildOutput, setBuildOutput] = useState("");
   const [deployBusy, setDeployBusy] = useState(false);
   const [deployMessage, setDeployMessage] = useState("");
+  const [deploymentStatus, setDeploymentStatus] = useState("");
+  const [deploymentUrl, setDeploymentUrl] = useState("");
+  const [statusBusy, setStatusBusy] = useState(false);
 
   const activeFile = files.find((file) => file.id === activeId) ?? files[0];
   const htmlFile = files.find((file) => file.language === "html");
@@ -248,6 +251,23 @@ export default function WorkspacePage() {
     finally { setDeployBusy(false); }
   }
 
+  async function refreshPreviewStatus() {
+    if (statusBusy) return;
+    setStatusBusy(true);
+    try {
+      const response = await fetch("/api/deployments/preview", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Suivi Vercel indisponible.");
+      const latest = data.deployments?.[0];
+      if (!latest) { setDeploymentStatus("Aucun déploiement Preview récent."); setDeploymentUrl(""); }
+      else {
+        setDeploymentStatus(String(latest.state || "UNKNOWN"));
+        setDeploymentUrl(typeof latest.url === "string" ? latest.url : "");
+      }
+    } catch (e) { setDeploymentStatus(e instanceof Error ? e.message : "Suivi indisponible."); }
+    finally { setStatusBusy(false); }
+  }
+
   function downloadFlutterArtifact() {
     if (!buildId) return;
     const link = document.createElement("a");
@@ -400,7 +420,7 @@ export default function WorkspacePage() {
             {buildOutput && <pre className="bcx-build-output">{buildOutput}</pre>}
             {buildStatus === "ready" && <button className="bcx-btn bcx-btn-quiet" onClick={downloadFlutterArtifact}><Download size={14}/> Télécharger {buildTarget.toUpperCase()}</button>}
           </section>
-          {deployMessage && <div className="bcx-deploy-message" role="status">{deployMessage}</div>}
+          {deployMessage && <div className="bcx-deploy-message" role="status">{deployMessage}<button className="bcx-btn bcx-btn-quiet" onClick={refreshPreviewStatus} disabled={statusBusy}>{statusBusy ? <Loader2 size={13} className="bcx-spin"/> : <RefreshCw size={13}/>} Suivre le build</button>{deploymentStatus && <div>Statut Vercel : {deploymentStatus}</div>}{deploymentUrl && <a href={deploymentUrl} target="_blank" rel="noreferrer">Ouvrir la Preview</a>}</div>}
         </aside>
       </section>
 
@@ -450,7 +470,7 @@ export default function WorkspacePage() {
         .bcx-build-card select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px;font-size:11px}
         .bcx-build-status{font-size:10px;color:var(--text-faint);text-transform:capitalize}
         .bcx-build-output{max-height:140px;overflow:auto;background:var(--bg);padding:8px;border-radius:7px;font:10px/1.5 var(--font-mono);white-space:pre-wrap}
-        .bcx-deploy-message{font-size:10px;color:var(--text-muted);line-height:1.5}
+        .bcx-deploy-message{display:grid;gap:7px;font-size:10px;color:var(--text-muted);line-height:1.5}.bcx-deploy-message a{color:var(--accent);text-decoration:underline}
         .bcx-assistant{border-left:1px solid var(--border);display:flex;flex-direction:column;gap:12px}
         .bcx-assistant-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800}
         .bcx-assistant-title svg{color:var(--accent)}
