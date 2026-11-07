@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
     if (!file || typeof file !== "object") return false;
     const item = file as Record<string, unknown>;
     return item.path === "pubspec.yaml" || item.name === "pubspec.yaml";
-  });\n  if (!hasPubspec) {
+  });
+  if (!hasPubspec) {
     return NextResponse.json({ error: "Le projet doit contenir pubspec.yaml." }, { status: 400 });
   }
   const target = body.target === "aab" ? "aab" : "apk";
