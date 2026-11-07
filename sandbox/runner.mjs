@@ -58,8 +58,10 @@ async function writeFiles(dir, files) {
     const rel = safeFilePath(f.path ?? f.name);
     if (!rel) throw new Error("Invalid workspace file path");
     const dest = path.join(dir, rel);
-    await mkdir(path.dirname(dest), { recursive: true });
+    await mkdir(path.dirname(dest), { recursive: true, mode: 0o777 });
+    await chmod(path.dirname(dest), 0o777);
     await writeFile(dest, f.content, { mode: 0o666 });
+    await chmod(dest, 0o666);
   }
 }
 function collect(target, chunk) {
