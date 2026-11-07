@@ -115,7 +115,7 @@ export default function WorkspacePage() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, activeId })); }
     catch { setError("Stockage local indisponible ou quota atteint."); }
     if (!workspaceId) return;
-    const timer = window.setInterval(async () => {
+    const timer = window.setTimeout(async () => {
       setCloudStatus("saving");
       try {
         const response = await fetch("/api/workspaces", {
@@ -237,7 +237,7 @@ export default function WorkspacePage() {
   function addFile() {
     const name = window.prompt("Nom ou chemin (ex. app.js, lib/main.dart, pubspec.yaml)");
     if (!name?.trim()) return;
-    const clean = name.trim().replace(/\\/g, "/").replace(/[^a-zA-Z0-9._/-]/g, "-").replace(/\\/+/g, "/");
+    const clean = name.trim().replace(/\\/g, "/").replace(/[^a-zA-Z0-9._/-]/g, "-").replace(/\/+/g, "/");
     if (clean.startsWith("/") || clean.split("/").some((part) => !part || part === "." || part === "..")) { setError("Chemin de fichier invalide."); return; }
     if (files.some((file) => file.name === clean)) { setError("Ce fichier existe déjà."); return; }
     const ext = clean.split(".").pop()?.toLowerCase();
