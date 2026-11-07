@@ -3,7 +3,7 @@ import { generateContent, type GeminiContent, type GeminiPart } from "@/lib/ai/g
 import { buildSystemInstruction } from "@/lib/ai/prompt";
 import { getThinkingInstruction, resolveThinkingMode, type ThinkingMode } from "@/lib/ai/thinking";
 import { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
-import { formatWebSearchResults, searchWeb, shouldSearchWeb } from "@/lib/ai/web-search";
+import { formatWebSearchResults, searchWeb, shouldSearchWeb, type WebSearchResult } from "@/lib/ai/web-search";
 import { PLUGINS } from "./plugins";
 import type { AgentContext, PluginStatus, Tool } from "./types";
 import { formatSpecialistReviews, runSpecialistReviews } from "./specialist-orchestrator";
@@ -13,6 +13,7 @@ export type AgentResult = {
   contents: GeminiContent[];
   events: AgentEvent[];
   answer?: string;
+  sources?: WebSearchResult[];
   pending?: { tool: string; label: string; args: Record<string, unknown> }[];
   continue?: boolean;
   model?: string;
@@ -186,6 +187,7 @@ export async function runAgent(opts: {
   // Recherche Web automatique pour les demandes explicites ou les sujets d'actualité.
   // Elle ne dépend pas de l'activation manuelle du plugin dans l'interface.
   let webContext = "";
+  let webSources: WebSearchResult[] = [];
   let webSources: Array<{ title: string; url: string; snippet: string; provider: "Google" | "Tavily" }> = [];
   if (shouldSearchWeb(latestUserQuery)) {
     try {
