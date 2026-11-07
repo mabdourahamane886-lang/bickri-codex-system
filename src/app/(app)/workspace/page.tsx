@@ -45,9 +45,9 @@ export default function WorkspacePage() {
   const jsFile = files.find((file) => file.name === "script.js" || file.name === "app.js");
   const preview = useMemo(() => {
     const body = htmlFile?.content ?? "<p>Ajoute un fichier HTML pour afficher l’aperçu.</p>";
-    const styles = (cssFile?.content ?? "").replace(/<\\/style/gi, "");
-    const script = (jsFile?.content ?? "").replace(/<\\/script/gi, "");
-    if (/<html[\\s>]/i.test(body)) {
+    const styles = (cssFile?.content ?? "").replace(/<\/style/gi, "");
+    const script = (jsFile?.content ?? "").replace(/<\/script/gi, "");
+    if (/<html[\s>]/i.test(body)) {
       return body.replace("</head>", `<style>${styles}</style></head>`).replace("</body>", `<script>${script}</script></body>`);
     }
     return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${styles}</style></head><body>${body}<script>${script}</script></body></html>`;
