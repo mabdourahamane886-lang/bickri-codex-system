@@ -76,6 +76,8 @@ export default function WorkspacePage() {
           const data = JSON.parse(saved) as { files?: WorkspaceFile[]; activeId?: string };
           if (Array.isArray(data.files) && data.files.length) initialFiles = data.files;
           if (typeof data.activeId === "string") initialActiveId = data.activeId;
+        const savedTerminal = localStorage.getItem("bcx_terminal_session_v1");
+        if (savedTerminal && /^[0-9a-f-]{36}$/i.test(savedTerminal)) setTerminalSessionId(savedTerminal);
         }
       } catch { /* données locales illisibles : utiliser le modèle de départ */ }
       if (cancelled) return;
@@ -140,10 +142,32 @@ export default function WorkspacePage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Impossible de démarrer le terminal.");
       setTerminalSessionId(data.sessionId);
+      localStorage.setItem("bcx_terminal_session_v1", data.sessionId);
       setTerminalOutput("Session démarrée. Conteneur isolé prêt dans /workspace.\n");
     } catch (e) { setTerminalOutput(e instanceof Error ? e.message : "Terminal indisponible."); }
     finally { setTerminalBusy(false); }
   }
+
+  useEffect(() => {
+    if (!terminalSessionId) return;
+    let stopped = false;
+    const touch = async () => {
+      try {
+        const response = await fetch("/api/terminal", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "touch", sessionId: terminalSessionId }),
+        });
+        if (!response.ok && !stopped) {
+          setTerminalSessionId(null);
+          localStorage.removeItem("bcx_terminal_session_v1");
+          setTerminalOutput((old) => old + "\nSession expirée. Démarre un nouveau terminal.\n");
+        }
+      } catch { /* le prochain heartbeat réessaiera */ }
+    };
+    void touch();
+    const timer = window.setInterval(() => { void touch(); }, 5 * 60_000);
+    return () => { stopped = true; window.clearInterval(timer); };
+  }, [terminalSessionId]);
 
   async function runTerminalCommand(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -169,8 +193,10 @@ export default function WorkspacePage() {
     try {
       await fetch("/api/terminal?sessionId=" + encodeURIComponent(terminalSessionId), { method: "DELETE" });
       setTerminalSessionId(null);
+      localStorage.removeItem("bcx_terminal_session_v1");
       setTerminalOutput((old) => old + "\nSession fermée.\n");
-    } finally { setTerminalBusy(false); }
+    } catch { setTerminalOutput((old) => old + "\nImpossible de fermer la session. Elle expirera automatiquement.\n"); }
+    finally { setTerminalBusy(false); }
   }
 
   async function startFlutterBuild() {
