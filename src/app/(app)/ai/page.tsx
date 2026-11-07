@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, GitBranch, ImagePlus, Layers, WandSparkles,
-  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon, Search,
+  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon, Search, BookOpen,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
@@ -628,15 +628,6 @@ export default function CodeAIPage() {
                               <summary><span>{isLast && loading ? "Réflexion en cours" : "Réflexion terminée"}</span><small>{m.events.length} opérations · journal opérationnel</small></summary>
                               <ToolEvents events={m.events} />
                             </details>}
-                            {!!m.sources?.length && <section className="bcx-research-sources" aria-label="Sources Web consultées">
-                              <header><b>Sources de la recherche</b><span>{m.sources.length} résultats · {m.sources.filter((source) => source.opened).length} pages ouvertes</span></header>
-                              <ol>{m.sources.map((source, sourceIndex) => <li key={source.url}>
-                                <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title || source.url}<span aria-hidden="true"> ↗</span></a>
-                                <small>{source.opened ? "Page consultée" : "Résultat de recherche"} · {source.provider}</small>
-                                {source.snippet && <p>{source.snippet.slice(0, 320)}</p>}
-                              </li>)}</ol>
-                            </section>}
-
                             {m.content && <Markdown>{m.content}</Markdown>}
                             {!!m.images?.length && (
                               <div className="bcx-image-search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 12, marginTop: 14 }}>
@@ -652,6 +643,23 @@ export default function CodeAIPage() {
                                   </article>
                                 ))}
                               </div>
+                            )}
+                            {(!!m.sources?.length || (m.content?.trim().length ?? 0) >= 1200) && (
+                              <details className="bcx-research-sources bcx-sources-footer">
+                                <summary>
+                                  <span className="bcx-sources-title"><BookOpen size={15} aria-hidden="true" /> Sources</span>
+                                  <span>{m.sources?.length ? `${m.sources.length} références · ${m.sources.filter((source) => source.opened).length} pages ouvertes` : "Aucune source externe consultée"}</span>
+                                </summary>
+                                {!!m.sources?.length ? (
+                                  <ol>{m.sources.map((source) => <li key={source.url}>
+                                    <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title || source.url}<span aria-hidden="true"> ↗</span></a>
+                                    <small>{source.opened ? "Page consultée" : "Résultat de recherche"} · {source.provider}</small>
+                                    {source.snippet && <p>{source.snippet.slice(0, 320)}</p>}
+                                  </li>)}</ol>
+                                ) : (
+                                  <p className="bcx-sources-empty">Cette réponse longue ne contient pas de références externes vérifiées.</p>
+                                )}
+                              </details>
                             )}
                             {m.content && (
                               <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: "wrap" }} aria-label="Actions sur la réponse">
