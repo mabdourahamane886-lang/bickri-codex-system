@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
   try {
     const raw = await request.text();
-    if (raw.length > 8_500_000) return NextResponse.json({ error: "Projet trop volumineux pour le terminal." }, { status: 413 });
+    if (raw.length > 4_000_000) return NextResponse.json({ error: "Projet trop volumineux pour le terminal." }, { status: 413 });
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid body");
     body = parsed as Record<string, unknown>;
