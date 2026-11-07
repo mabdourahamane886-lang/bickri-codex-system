@@ -46,6 +46,21 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  if (action === "touch") {
+    const sessionId = typeof body.sessionId === "string" ? body.sessionId : "";
+    if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return NextResponse.json({ error: "Session invalide." }, { status: 400 });
+    try {
+      const response = await sandboxFetch("/terminal/touch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ownerId: user.id, sessionId }),
+      });
+      return NextResponse.json(await response.json().catch(() => ({})), { status: response.status });
+    } catch {
+      return NextResponse.json({ error: "Session terminal indisponible." }, { status: 503 });
+    }
+  }
+
   if (action === "command") {
     const sessionId = typeof body.sessionId === "string" ? body.sessionId : "";
     const command = typeof body.command === "string" ? body.command.trim() : "";
