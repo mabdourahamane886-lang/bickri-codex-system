@@ -150,7 +150,9 @@ async function startFlutterBuild(body) {
       "--mount", "type=bind,src=" + dir + ",dst=/workspace", "--workdir=/workspace", "--tmpfs", "/tmp:rw,size=1g",
       "bcx-flutter-builder:stable", "/bin/sh", "-lc", "if [ ! -d android ]; then flutter create --platforms=android --project-name bcx_app --org com.bickri /tmp/bcx_android_scaffold && cp -a /tmp/bcx_android_scaffold/android ./android; fi && flutter pub get && flutter build " + target + " --release"
     ];
+    const flutterContainer = "bcx-flutter-" + buildId.slice(0, 12);
     const result = await runDocker(args, 15 * 60_000);
+    if (result.timedOut) await runDocker(["rm", "-f", flutterContainer], 5000);
     job.output = [result.stdout, result.stderr].filter(Boolean).join("\n").slice(-MAX_OUTPUT);
     if (result.exitCode === 0) {
       const relative = target === "apk" ? "build/app/outputs/flutter-apk/app-release.apk" : "build/app/outputs/bundle/release/app-release.aab";
@@ -189,7 +191,9 @@ const server = http.createServer(async (req, res) => {
           "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--user=65534:65534",
           "--mount", "type=bind,src=" + dir + ",dst=/workspace,readonly", "--workdir=/workspace", "--env", "HOME=/tmp", "--env", "TMPDIR=/tmp",
           "--env", "PYTHONDONTWRITEBYTECODE=1", image, ...command];
-        return send(res, 200, await runDocker(args, 5500, typeof body.stdin === "string" ? body.stdin.slice(0, 5000) : ""));
+        const result = await runDocker(args, 5500, typeof body.stdin === "string" ? body.stdin.slice(0, 5000) : "");
+        if (result.timedOut) await runDocker(["rm", "-f", name], 5000);
+        return send(res, 200, result);
       } finally { await rm(dir, { recursive: true, force: true }); }
     }
     if (req.method === "POST" && req.url === "/terminal/open") return send(res, 201, await openTerminal(await readJson(req)));
