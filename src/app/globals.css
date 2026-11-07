@@ -1985,3 +1985,19 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   background: #fffbeb !important;
   border-color: #f1d79a !important;
 }
+
+
+/* Compact source strip inspired by the reference UI: visible below each sourced answer. */
+.bcx-answer-sources{margin:14px 0 6px;padding:0;border:0;background:transparent;box-shadow:none;color:var(--foreground)}
+.bcx-sources-strip{display:flex;align-items:center;gap:9px;min-height:34px;cursor:pointer;list-style:none;color:var(--muted-foreground);font-size:12px}
+.bcx-sources-strip::-webkit-details-marker{display:none}
+.bcx-sources-strip strong{font-weight:650;color:var(--muted-foreground)}
+.bcx-source-favicons{display:inline-flex;align-items:center;padding-left:3px}
+.bcx-source-favicons img{width:23px;height:23px;object-fit:contain;border:2px solid var(--background);border-radius:50%;background:#fff;margin-left:-4px}
+.bcx-sources-more{display:grid;place-items:center;width:23px;height:23px;margin-left:-3px;border:2px solid var(--background);border-radius:50%;background:var(--surface-muted);color:var(--muted-foreground);font-size:9px;font-weight:700}
+.bcx-sources-count{font-size:11px;color:var(--muted-foreground)}
+.bcx-answer-sources[open] .bcx-sources-strip{margin-bottom:8px}
+.bcx-answer-sources ol{list-style:none;display:grid;gap:6px;margin:0;padding:8px 0 0;border-top:1px solid var(--border)}
+.bcx-answer-sources li>a{display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:10px;color:var(--foreground);text-decoration:none;background:var(--surface)}
+.bcx-answer-sources li>a:hover{background:var(--surface-muted)}
+.bcx-sources-note{margin:8px 2px 0;color:var(--muted-foreground);font-size:10px;line-height:1.4}
