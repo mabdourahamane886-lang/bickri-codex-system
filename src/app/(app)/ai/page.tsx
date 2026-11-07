@@ -10,6 +10,7 @@ import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
 import { Badge } from "@/components/ui/Badge";
 
+type AnswerSource = { title: string; url: string; snippet: string; source: "Google" | "Tavily" };
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
 type PluginStatus = { id: string; name: string; description: string; available: boolean; reason?: string; tools: number; writeTools: number };
@@ -17,7 +18,7 @@ type ImageSearchResult = { title: string; imageUrl: string; thumbnailUrl: string
 type ThinkingMode = "auto" | "fast" | "balanced" | "deep" | "expert";
 type ResolvedThinkingMode = "fast" | "balanced" | "deep" | "expert";
 type AnswerSource = { title: string; url: string; snippet?: string; provider?: "Google" | "Tavily" };
-type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; model?: string; thinkingMode?: ResolvedThinkingMode; sources?: AnswerSource[]; images?: ImageSearchResult[]; attachment?: { name: string; mimeType: string; preview?: string } };
+type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; sources?: AnswerSource[]; model?: string; thinkingMode?: ResolvedThinkingMode; sources?: AnswerSource[]; images?: ImageSearchResult[]; attachment?: { name: string; mimeType: string; preview?: string } };
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
@@ -40,7 +41,7 @@ function friendlyError(error: unknown) {
   return "Une difficulté a interrompu cette réponse. Ta conversation est conservée ; tu peux réessayer.";
 }
 type AgentResponse = {
-  contents: unknown[]; events: AgentEvent[]; answer?: string; sources?: AnswerSource[]; pending?: Pending[]; continue?: boolean; model?: string; thinkingMode?: ResolvedThinkingMode; error?: string;
+  contents: unknown[]; events: AgentEvent[]; answer?: string; sources?: AnswerSource[]; sources?: AnswerSource[]; pending?: Pending[]; continue?: boolean; model?: string; thinkingMode?: ResolvedThinkingMode; error?: string;
 };
 
 const CHAT_KEY = "bcx_ai_chat_v2";
@@ -220,7 +221,7 @@ export default function CodeAIPage() {
         patchAssistant((m) => ({ ...m, model: data.model, thinkingMode: data.thinkingMode, sources: data.sources?.length ? data.sources : m.sources, events: [...(m.events ?? []).filter((e) => e.status !== "pending"), ...data.events] }));
         if (data.pending?.length) { setPending(data.pending); return; }
         if (data.answer !== undefined) {
-          patchAssistant((m) => ({ ...m, content: data.answer! }));
+          patchAssistant((m) => ({ ...m, content: data.answer!, sources: data.sources ?? [] }));
           return;
         }
         if (!data.continue) return;
@@ -588,6 +589,20 @@ export default function CodeAIPage() {
                                   </article>
                                 ))}
                               </div>
+                            )}
+                            {!!m.sources?.length && (
+                              <section className="bcx-answer-sources" aria-label="Sources consultées" style={{ marginTop: 16, padding: 14, border: "1px solid var(--border)", borderRadius: 14, background: "var(--surface-2)", color: "var(--text)" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontWeight: 650, fontSize: 13 }}><Search size={15} aria-hidden="true" /> Sources consultées <span style={{ color: "var(--text-muted)", fontWeight: 450 }}>({m.sources.length})</span></div>
+                                <ol style={{ margin: 0, paddingLeft: 22, display: "grid", gap: 10 }}>
+                                  {m.sources.map((source, sourceIndex) => (
+                                    <li key={source.url + sourceIndex} style={{ paddingLeft: 3 }}>
+                                      <a href={source.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "none", overflowWrap: "anywhere" }}>{source.title} ↗</a>
+                                      <div style={{ color: "var(--text-muted)", fontSize: 11, marginTop: 2 }}>{new URL(source.url).hostname} · {source.source}</div>
+                                      {source.snippet && <p style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5, margin: "4px 0 0" }}>{source.snippet}</p>}
+                                    </li>
+                                  ))}
+                                </ol>
+                              </section>
                             )}
                             {m.content && (
                               <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: "wrap" }} aria-label="Actions sur la réponse">
