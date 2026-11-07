@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { sandboxFetch } from "@/lib/sandbox/client";
+import { isSameOriginWrite } from "@/lib/http/security";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -14,6 +15,7 @@ async function getUser() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOriginWrite(request)) return NextResponse.json({ error: "Origine de requête non autorisée." }, { status: 403 });
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Connecte-toi pour compiler un projet Flutter." }, { status: 401 });
   const limit = rateLimit("flutter-build:" + user.id, 2, 30 * 60_000);
