@@ -1970,3 +1970,21 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
 .bcx-classic-chat .bcx-sources-empty{margin:0;padding:2px 0 14px;color:var(--text-muted);font-size:12px;line-height:1.5}
 @media(max-width:640px){.bcx-classic-chat .bcx-sources-footer>summary{align-items:flex-start;flex-wrap:wrap;padding:10px 0}.bcx-classic-chat .bcx-sources-footer>summary>span:last-of-type{margin-left:0;width:100%}.bcx-classic-chat .bcx-sources-footer>summary:after{margin-left:auto}}
 @media(max-width:640px){.bcx-classic-chat .bcx-research-timeline>summary{align-items:flex-start;flex-wrap:wrap}.bcx-classic-chat .bcx-research-timeline>summary small{margin-left:0;width:100%}.bcx-classic-chat .bcx-research-sources{padding:11px}.bcx-classic-chat .bcx-research-toggle{padding:7px 10px}}
+
+
+/* Logos de sources en pied de réponse — présentation compacte type ChatGPT */
+.bcx-classic-chat .bcx-sources-footer>summary>.bcx-source-logos{
+  display:inline-flex;align-items:center;gap:7px;margin-left:0;width:auto;flex:0 1 auto;
+}
+.bcx-classic-chat .bcx-source-logo{
+  display:grid;place-items:center;width:25px;height:25px;flex:0 0 25px;
+  overflow:hidden;border:1px solid var(--border);border-radius:50%;
+  background:var(--surface-2);transition:transform .15s ease,border-color .15s ease;
+}
+.bcx-classic-chat .bcx-source-logo:hover{transform:translateY(-2px);border-color:var(--accent)}
+.bcx-classic-chat .bcx-source-logo img{display:block;width:17px;height:17px;object-fit:contain}
+@media(max-width:640px){
+  .bcx-classic-chat .bcx-sources-footer>summary{align-items:center;flex-wrap:nowrap}
+  .bcx-classic-chat .bcx-sources-footer>summary>.bcx-source-logos{margin-left:0;width:auto}
+  .bcx-classic-chat .bcx-sources-footer>summary:after{margin-left:auto}
+}
