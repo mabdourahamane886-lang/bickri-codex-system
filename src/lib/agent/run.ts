@@ -3,7 +3,7 @@ import { generateContent, type GeminiContent, type GeminiPart } from "@/lib/ai/g
 import { buildSystemInstruction } from "@/lib/ai/prompt";
 import { getThinkingInstruction, resolveThinkingMode, type ThinkingMode } from "@/lib/ai/thinking";
 import { formatRetrievedKnowledge, retrieveKnowledge } from "@/lib/ai/knowledge-retrieval";
-import { formatWebSearchResults, searchWeb, shouldSearchWeb } from "@/lib/ai/web-search";
+import { formatWebSearchResults, searchWeb, shouldSearchWeb, type WebSearchResult } from "@/lib/ai/web-search";
 import { PLUGINS } from "./plugins";
 import type { AgentContext, PluginStatus, Tool } from "./types";
 import { formatSpecialistReviews, runSpecialistReviews } from "./specialist-orchestrator";
@@ -13,6 +13,7 @@ export type AgentResult = {
   contents: GeminiContent[];
   events: AgentEvent[];
   answer?: string;
+  sources?: WebSearchResult[];
   pending?: { tool: string; label: string; args: Record<string, unknown> }[];
   continue?: boolean;
   model?: string;
@@ -186,9 +187,11 @@ export async function runAgent(opts: {
   // Recherche Web automatique pour les demandes explicites ou les sujets d'actualité.
   // Elle ne dépend pas de l'activation manuelle du plugin dans l'interface.
   let webContext = "";
+  let webSources: WebSearchResult[] = [];
   if (shouldSearchWeb(latestUserQuery)) {
     try {
       const webResults = await searchWeb(latestUserQuery, 6);
+      webSources = webResults.map(({ title, url, snippet, source }) => ({ title, url, snippet, source }));
       webContext = formatWebSearchResults(webResults);
       if (webResults.length) {
         events.push({ tool: "web_search", label: "Recherche Web automatique", write: false, status: "ok" });
@@ -207,7 +210,7 @@ export async function runAgent(opts: {
     latestUserQuery,
     formatRetrievedKnowledge(retrieved),
     authorizedMemory,
-  ) + getThinkingInstruction(thinkingMode) + (specialistContext ? `\n\n${specialistContext}` : "") + (webContext ? `\n\nRECHERCHE WEB — SOURCES À UTILISER :\n${webContext}\n\nConsignes : réponds à la question en t’appuyant sur ces résultats, distingue les faits confirmés des éléments incertains et ajoute les URL des sources pertinentes dans ta réponse. Ne prétends pas avoir consulté une page au-delà de son extrait fourni.` : "");
+  ) + getThinkingInstruction(thinkingMode) + (specialistContext ? `\n\n${specialistContext}` : "") + (webContext ? `\n\nRECHERCHE WEB — SOURCES À UTILISER :\n${webContext}\n\nConsignes de citation obligatoires : appuie les affirmations factuelles issues de la recherche sur les sources numérotées [1], [2], etc. Ajoute les marqueurs [n] immédiatement après les phrases qu’elles étayent ; une phrase peut citer plusieurs sources, par exemple [1][3]. N’utilise que les numéros présents dans les résultats ci-dessus et ne crée jamais de référence. Si aucune source ne confirme un détail, indique-le clairement et ne lui associe pas de citation. Distingue explicitement les informations issues du Web de tes explications générales. Les références numérotées correspondent exactement à l’ordre des résultats affichés dans le bloc Sources de l’interface. Ne prétends pas avoir consulté une page au-delà de son extrait fourni.` : "");
   let model: string | undefined;
 
   try {
@@ -221,7 +224,7 @@ export async function runAgent(opts: {
     }
 
     for (let step = 0; step < MAX_STEPS; step++) {
-      if (Date.now() - started > TIME_BUDGET_MS) return { contents, events, continue: true, model, plugins: statuses };
+      if (Date.now() - started > TIME_BUDGET_MS) return { contents, events, continue: true, sources: webSources, model, plugins: statuses };
       compact(contents);
       const configuredModel = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash";
       const configuredFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite";
@@ -250,21 +253,21 @@ export async function runAgent(opts: {
       const calls = callsOf(res.content);
       if (!calls.length) {
         const answer = res.content.parts.filter((p) => p.text && !p.thought).map((p) => p.text).join("").trim();
-        return { contents, events, answer: answer || "(Réponse vide.)", model, plugins: statuses };
+        return { contents, events, answer: answer || "(Réponse vide.)", sources: webSources, model, plugins: statuses };
       }
 
       const writes = calls.filter((c) => tools.get(c.name)?.write);
       if (writes.length) {
         const pending = writes.map((c) => ({ tool: c.name, label: tools.get(c.name)!.label(c.args ?? {}), args: c.args ?? {} }));
         pending.forEach((p) => events.push({ tool: p.tool, label: p.label, write: true, status: "pending" }));
-        return { contents, events, pending, model, plugins: statuses };
+        return { contents, events, pending, sources: webSources, model, plugins: statuses };
       }
 
       const parts: GeminiPart[] = [];
       for (const call of calls) parts.push(await execute(call, tools, opts.ctx, false, events));
       contents.push({ role: "user", parts });
     }
-    return { contents, events, continue: true, model, plugins: statuses };
+    return { contents, events, continue: true, sources: webSources, model, plugins: statuses };
   } finally {
     await Promise.all(closers.map((c) => c()));
   }

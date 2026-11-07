@@ -1938,3 +1938,50 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
   .bcx-classic-chat .bcx-tool-grid > .btn { min-height: 52px; padding: 10px 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .bcx-classic-chat .bcx-tool-grid > .btn { transition: none; } }
+
+
+/* BCX answer references — compact, readable source list beneath assistant messages. */
+.bcx-answer-sources{margin:18px 0 8px;padding:14px 16px;border:1px solid #dce4ef;border-radius:14px;background:#fff;color:#172033;box-shadow:0 2px 8px rgba(23,32,51,.035)}
+.bcx-answer-sources-heading{display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#2457a7;font-size:13px}
+.bcx-answer-sources-heading strong{font-weight:700;color:#172033}
+.bcx-answer-sources-heading span{margin-left:auto;color:#77849a;font-size:11px;font-weight:500}
+.bcx-answer-sources ol{list-style:none;display:grid;gap:6px;margin:0;padding:0}
+.bcx-answer-sources li{min-width:0}
+.bcx-answer-sources li>a{display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border:1px solid transparent;border-radius:10px;color:#172033;text-decoration:none;transition:background .15s ease,border-color .15s ease}
+.bcx-answer-sources li>a:hover{background:#f4f7fc;border-color:#dce7f7}
+.bcx-source-number{display:grid;place-items:center;flex:0 0 22px;width:22px;height:22px;border-radius:7px;background:#eaf1fc;color:#2457a7;font-size:11px;font-weight:750}
+.bcx-source-copy{display:grid;gap:3px;min-width:0;flex:1}
+.bcx-source-copy strong{font-size:12px;font-weight:650;line-height:1.45;overflow-wrap:anywhere}
+.bcx-source-copy small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#526078;font-size:11px;line-height:1.45}
+.bcx-source-copy em{color:#a77a20;font-size:10px;font-style:normal;font-weight:650}
+.bcx-source-external{flex:none;color:#77849a;font-size:14px}
+.bcx-sources-note{margin:8px 2px 0;color:#77849a;font-size:10px;line-height:1.4}
+@media(max-width:560px){.bcx-answer-sources{padding:12px;border-radius:12px}.bcx-answer-sources li>a{padding:8px 6px}.bcx-answer-sources-heading span{font-size:10px}}
+
+
+/* BCX light chat: keep agent activity rows consistent with the white conversation UI. */
+.bcx-classic-chat .tool-events .tool-event {
+  background: #ffffff !important;
+  color: #344054 !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+}
+.bcx-classic-chat .tool-events .tool-event span {
+  color: #344054 !important;
+}
+.bcx-classic-chat .tool-events .tool-event svg {
+  color: #15966b !important;
+}
+.bcx-classic-chat .tool-events .tool-event.error,
+.bcx-classic-chat .tool-events .tool-event.refused {
+  background: #fff7f7 !important;
+  border-color: #f3c7cc !important;
+}
+.bcx-classic-chat .tool-events .tool-event.error svg,
+.bcx-classic-chat .tool-events .tool-event.refused svg {
+  color: #c93844 !important;
+}
+.bcx-classic-chat .tool-events .tool-event.pending {
+  background: #fffbeb !important;
+  border-color: #f1d79a !important;
+}
