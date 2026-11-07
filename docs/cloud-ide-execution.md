@@ -35,7 +35,7 @@ Configure these server-only Vercel variables:
 
 - Each authenticated user may hold up to three sessions.
 - Sessions persist their container filesystem and working directory for up to 20 minutes of inactivity.
-- Commands run inside the same container, with no network access, a read-only root filesystem and bounded memory/CPU/processes.
+- Commands run inside the same container, with no network access, a read-only root filesystem and bounded memory/CPU/processes. The initial source snapshot is limited to 2 MB.
 - The current HTTP terminal is command-oriented (no interactive PTY, shell prompts, or background process attachment). Long-running processes are terminated by the command timeout.
 - Session data is ephemeral and is removed on expiry or close. Save project files through the BCX workspace API before closing.
 
