@@ -40,7 +40,7 @@ function safeOwner(v) { return typeof v === "string" && /^[a-zA-Z0-9_-]{1,128}$/
 function safeFilePath(v) {
   if (typeof v !== "string" || !v || v.length > 240 || v.includes("\\") || v.startsWith("/")) return null;
   const p = path.posix.normalize(v);
-  if (p === "." || p === ".." || p.startsWith("../") || p.includes("/../") || p.split("/").some((x) => !x || x.startsWith("."))) return null;
+  if (p === "." || p === ".." || p.startsWith("../") || p.includes("/../") || p.split("/").some((x) => !x || x === "." || x === "..")) return null;
   return p;
 }
 function validateFiles(files, maxTotal) {
@@ -59,7 +59,7 @@ async function writeFiles(dir, files) {
     if (!rel) throw new Error("Invalid workspace file path");
     const dest = path.join(dir, rel);
     await mkdir(path.dirname(dest), { recursive: true });
-    await writeFile(dest, f.content, { mode: 0o600 });
+    await writeFile(dest, f.content, { mode: 0o644 });
   }
 }
 function collect(target, chunk) {
