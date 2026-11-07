@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { sandboxFetch } from "@/lib/sandbox/client";
+import { isSameOriginWrite } from "@/lib/http/security";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -14,6 +15,7 @@ async function authenticatedUser() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOriginWrite(request)) return NextResponse.json({ error: "Origine de requête non autorisée." }, { status: 403 });
   const user = await authenticatedUser();
   if (!user) return NextResponse.json({ error: "Connecte-toi pour utiliser le terminal cloud." }, { status: 401 });
   const limit = rateLimit("terminal:" + user.id, 40, 60_000);
@@ -83,6 +85,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  if (!isSameOriginWrite(request)) return NextResponse.json({ error: "Origine de requête non autorisée." }, { status: 403 });
   const user = await authenticatedUser();
   if (!user) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   const sessionId = request.nextUrl.searchParams.get("sessionId") || "";
