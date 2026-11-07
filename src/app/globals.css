@@ -1957,3 +1957,31 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
 .bcx-source-external{flex:none;color:#77849a;font-size:14px}
 .bcx-sources-note{margin:8px 2px 0;color:#77849a;font-size:10px;line-height:1.4}
 @media(max-width:560px){.bcx-answer-sources{padding:12px;border-radius:12px}.bcx-answer-sources li>a{padding:8px 6px}.bcx-answer-sources-heading span{font-size:10px}}
+
+
+/* BCX light chat: keep agent activity rows consistent with the white conversation UI. */
+.bcx-classic-chat .tool-events .tool-event {
+  background: #ffffff !important;
+  color: #344054 !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+}
+.bcx-classic-chat .tool-events .tool-event span {
+  color: #344054 !important;
+}
+.bcx-classic-chat .tool-events .tool-event svg {
+  color: #15966b !important;
+}
+.bcx-classic-chat .tool-events .tool-event.error,
+.bcx-classic-chat .tool-events .tool-event.refused {
+  background: #fff7f7 !important;
+  border-color: #f3c7cc !important;
+}
+.bcx-classic-chat .tool-events .tool-event.error svg,
+.bcx-classic-chat .tool-events .tool-event.refused svg {
+  color: #c93844 !important;
+}
+.bcx-classic-chat .tool-events .tool-event.pending {
+  background: #fffbeb !important;
+  border-color: #f1d79a !important;
+}
