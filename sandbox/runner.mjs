@@ -122,8 +122,10 @@ async function terminalCommand(body) {
     s.cwd = resolved; return { stdout: "", stderr: "", exitCode: 0, cwd: s.cwd };
   }
   const timeout = Number.isInteger(body.timeoutMs) ? Math.min(Math.max(body.timeoutMs, 1000), 30_000) : 15_000;
-  const result = await runDocker(["exec", "--workdir", s.cwd, s.containerName, "/bin/sh", "-lc", command], timeout);
-  s.lastUsedAt = Date.now(); return { ...result, cwd: s.cwd };
+  const innerSeconds = Math.max(1, Math.floor(timeout / 1000) - 2);
+  const result = await runDocker(["exec", "--workdir", s.cwd, s.containerName, "timeout", "--signal=TERM", "--kill-after=2s", innerSeconds + "s", "/bin/sh", "-lc", command], timeout + 3000);
+  s.lastUsedAt = Date.now();
+  return { ...result, timedOut: result.timedOut || result.exitCode === 124, cwd: s.cwd };
 }
 async function startFlutterBuild(body) {
   const ownerId = safeOwner(body.ownerId), files = body.files, target = body.target === "aab" ? "appbundle" : "apk";
@@ -168,7 +170,7 @@ function findBuild(ownerId, id) { const job = builds.get(id); return job && job.
 
 const server = http.createServer(async (req, res) => {
   if (req.headers.authorization !== "Bearer " + TOKEN) return send(res, 401, { error: "Unauthorized" });
-  if (!limited(req.socket.remoteAddress || "unknown", 30)) return send(res, 429, { error: "Rate limit exceeded" });
+  if (!limited(req.socket.remoteAddress || "unknown", 300)) return send(res, 429, { error: "Rate limit exceeded" });
   try {
     if (req.method === "POST" && req.url === "/execute") {
       const body = await readJson(req, 50_000), language = String(body.language || ""), code = typeof body.code === "string" ? body.code : "";
