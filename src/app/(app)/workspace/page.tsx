@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
@@ -45,7 +45,7 @@ export default function WorkspacePage() {
   const preview = useMemo(() => htmlFile
     ? htmlFile.content.replace("</head>", `<style>${(cssFile?.content ?? "").replace(/<\\/style/gi, "")}</style></head>`)
     : "<!doctype html><html><body><p>Ajoute un fichier HTML pour afficher l’aperçu.</p></body></html>",
-  [htmlFile, cssFile]);
+  [htmlFile, cssFile, jsFile]);
 
   useEffect(() => {
     try {
@@ -102,7 +102,7 @@ export default function WorkspacePage() {
     } finally { setRunning(false); }
   }
 
-  async function askAI(event: React.FormEvent<HTMLFormElement>) {
+  async function askAI(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!prompt.trim() || asking) return;
     setAsking(true); setAnswer(""); setError("");
