@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const maxDuration = 20;
 
 /** Déclenche uniquement un hook Vercel explicitement configuré pour Preview. */
-export async function POST(request: NextRequest) {
+export async function POST() {
   const context = await getAgentContext();
   if (!context.user) return NextResponse.json({ error: "Connecte-toi pour déclencher un déploiement." }, { status: 401 });
   if (!context.trusted) return NextResponse.json({ error: "Action réservée aux administrateurs et éditeurs BCX." }, { status: 403 });
