@@ -190,6 +190,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "POST" && req.url === "/terminal/open") return send(res, 201, await openTerminal(await readJson(req)));
     if (req.method === "POST" && req.url === "/terminal/command") return send(res, 200, await terminalCommand(await readJson(req, 16_000)));
+    if (req.method === "POST" && req.url === "/terminal/touch") {\n      const body = await readJson(req, 4000), ownerId = safeOwner(body.ownerId), id = typeof body.sessionId === "string" ? body.sessionId : "";\n      const session = getSession(ownerId, id);\n      if (!session) return send(res, 404, { error: "Session not found" });\n      session.lastUsedAt = Date.now();\n      return send(res, 200, { alive: true, expiresInSeconds: SESSION_TTL_MS / 1000 });\n    }\n
     if (req.method === "DELETE" && req.url === "/terminal/session") {
       const body = await readJson(req, 4000), ownerId = safeOwner(body.ownerId), id = typeof body.sessionId === "string" ? body.sessionId : "";
       if (!getSession(ownerId, id)) return send(res, 404, { error: "Session not found" });
