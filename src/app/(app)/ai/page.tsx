@@ -215,6 +215,8 @@ export default function CodeAIPage() {
     setLoading(true); setError("");
     let state = baseContents;
     let serverReportedError = false;
+    let continuationCount = 0;
+    const MAX_CONTINUATIONS = 2;
     try {
       for (;;) {
         const res = await fetch("/api/ai/agent", {
@@ -251,6 +253,11 @@ export default function CodeAIPage() {
             return;
           }
           if (!fallbackData.continue) return;
+          if (continuationCount >= MAX_CONTINUATIONS) {
+            patchAssistant((message) => ({ ...message, content: "La limite de poursuite automatique est atteinte. Le travail déjà effectué est conservé ; demande-moi de continuer si nécessaire." }));
+            return;
+          }
+          continuationCount += 1;
           body = {};
           continue;
         }
@@ -304,6 +311,11 @@ export default function CodeAIPage() {
           return;
         }
         if (!finalData.continue) return;
+        if (continuationCount >= MAX_CONTINUATIONS) {
+          patchAssistant((message) => ({ ...message, content: "La limite de poursuite automatique est atteinte. Le travail déjà effectué est conservé ; demande-moi de continuer si nécessaire." }));
+          return;
+        }
+        continuationCount += 1;
         body = {}; // poursuite automatique sans nouveau message
       }
     } catch (err) {
@@ -311,7 +323,7 @@ export default function CodeAIPage() {
       const transportFailure = !serverReportedError && /network|fetch|connexion|connection|stream|flux|socket|timed out|timeout|interrupted|interrompue/i.test(message);
       // Never replay an approved write after an ambiguous transport failure: the server may have completed it before the stream dropped.
       const approvedWriteMayHaveExecuted = body.decision === "approve";
-      if (transportFailure && !approvedWriteMayHaveExecuted) {
+      if (transportFailure && !approvedWriteMayHaveExecuted && retryAttempt < 2) {
         const waitMs = Math.min(30_000, 1200 * (2 ** Math.min(retryAttempt, 5)));
         patchAssistant((current) => ({
           ...current,
