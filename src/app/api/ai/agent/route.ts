@@ -10,7 +10,7 @@ import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { recordAIUsage } from "@/lib/ai/telemetry";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /** Liste des plugins et de leur disponibilité pour l'utilisateur courant. */
 export async function GET() {
