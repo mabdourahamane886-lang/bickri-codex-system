@@ -301,7 +301,9 @@ export default function CodeAIPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
       const transportFailure = !serverReportedError && /network|fetch|connexion|connection|stream|flux|socket|timed out|timeout|interrupted|interrompue/i.test(message);
-      if (transportFailure) {
+      // Never replay an approved write after an ambiguous transport failure: the server may have completed it before the stream dropped.
+      const approvedWriteMayHaveExecuted = body.decision === "approve";
+      if (transportFailure && !approvedWriteMayHaveExecuted) {
         const waitMs = Math.min(30_000, 1200 * (2 ** Math.min(retryAttempt, 5)));
         patchAssistant((current) => ({
           ...current,
