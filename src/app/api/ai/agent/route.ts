@@ -158,6 +158,7 @@ export async function POST(request: NextRequest) {
           },
         });
       }
+      if (!apiKey) throw new AIError("Gemini n'est pas configuré pour cette requête.", 503, "AI_PROVIDER_UNAVAILABLE");
       const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext, thinkingMode: requestedThinkingMode, researchMode: body.researchMode === true });
       if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
       return NextResponse.json({ ...result, thinkingMode });
