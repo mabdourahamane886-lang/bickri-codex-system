@@ -255,7 +255,7 @@ export async function runAgent(opts: {
     }
 
     for (let step = 0; step < MAX_STEPS; step++) {
-      if (Date.now() - started > TIME_BUDGET_MS) return { contents, events, continue: true, model, plugins: statuses, sources };
+      if (Date.now() - started > TIME_BUDGET_MS) return { contents, events, answer: "Le temps maximal de traitement est atteint. Voici l’état disponible de l’analyse ; tu peux demander de poursuivre à partir de ce résultat.", model, plugins: statuses, sources };
       compact(contents);
       const configuredModel = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-3.8-flash";
       const configuredFallback = process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
@@ -298,7 +298,7 @@ export async function runAgent(opts: {
       for (const call of calls) parts.push(await execute(call, tools, opts.ctx, false, events, opts.onProgress));
       contents.push({ role: "user", parts });
     }
-    return { contents, events, continue: true, model, plugins: statuses, sources };
+    return { contents, events, answer: "La limite de 12 étapes de traitement est atteinte. Le travail déjà effectué est conservé. Demande-moi de poursuivre si une étape supplémentaire est nécessaire.", model, plugins: statuses, sources };
   } finally {
     await Promise.all(closers.map((c) => c()));
   }
