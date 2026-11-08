@@ -1,0 +1,50 @@
+name: Remediate vulnerable dependencies
+
+on:
+  push:
+    branches:
+      - fix/agent-timeout-auto-resume
+    paths:
+      - '.github/workflows/remediate-dependencies.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bcx-dependency-remediation
+  cancel-in-progress: false
+
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout remediation branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/agent-timeout-auto-resume
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Update vulnerable dependencies within declared ranges
+        run: npm audit fix
+      - name: Verify production dependency audit
+        run: npm audit --omit=dev --audit-level=high
+      - name: Verify types, lint and tests
+        run: npm run check
+      - name: Verify production build
+        run: npm run build
+      - name: Commit verified lockfile updates
+        run: |
+          if ! git diff --quiet -- package.json package-lock.json; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add package.json package-lock.json
+            git commit -m 'fix: remediate vulnerable npm dependencies'
+            git push origin HEAD:fix/agent-timeout-auto-resume
+          else
+            echo 'No dependency manifest changes were needed.'
+          fi
