@@ -21,6 +21,14 @@ type ChatMessage = { role: "user" | "assistant"; content: string; events?: Agent
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
+function sourceFavicon(url: string): string {
+  try {
+    const hostname = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
+  } catch {
+    return "";
+  }
+}
 function conversationGroup(value: string) {
   const date = new Date(value);
   const today = new Date();
@@ -648,16 +656,21 @@ export default function CodeAIPage() {
                               <summary><span>{isLast && loading ? "Réflexion en cours" : "Réflexion terminée"}</span><small>{m.events.length} opérations · journal opérationnel</small></summary>
                               <ToolEvents events={m.events} />
                             </details>}
-                            {!!m.sources?.length && <section className="bcx-research-sources" aria-label="Sources Web consultées">
-                              <header><b>Sources de la recherche</b><span>{m.sources.length} résultats · {m.sources.filter((source) => source.opened).length} pages ouvertes</span></header>
-                              <ol>{m.sources.map((source, sourceIndex) => <li key={source.url}>
-                                <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title || source.url}<span aria-hidden="true"> ↗</span></a>
-                                <small>{source.opened ? "Page consultée" : "Résultat de recherche"} · {source.provider}</small>
-                                {source.snippet && <p>{source.snippet.slice(0, 320)}</p>}
-                              </li>)}</ol>
-                            </section>}
+
 
                             {m.content && <Markdown>{m.content}</Markdown>}
+                            {!!m.sources?.length && (
+                              <div className="bcx-source-favicons" aria-label="Sources consultées" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                                <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 600 }}>Sources</span>
+                                {Array.from(new Map(m.sources.map((source) => {
+                                  try { return [new URL(source.url).hostname, source]; } catch { return [source.url, source]; }
+                                })).values()).slice(0, 6).map((source) => (
+                                  <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" title={source.title || source.url} aria-label={`Ouvrir la source : ${source.title || source.url}`} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 27, height: 27, border: "1px solid var(--border)", borderRadius: "50%", background: "var(--surface)", overflow: "hidden" }}>
+                                    {sourceFavicon(source.url) ? <img src={sourceFavicon(source.url)} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width: 18, height: 18, objectFit: "contain" }} /> : <span aria-hidden="true" style={{ fontSize: 14 }}>🌐</span>}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
                             {!!m.images?.length && (
                               <div className="bcx-image-search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 12, marginTop: 14 }}>
                                 {m.images.map((image, imageIndex) => (
