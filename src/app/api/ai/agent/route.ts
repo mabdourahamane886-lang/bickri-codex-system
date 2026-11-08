@@ -38,7 +38,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const startedAt = Date.now();
   const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "GEMINI_API_KEY est manquante dans les variables serveur Vercel.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
+  if (!apiKey && !process.env.OPENAI_API_KEY) return NextResponse.json({ error: "Aucune clé IA serveur n’est configurée. Ajoute GEMINI_API_KEY ou OPENAI_API_KEY dans Vercel.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
 
   const limit = rateLimit(`agent:${clientKey(request.headers)}`, 30, 60_000);
   if (!limit.ok) return NextResponse.json({ error: `Trop de requêtes. Réessaie dans ${limit.retryAfter} s.` }, { status: 429 });
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     const latestUserQuery = [...contents].reverse().find((item) => item.role === "user")?.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n") || "";
     const thinkingMode = resolveThinkingMode(latestUserQuery, requestedThinkingMode);
     try {
-      if (!apiKey) throw new AIError("Gemini n'est pas configuré; bascule vers un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
+      if (!apiKey && body.stream !== true) throw new AIError("Gemini n'est pas configuré; bascule vers un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
       if (body.stream === true) {
         const encoder = new TextEncoder();
         const stream = new ReadableStream<Uint8Array>({
@@ -100,6 +100,19 @@ export async function POST(request: NextRequest) {
             void (async () => {
               try {
                 send("phase", { phase: "analysis", label: "Analyse de la demande", status: "started", at: new Date().toISOString() });
+                if (!apiKey) {
+                  const fallbackMessages = contents.map((item) => ({
+                    role: item.role === "model" ? "assistant" as const : "user" as const,
+                    content: item.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n").trim(),
+                  })).filter((item) => item.content.length > 0).slice(-12);
+                  const latest = [...fallbackMessages].reverse().find((item) => item.role === "user")?.content || "";
+                  const fallback = await generateWithRouter({
+                    systemInstruction: buildSystemInstruction(language, projectContext, [], latest),
+                    messages: fallbackMessages, thinkingMode: requestedThinkingMode, excludeProviders: ["google"],
+                  });
+                  send("result", { contents: [...contents, { role: "model", parts: [{ text: fallback.answer }] }], events: [], answer: fallback.answer, model: fallback.model, provider: fallback.provider, thinkingMode: fallback.thinkingMode, fallbackMode: true, plugins: [] });
+                  return;
+                }
                 const result = await runAgent({
                   ctx, apiKey, contents, pluginIds, decision, language, projectContext,
                   thinkingMode: requestedThinkingMode,
@@ -110,7 +123,24 @@ export async function POST(request: NextRequest) {
                 if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
                 send("result", { ...result, thinkingMode });
               } catch (error) {
-                send("stream_error", { error: error instanceof Error ? error.message : "Erreur pendant le traitement." });
+                if (process.env.OPENAI_API_KEY) {
+                  try {
+                    const fallbackMessages = contents.map((item) => ({
+                      role: item.role === "model" ? "assistant" as const : "user" as const,
+                      content: item.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n").trim(),
+                    })).filter((item) => item.content.length > 0).slice(-12);
+                    const latest = [...fallbackMessages].reverse().find((item) => item.role === "user")?.content || "";
+                    const fallback = await generateWithRouter({
+                      systemInstruction: buildSystemInstruction(language, projectContext, [], latest),
+                      messages: fallbackMessages, thinkingMode: requestedThinkingMode, excludeProviders: ["google"],
+                    });
+                    send("result", { contents: [...contents, { role: "model", parts: [{ text: fallback.answer }] }], events: [], answer: fallback.answer, model: fallback.model, provider: fallback.provider, thinkingMode: fallback.thinkingMode, fallbackMode: true, plugins: [] });
+                  } catch (fallbackError) {
+                    send("stream_error", { error: fallbackError instanceof Error ? fallbackError.message : "Le fournisseur IA de secours a échoué." });
+                  }
+                } else {
+                  send("stream_error", { error: error instanceof Error ? error.message : "Erreur pendant le traitement." });
+                }
               } finally {
                 closed = true;
                 stopHeartbeat();
@@ -128,6 +158,7 @@ export async function POST(request: NextRequest) {
           },
         });
       }
+      if (!apiKey) throw new AIError("Gemini n'est pas configuré pour cette requête.", 503, "AI_PROVIDER_UNAVAILABLE");
       const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext, thinkingMode: requestedThinkingMode, researchMode: body.researchMode === true });
       if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
       return NextResponse.json({ ...result, thinkingMode });
@@ -135,6 +166,7 @@ export async function POST(request: NextRequest) {
       if (!(agentError instanceof AIError) || !["AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_BUSY", "AI_NETWORK_TIMEOUT", "AI_QUOTA_OR_RATE_LIMIT", "AI_EMPTY_RESPONSE", "AI_PROVIDER_ERROR", "AI_ACCESS_DENIED", "AI_BAD_REQUEST", "AI_MODEL_NOT_FOUND"].includes(agentError.code || "")) {
         throw agentError;
       }
+      if (!process.env.OPENAI_API_KEY) throw agentError;
       const fallbackMessages = contents
         .map((item) => ({
           role: item.role === "model" ? "assistant" as const : "user" as const,
@@ -148,6 +180,7 @@ export async function POST(request: NextRequest) {
         systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery),
         messages: fallbackMessages,
         thinkingMode: requestedThinkingMode,
+        excludeProviders: ["google"],
       });
       await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: fallback.provider || "fallback", outcome: "success", latencyMs: Date.now() - startedAt });
       const fallbackContents = [...contents, { role: "model" as const, parts: [{ text: fallback.answer }] }];
