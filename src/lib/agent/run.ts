@@ -22,7 +22,7 @@ export type AgentResult = {
 };
 
 const MAX_STEPS = 12;
-const TIME_BUDGET_MS = 48_000;
+const TIME_BUDGET_MS = 240_000;
 const MAX_HISTORY_CHARS = 250_000;
 
 /** Nettoie l'historique reçu du navigateur : rôles, types et taille. */
