@@ -1,7 +1,7 @@
 # Configuration Vercel : Supabase et Gemini
 
 Projet Vercel : `bickri-codex-system` (équipe `bickri-service-agency`).
-Projet Supabase BCX : `avgzbyvmsjjfgywtijno` (région eu-west-1).
+Projet Supabase BCX : `okdohokhlkxrmxpevees` (région eu-west-1).
 
 ## 1. Variables d'environnement
 
@@ -9,11 +9,13 @@ Dans **Vercel → bickri-codex-system → Settings → Environment Variables**, 
 
 | Variable | Valeur | Type |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://avgzbyvmsjjfgywtijno.supabase.co` | Publique |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_DdDungDBgeVWS4yKRZJa1Q_dDhxV36a` | Publique (clé « publishable ») |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://okdohokhlkxrmxpevees.supabase.co` | Publique |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_…` | Publique (clé « publishable ») |
 | `GEMINI_API_KEY` | Clé créée sur [Google AI Studio](https://aistudio.google.com/apikey) | **Secrète** : type « Sensitive » |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Optionnelle |
-| `GEMINI_FALLBACK_MODEL` | `gemini-2.5-flash-lite` | Optionnelle |
+| `GEMINI_MODEL` / `AI_MODEL_DEFAULT` | `gemini-3.8-flash` | Optionnelle |
+| `GEMINI_FALLBACK_MODEL` / `AI_MODEL_FALLBACK` | `gemini-3.5-flash-lite` | Optionnelle |
+| `GEMINI_FAST_MODEL` | `gemini-3.5-flash-lite` | Optionnelle |
+| `OPENAI_API_KEY` | Clé OpenAI serveur pour le basculement automatique si Gemini échoue | Optionnelle, secrète |
 | `BCX_ADMIN_EMAILS` | `mabdourahamane886@gmail.com` | Optionnelle : active le plugin GitHub pour ce compte |
 | `GITHUB_ALLOWED_OWNERS` | `mabdourahamane886-lang` | Optionnelle : comptes GitHub accessibles |
 
