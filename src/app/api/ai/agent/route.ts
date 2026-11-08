@@ -110,7 +110,24 @@ export async function POST(request: NextRequest) {
                 if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
                 send("result", { ...result, thinkingMode });
               } catch (error) {
-                send("stream_error", { error: error instanceof Error ? error.message : "Erreur pendant le traitement." });
+                if (process.env.OPENAI_API_KEY) {
+                  try {
+                    const fallbackMessages = contents.map((item) => ({
+                      role: item.role === "model" ? "assistant" as const : "user" as const,
+                      content: item.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n").trim(),
+                    })).filter((item) => item.content.length > 0).slice(-12);
+                    const latest = [...fallbackMessages].reverse().find((item) => item.role === "user")?.content || "";
+                    const fallback = await generateWithRouter({
+                      systemInstruction: buildSystemInstruction(language, projectContext, [], latest),
+                      messages: fallbackMessages, thinkingMode: requestedThinkingMode, excludeProviders: ["google"],
+                    });
+                    send("result", { contents: [...contents, { role: "model", parts: [{ text: fallback.answer }] }], events: [], answer: fallback.answer, model: fallback.model, provider: fallback.provider, thinkingMode: fallback.thinkingMode, fallbackMode: true, plugins: [] });
+                  } catch (fallbackError) {
+                    send("stream_error", { error: fallbackError instanceof Error ? fallbackError.message : "Le fournisseur IA de secours a échoué." });
+                  }
+                } else {
+                  send("stream_error", { error: error instanceof Error ? error.message : "Erreur pendant le traitement." });
+                }
               } finally {
                 closed = true;
                 stopHeartbeat();
