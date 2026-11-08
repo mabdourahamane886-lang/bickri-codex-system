@@ -63,7 +63,10 @@ export async function generateWithGemini(opts: {
   maxAttempts?: number;
   thinkingMode?: ResolvedThinkingMode;
 }): Promise<{ answer: string; model: string }> {
-  const generationConfig: Record<string, unknown> = { temperature: 0.2, maxOutputTokens: opts.maxOutputTokens ?? 4096 };
+  const generationConfig: Record<string, unknown> = { maxOutputTokens: opts.maxOutputTokens ?? 4096 };
+  // Gemini 3.5 Flash-Lite rejects custom temperature values on GenerateContent.
+  // Leave the provider default in place for this model to avoid HTTP 400 responses.
+  if (!/^gemini-3\.5-flash-lite$/i.test(opts.model.trim())) generationConfig.temperature = 0.2;
   if (/^gemini-2\.5-/i.test(opts.model) && opts.thinkingMode) generationConfig.thinkingConfig = { thinkingBudget: getThinkingBudget(opts.thinkingMode) };
   const payload = JSON.stringify({
     systemInstruction: { parts: [{ text: opts.systemInstruction }] },

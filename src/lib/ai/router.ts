@@ -34,9 +34,9 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
 
   const latestUserQuery = [...opts.messages].reverse().find((message) => message.role === "user")?.content ?? "";
   const thinkingMode = resolveThinkingMode(latestUserQuery, opts.thinkingMode);
-  const configuredPrimary = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const configuredPrimary = process.env.AI_MODEL_DEFAULT || process.env.GEMINI_MODEL || "gemini-3.8-flash";
   const primaryModel = thinkingMode === "fast"
-    ? process.env.GEMINI_FAST_MODEL || "gemini-2.5-flash-lite"
+    ? process.env.GEMINI_FAST_MODEL || "gemini-3.5-flash-lite"
     : thinkingMode === "expert"
       ? process.env.GEMINI_EXPERT_MODEL || process.env.GEMINI_REASONING_MODEL || configuredPrimary
       : thinkingMode === "deep"
@@ -44,7 +44,7 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
         : configuredPrimary;
   const fallbackModel = thinkingMode === "fast"
     ? configuredPrimary
-    : process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite";
+    : process.env.AI_MODEL_FALLBACK || process.env.GEMINI_FALLBACK_MODEL || "gemini-3.6-flash";
 
   try {
     const result = await generateWithGemini({
