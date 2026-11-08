@@ -17,7 +17,7 @@ type ImageSearchResult = { title: string; imageUrl: string; thumbnailUrl: string
 type ThinkingMode = "auto" | "fast" | "balanced" | "deep" | "expert";
 type ResolvedThinkingMode = "fast" | "balanced" | "deep" | "expert";
 type WebSource = { title: string; url: string; snippet: string; provider: string; opened: boolean; status?: number };
-type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; sources?: WebSource[]; model?: string; thinkingMode?: ResolvedThinkingMode; images?: ImageSearchResult[]; attachment?: { name: string; mimeType: string; preview?: string } };
+type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; sources?: WebSource[]; model?: string; thinkingMode?: ResolvedThinkingMode; images?: ImageSearchResult[]; generatedImage?: string; attachment?: { name: string; mimeType: string; preview?: string } };
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
 type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
@@ -395,7 +395,7 @@ export default function CodeAIPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok || typeof data.image !== "string") throw new Error(data.error || "Impossible de générer cette image.");
       setImageResult({ image: data.image, model: data.model });
-      setMessages((all) => [...all, { role: "user", content: (imageMode === "edit" ? "Modifier l’image : " : "Créer une image : ") + content }, { role: "assistant", content: imageMode === "edit" ? "Voici l’image modifiée." : "Voici l’image générée." }]);
+      setMessages((all) => [...all, { role: "user", content: (imageMode === "edit" ? "Modifier l’image : " : "Créer une image : ") + content }, { role: "assistant", content: imageMode === "edit" ? "Voici l’image modifiée." : "Voici l’image générée.", generatedImage: data.image }]);
       setPrompt("");
       setImageSource(null);
       setImageMode("create");
@@ -671,6 +671,7 @@ export default function CodeAIPage() {
 
 
                             {m.content && <Markdown>{m.content}</Markdown>}
+                            {m.generatedImage && <figure style={{ margin: "14px 0 0", maxWidth: 760 }}><a href={m.generatedImage} target="_blank" rel="noopener noreferrer"><img src={m.generatedImage} alt="Image créée par Bickri IA" style={{ display: "block", width: "100%", height: "auto", maxHeight: 640, objectFit: "contain", borderRadius: 14, border: "1px solid var(--border)", background: "var(--surface-muted)" }} /></a><figcaption style={{ marginTop: 8, fontSize: 12, color: "var(--muted-foreground)" }}>Image générée par Bickri IA</figcaption></figure>}
                             {!!m.sources?.length && (
                               <div className="bcx-source-favicons" aria-label="Sources consultées" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                                 <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 600 }}>Sources</span>
