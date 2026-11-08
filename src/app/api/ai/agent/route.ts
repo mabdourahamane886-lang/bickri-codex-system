@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     const latestUserQuery = [...contents].reverse().find((item) => item.role === "user")?.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n") || "";
     const thinkingMode = resolveThinkingMode(latestUserQuery, requestedThinkingMode);
     try {
-      if (!apiKey) throw new AIError("Gemini n'est pas configuré; bascule vers un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
+      if (!apiKey && body.stream !== true) throw new AIError("Gemini n'est pas configuré; bascule vers un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
       if (body.stream === true) {
         const encoder = new TextEncoder();
         const stream = new ReadableStream<Uint8Array>({
@@ -100,6 +100,19 @@ export async function POST(request: NextRequest) {
             void (async () => {
               try {
                 send("phase", { phase: "analysis", label: "Analyse de la demande", status: "started", at: new Date().toISOString() });
+                if (!apiKey) {
+                  const fallbackMessages = contents.map((item) => ({
+                    role: item.role === "model" ? "assistant" as const : "user" as const,
+                    content: item.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n").trim(),
+                  })).filter((item) => item.content.length > 0).slice(-12);
+                  const latest = [...fallbackMessages].reverse().find((item) => item.role === "user")?.content || "";
+                  const fallback = await generateWithRouter({
+                    systemInstruction: buildSystemInstruction(language, projectContext, [], latest),
+                    messages: fallbackMessages, thinkingMode: requestedThinkingMode, excludeProviders: ["google"],
+                  });
+                  send("result", { contents: [...contents, { role: "model", parts: [{ text: fallback.answer }] }], events: [], answer: fallback.answer, model: fallback.model, provider: fallback.provider, thinkingMode: fallback.thinkingMode, fallbackMode: true, plugins: [] });
+                  return;
+                }
                 const result = await runAgent({
                   ctx, apiKey, contents, pluginIds, decision, language, projectContext,
                   thinkingMode: requestedThinkingMode,
