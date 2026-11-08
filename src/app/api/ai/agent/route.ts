@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
             const send = (type: string, data: unknown) => {
               if (closed) return;
               try {
-                controller.enqueue(encoder.encode(`event: ${type}\\ndata: ${JSON.stringify(data)}\\n\\n`));
+                controller.enqueue(encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`));
               } catch {
                 closed = true;
                 stopHeartbeat();
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
             heartbeat = setInterval(() => {
               if (closed) return;
               try {
-                controller.enqueue(encoder.encode(": bcx-keepalive\\n\\n"));
+                controller.enqueue(encoder.encode(": bcx-keepalive\n\n"));
               } catch {
                 closed = true;
                 stopHeartbeat();
