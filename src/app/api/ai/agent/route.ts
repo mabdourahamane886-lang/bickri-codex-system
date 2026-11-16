@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
             const send = (type: string, data: unknown) => {
               if (cancelled) return;
               try {
-                controller.enqueue(encoder.encode(`event: ${type}\\ndata: ${JSON.stringify(data)}\\n\\n`));
+                controller.enqueue(encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`));
               } catch {
                 cancelled = true;
               }
@@ -86,107 +86,14 @@ export async function POST(request: NextRequest) {
             // Keep-alive SSE : évite qu'un proxy coupe une génération silencieuse.
             heartbeat = setInterval(() => {
               if (!cancelled) {
-                try { controller.enqueue(encoder.encode(": keep-alive\\n\\n")); }
+                try { controller.enqueue(encoder.encode(": keep-alive\n\n")); }
                 catch { cancelled = true; if (heartbeat) clearInterval(heartbeat); }
               }
             }, 12_000);
             void (async () => {
               try {
                 send("phase", { phase: "analysis", label: "Analyse de la demande", status: "started", at: new Date().toISOString() });
-                const result = await runAgent({
-                  ctx, apiKey, contents, pluginIds, decision, language, projectContext,
-                  thinkingMode: requestedThinkingMode,
-                  researchMode: body.researchMode === true,
-                  onProgress: (event) => send("activity", { ...event, at: new Date().toISOString() }),
-                });
-                send("phase", { phase: "complete", label: "Traitement terminé", status: "ok", at: new Date().toISOString() });
-                if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
-                send("result", { ...result, thinkingMode });
-              } catch (error) {
-                const retryableCodes = ["AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_BUSY", "AI_NETWORK_TIMEOUT", "AI_QUOTA_OR_RATE_LIMIT", "AI_EMPTY_RESPONSE", "AI_PROVIDER_ERROR", "AI_ACCESS_DENIED", "AI_BAD_REQUEST", "AI_MODEL_NOT_FOUND"];
-                if (error instanceof AIError && retryableCodes.includes(error.code || "")) {
-                  try {
-                    const fallbackMessages = contents
-                      .map((item) => ({
-                        role: item.role === "model" ? "assistant" as const : "user" as const,
-                        content: item.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\\n").trim(),
-                      }))
-                      .filter((item) => item.content.length > 0)
-                      .slice(-12);
-                    const latestQuery = [...fallbackMessages].reverse().find((item) => item.role === "user")?.content || "";
-                    if (!latestQuery) throw error;
-                    const fallback = await generateWithRouter({
-                      systemInstruction: buildSystemInstruction(language, projectContext, [], latestQuery),
-                      messages: fallbackMessages,
-                      thinkingMode: requestedThinkingMode,
-                    });
-                    const fallbackContents = [...contents, { role: "model" as const, parts: [{ text: fallback.answer }] }];
-                    await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: fallback.provider || "fallback", outcome: "success", latencyMs: Date.now() - startedAt });
-                    send("result", {
-                      contents: fallbackContents, events: [], answer: fallback.answer,
-                      model: fallback.model, provider: fallback.provider, thinkingMode: fallback.thinkingMode,
-                      fallbackMode: true,
-                      plugins: PLUGINS.map((plugin) => ({
-                        id: plugin.id, name: plugin.name, description: plugin.description,
-                        available: false, reason: "Réponse textuelle de secours : les outils nécessitent Gemini.",
-                        tools: 0, writeTools: 0,
-                      })),
-                    });
-                  } catch (fallbackError) {
-                    send("stream_error", { error: fallbackError instanceof Error ? fallbackError.message : "Le moteur IA est temporairement indisponible." });
-                  }
-                } else {
-                  send("stream_error", { error: error instanceof Error ? error.message : "Erreur pendant le traitement." });
-                }
-              } finally {
-                if (heartbeat) clearInterval(heartbeat);
-                if (!cancelled) {
-                  try { controller.close(); } catch { /* flux déjà fermé par le client */ }
-                }
-              }
-            })();
-          },
-          cancel() {
-            cancelled = true;
-            if (heartbeat) clearInterval(heartbeat);
-          },
-        });
-        return new Response(stream, {
-          headers: {
-            "Content-Type": "text/event-stream; charset=utf-8",
-            "Cache-Control": "no-cache, no-transform",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-          },
-        });
-      }
-      const result = await runAgent({
-                  ctx, apiKey, contents, pluginIds, decision, language, projectContext,
-                  thinkingMode: requestedThinkingMode,
-                  researchMode: body.researchMode === true,
-                  onProgress: (event) => send("activity", { ...event, at: new Date().toISOString() }),
-                });
-                send("phase", { phase: "complete", label: "Traitement terminé", status: "ok", at: new Date().toISOString() });
-                if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
-                send("result", { ...result, thinkingMode });
-              } catch (error) {
-                send("stream_error", { error: error instanceof Error ? error.message : "Erreur pendant le traitement." });
-              } finally {
-                controller.close();
-              }
-            })();
-          },
-        });
-        return new Response(stream, {
-          headers: {
-            "Content-Type": "text/event-stream; charset=utf-8",
-            "Cache-Control": "no-cache, no-transform",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-          },
-        });
-      }
-      const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext, thinkingMode: requestedThinkingMode, researchMode: body.researchMode === true });
+                const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext, thinkingMode: requestedThinkingMode, researchMode: body.researchMode === true });
       if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
       return NextResponse.json({ ...result, thinkingMode });
     } catch (agentError) {
