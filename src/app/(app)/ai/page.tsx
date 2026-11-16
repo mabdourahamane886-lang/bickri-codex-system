@@ -46,7 +46,23 @@ type AgentResponse = {
 const CHAT_KEY = "bcx_ai_chat_v2";
 const HISTORY_KEY = "bcx_ai_conversations_v1";
 const PLUGINS_KEY = "bcx_ai_plugins_v1";
-const MAX_CONTINUATIONS = 4;
+// Garde-fou anti-boucle : jusqu'à 40 reprises HTTP automatiques après la première exécution.
+const MAX_CONTINUATIONS = 40;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchAgentResponse(input: RequestInfo | URL, init: RequestInit): Promise<Response> {
+  let response: Response | undefined;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    response = await fetch(input, init);
+    if (![429, 502, 503, 504].includes(response.status) || attempt === 2) return response;
+    const retryAfter = Number(response.headers.get("retry-after"));
+    const delay = Number.isFinite(retryAfter) && retryAfter > 0
+      ? Math.min(retryAfter * 1000, 8000)
+      : 1000 * 2 ** attempt;
+    await sleep(delay);
+  }
+  return response!;
+}
 const LANGUAGES = ["TypeScript / Next.js", "JavaScript", "HTML / CSS", "Python", "Python / Django", "Dart / Flutter", "Kotlin / Android", "Java", "C / C++", "Rust", "PHP", "SQL / Supabase", "Autre langage"];
 const STARTERS = [
   { icon: Layers, text: "Crée une application web responsive en Next.js avec authentification Supabase." },
@@ -172,7 +188,7 @@ export default function CodeAIPage() {
 
   const loadPlugins = useCallback(async () => {
     try {
-      const res = await fetch("/api/ai/agent", { cache: "no-store" });
+      const res = await fetchAgentResponse("/api/ai/agent", { cache: "no-store" });
       const data = await res.json();
       setPlugins(data.plugins ?? []);
     } catch { setPlugins([]); }
@@ -297,7 +313,7 @@ export default function CodeAIPage() {
         if (!finalData.continue) return;
         body = {}; // poursuite automatique sans nouveau message
       }
-      patchAssistant((m) => ({ ...m, content: m.content || "La tâche est longue : écris « continue » pour que je poursuive." }));
+      patchAssistant((m) => ({ ...m, content: m.content || "La tâche dépasse la limite de sécurité des reprises automatiques. Ton historique est conservé ; relance la demande pour reprendre à partir du contexte enregistré." }));
     } catch (err) {
       setError(friendlyError(err));
     } finally {
