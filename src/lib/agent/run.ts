@@ -22,7 +22,8 @@ export type AgentResult = {
 };
 
 const MAX_STEPS = 12;
-const TIME_BUDGET_MS = 48_000;
+// Marge sous maxDuration=60s pour le chargement des plugins, la mémoire et la fermeture SSE.
+const TIME_BUDGET_MS = 38_000;
 const MAX_HISTORY_CHARS = 250_000;
 
 /** Nettoie l'historique reçu du navigateur : rôles, types et taille. */
@@ -183,7 +184,21 @@ export async function runAgent(opts: {
           .join("\n")
           .slice(0, 10000);
       } else if (error) {
-        console.error("BCX memory context read failed", error.code);
+        const missingFromSchema = error.code === "PGRST205" || error.code === "42P01";
+        console.warn(
+          missingFromSchema
+            ? "BCX memory table is missing from the Supabase Data API schema cache; continuing without personal memory."
+            : "BCX memory context read failed:",
+          error.code,
+        );
+        emit({
+          tool: "memory",
+          label: missingFromSchema
+            ? "Mémoire Supabase indisponible dans le cache API — conversation poursuivie sans mémoire personnelle"
+            : "Lecture de la mémoire Supabase impossible — conversation poursuivie sans mémoire personnelle",
+          write: false,
+          status: "error",
+        });
       }
     } catch (error) {
       console.error("BCX memory context unavailable", error instanceof Error ? error.message : "unknown");
@@ -274,7 +289,10 @@ export async function runAgent(opts: {
         systemInstruction: system,
         contents,
         tools: declarations,
-        timeoutMs: thinkingMode === "fast" ? 15000 : thinkingMode === "expert" ? 40000 : thinkingMode === "deep" ? 30000 : 25000,
+        timeoutMs: Math.min(
+          thinkingMode === "fast" ? 15000 : thinkingMode === "expert" ? 40000 : thinkingMode === "deep" ? 30000 : 25000,
+          Math.max(5000, TIME_BUDGET_MS - (Date.now() - started) - 3000),
+        ),
         maxOutputTokens: thinkingMode === "fast" ? 3072 : thinkingMode === "balanced" ? 4096 : thinkingMode === "deep" ? 12288 : 16384,
         thinkingMode,
       });
