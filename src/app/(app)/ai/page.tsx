@@ -259,7 +259,7 @@ export default function CodeAIPage() {
             return;
           }
           if (!fallbackData.continue) return;
-          body = {};
+          body = { ...body, message: undefined };
           continue;
         }
         if (!res.body) throw new Error("Le flux de progression n’est pas disponible dans ce navigateur.");
@@ -311,7 +311,7 @@ export default function CodeAIPage() {
           return;
         }
         if (!finalData.continue) return;
-        body = {}; // poursuite automatique sans nouveau message
+        body = { ...body, message: undefined }; // conserve les paramètres et évite de répéter le dernier message
       }
       patchAssistant((m) => ({ ...m, content: m.content || "La tâche dépasse la limite de sécurité des reprises automatiques. Ton historique est conservé ; relance la demande pour reprendre à partir du contexte enregistré." }));
     } catch (err) {
