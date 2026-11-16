@@ -71,39 +71,60 @@ export async function generateContent(opts: {
   const models = healthyModels.length ? healthyModels : preferredModels;
   let lastError: AIError | null = null;
 
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
   for (const model of models) {
-    try {
-      const { res, data } = await call(model);
-      if (!res.ok) {
-        const detail = data?.error?.message?.slice(0, 300) ?? "";
-        console.error("Gemini", model, res.status, detail);
-        lastError = new AIError(
-          RETRYABLE.has(res.status)
-            ? "Le service IA est momentanément saturé. Tentative avec un autre modèle…"
-            : `La requête IA a échoué (HTTP ${res.status}). Vérifie les paramètres du modèle et les autorisations de la clé.`,
-          res.status === 429 ? 429 : RETRYABLE.has(res.status) ? 503 : 502,
-          RETRYABLE.has(res.status) ? "AI_PROVIDER_BUSY" : "AI_PROVIDER_ERROR",
-        );
-        if (RETRYABLE.has(res.status)) {
-          if (model === opts.model) primaryDownUntil = Date.now() + 10 * 60_000;
+    // Deux essais maximum pour les erreurs temporaires; un 404 passe au modèle suivant.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const { res, data } = await call(model);
+        if (!res.ok) {
+          const detail = data?.error?.message?.slice(0, 300) ?? "";
+          console.error("Gemini", model, res.status, detail);
+          if (res.status === 404) {
+            lastError = new AIError(`Le modèle Gemini « ${model} » est introuvable (HTTP 404). Vérifie le nom du modèle configuré.`, 502, "AI_MODEL_NOT_FOUND");
+            if (model === opts.model) primaryDownUntil = Date.now() + 10 * 60_000;
+            break;
+          }
+          if (res.status === 429) {
+            lastError = new AIError("Le quota Gemini est temporairement atteint (HTTP 429). BCX essaie un autre modèle ou attend le prochain créneau disponible.", 429, "AI_QUOTA_OR_RATE_LIMIT");
+          } else if (RETRYABLE.has(res.status)) {
+            lastError = new AIError("Le service Gemini est momentanément indisponible. BCX tente une nouvelle connexion.", 503, "AI_PROVIDER_BUSY");
+          } else if (res.status === 403) {
+            throw new AIError("Gemini refuse l'accès (HTTP 403). Vérifie les autorisations de la clé et l'activation de l'API.", 502, "AI_ACCESS_DENIED");
+          } else {
+            throw new AIError(`La requête Gemini a échoué (HTTP ${res.status}). ${detail}`, 502, "AI_PROVIDER_ERROR");
+          }
+          if (model === opts.model) primaryDownUntil = Date.now() + 5 * 60_000;
+          if (attempt === 0 && RETRYABLE.has(res.status) && res.status !== 404) {
+            const retryAfter = Number(res.headers.get("retry-after"));
+            const delay = Number.isFinite(retryAfter) && retryAfter > 0
+              ? Math.min(retryAfter * 1000, 8000)
+              : 1000;
+            await wait(delay);
+            continue;
+          }
+          break;
+        }
+        const content = data?.candidates?.[0]?.content;
+        if (!content?.parts?.length) {
+          lastError = new AIError(`Gemini n'a renvoyé aucun contenu (${data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason || "réponse vide"}).`, 502, "AI_EMPTY_RESPONSE");
+          break;
+        }
+        return { content: { role: "model", parts: content.parts }, model, finishReason: data?.candidates?.[0]?.finishReason };
+      } catch (err) {
+        if (err instanceof AIError) throw err;
+        lastError = new AIError("Le service Gemini n'a pas répondu à temps. BCX tente une nouvelle connexion.", 503, "AI_NETWORK_TIMEOUT");
+        if (model === opts.model) primaryDownUntil = Date.now() + 5 * 60_000;
+        if (attempt === 0) {
+          await wait(750);
           continue;
         }
-        throw lastError;
+        break;
       }
-      const content = data?.candidates?.[0]?.content;
-      if (!content?.parts?.length) {
-        lastError = new AIError(`Gemini n'a renvoyé aucun contenu (${data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason || "réponse vide"}).`, 502, "AI_EMPTY_RESPONSE");
-        if (model === opts.model) continue;
-        throw lastError;
-      }
-      return { content: { role: "model", parts: content.parts }, model, finishReason: data?.candidates?.[0]?.finishReason };
-    } catch (err) {
-      if (err instanceof AIError) throw err;
-      lastError = new AIError("Le service IA n'a pas répondu à temps. Tentative avec le modèle suivant…", 503, "AI_NETWORK_TIMEOUT");
-      if (model === opts.model) primaryDownUntil = Date.now() + 5 * 60_000;
-      // Une panne réseau sur un modèle ne doit pas empêcher l'essai des modèles suivants.
-      continue;
     }
+  }
+  if (lastError?.code === "AI_MODEL_NOT_FOUND" || lastError?.code === "AI_QUOTA_OR_RATE_LIMIT" || lastError?.code === "AI_ACCESS_DENIED") {
+    throw lastError;
   }
   throw new AIError(
     "Le service Gemini est temporairement surchargé ou indisponible sur les modèles configurés. Réessaie dans quelques instants ou ajoute un autre modèle de repli dans AI_MODEL_FALLBACKS.",
