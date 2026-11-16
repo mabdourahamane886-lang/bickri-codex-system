@@ -61,75 +61,126 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "L’espace de travail est momentanément indisponible. Réessaie dans quelques instants.", code: "AGENT_CONTEXT_UNAVAILABLE" }, { status: 503 });
   }
 
+  const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
+  const projectContext = typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "";
+  const requestedThinkingMode: ThinkingMode = body.thinkingMode === "fast" || body.thinkingMode === "balanced" || body.thinkingMode === "deep" || body.thinkingMode === "expert" || body.thinkingMode === "auto" ? body.thinkingMode : "auto";
+  const latestUserQuery = [...contents].reverse().find((item) => item.role === "user")?.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n") || "";
+  const thinkingMode = resolveThinkingMode(latestUserQuery, requestedThinkingMode);
+  const fallbackCodes = ["AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_BUSY", "AI_NETWORK_TIMEOUT", "AI_QUOTA_OR_RATE_LIMIT", "AI_EMPTY_RESPONSE", "AI_PROVIDER_ERROR", "AI_ACCESS_DENIED", "AI_BAD_REQUEST", "AI_MODEL_NOT_FOUND"];
+
+  const createFallback = async () => {
+    const fallbackMessages = contents
+      .map((item) => ({
+        role: item.role === "model" ? "assistant" as const : "user" as const,
+        content: item.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n").trim(),
+      }))
+      .filter((item) => item.content.length > 0)
+      .slice(-12);
+    const latestQuery = [...fallbackMessages].reverse().find((item) => item.role === "user")?.content || "";
+    if (!latestQuery) throw new AIError("Aucun message utilisateur disponible pour la réponse de secours.", 400, "AI_BAD_REQUEST");
+    const fallback = await generateWithRouter({
+      systemInstruction: buildSystemInstruction(language, projectContext, [], latestQuery),
+      messages: fallbackMessages,
+      thinkingMode: requestedThinkingMode,
+    });
+    const fallbackContents = [...contents, { role: "model" as const, parts: [{ text: fallback.answer }] }];
+    await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: fallback.provider || "fallback", outcome: "success", latencyMs: Date.now() - startedAt });
+    return {
+      contents: fallbackContents,
+      events: [],
+      answer: fallback.answer,
+      model: fallback.model,
+      provider: fallback.provider,
+      thinkingMode: fallback.thinkingMode,
+      fallbackMode: true,
+      plugins: PLUGINS.map((plugin) => ({
+        id: plugin.id, name: plugin.name, description: plugin.description,
+        available: false, reason: "Réponse textuelle de secours : les outils nécessitent Gemini.",
+        tools: 0, writeTools: 0,
+      })),
+    };
+  };
+
+  if (body.stream === true) {
+    const encoder = new TextEncoder();
+    let cancelled = false;
+    let heartbeat: ReturnType<typeof setInterval> | undefined;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const send = (type: string, data: unknown) => {
+          if (cancelled) return;
+          try {
+            controller.enqueue(encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`));
+          } catch {
+            cancelled = true;
+          }
+        };
+        heartbeat = setInterval(() => {
+          if (!cancelled) {
+            try { controller.enqueue(encoder.encode(": keep-alive\n\n")); }
+            catch { cancelled = true; if (heartbeat) clearInterval(heartbeat); }
+          }
+        }, 12_000);
+
+        void (async () => {
+          try {
+            send("phase", { phase: "analysis", label: "Analyse de la demande", status: "started", at: new Date().toISOString() });
+            const result = await runAgent({
+              ctx, apiKey, contents, pluginIds, decision, language, projectContext,
+              thinkingMode: requestedThinkingMode,
+              researchMode: body.researchMode === true,
+              onProgress: (event) => send("activity", { ...event, at: new Date().toISOString() }),
+            });
+            send("phase", { phase: "complete", label: "Traitement terminé", status: "ok", at: new Date().toISOString() });
+            if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
+            send("result", { ...result, thinkingMode });
+          } catch (error) {
+            if (error instanceof AIError && fallbackCodes.includes(error.code || "")) {
+              try {
+                send("result", await createFallback());
+              } catch (fallbackError) {
+                send("stream_error", { error: fallbackError instanceof Error ? fallbackError.message : "Le moteur IA est temporairement indisponible." });
+              }
+            } else {
+              send("stream_error", { error: error instanceof Error ? error.message : "Erreur pendant le traitement." });
+            }
+          } finally {
+            if (heartbeat) clearInterval(heartbeat);
+            if (!cancelled) {
+              try { controller.close(); } catch { /* flux déjà fermé par le client */ }
+            }
+          }
+        })();
+      },
+      cancel() {
+        cancelled = true;
+        if (heartbeat) clearInterval(heartbeat);
+      },
+    });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+    });
+  }
+
   try {
-    const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
-    const projectContext = typeof body.projectContext === "string" ? body.projectContext.slice(0, 12000) : "";
-    const requestedThinkingMode: ThinkingMode = body.thinkingMode === "fast" || body.thinkingMode === "balanced" || body.thinkingMode === "deep" || body.thinkingMode === "expert" || body.thinkingMode === "auto" ? body.thinkingMode : "auto";
-    const latestUserQuery = [...contents].reverse().find((item) => item.role === "user")?.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n") || "";
-    const thinkingMode = resolveThinkingMode(latestUserQuery, requestedThinkingMode);
-    try {
-      if (!apiKey) throw new AIError("Gemini n'est pas configuré; bascule vers un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
-      if (body.stream === true) {
-        const encoder = new TextEncoder();
-        let cancelled = false;
-        let heartbeat: ReturnType<typeof setInterval> | undefined;
-        const stream = new ReadableStream<Uint8Array>({
-          start(controller) {
-            const send = (type: string, data: unknown) => {
-              if (cancelled) return;
-              try {
-                controller.enqueue(encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`));
-              } catch {
-                cancelled = true;
-              }
-            };
-            // Keep-alive SSE : évite qu'un proxy coupe une génération silencieuse.
-            heartbeat = setInterval(() => {
-              if (!cancelled) {
-                try { controller.enqueue(encoder.encode(": keep-alive\n\n")); }
-                catch { cancelled = true; if (heartbeat) clearInterval(heartbeat); }
-              }
-            }, 12_000);
-            void (async () => {
-              try {
-                send("phase", { phase: "analysis", label: "Analyse de la demande", status: "started", at: new Date().toISOString() });
-                const result = await runAgent({ ctx, apiKey, contents, pluginIds, decision, language, projectContext, thinkingMode: requestedThinkingMode, researchMode: body.researchMode === true });
-      if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
-      return NextResponse.json({ ...result, thinkingMode });
-    } catch (agentError) {
-      if (!(agentError instanceof AIError) || !["AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_BUSY", "AI_NETWORK_TIMEOUT", "AI_QUOTA_OR_RATE_LIMIT", "AI_EMPTY_RESPONSE", "AI_PROVIDER_ERROR", "AI_ACCESS_DENIED", "AI_BAD_REQUEST", "AI_MODEL_NOT_FOUND"].includes(agentError.code || "")) {
-        throw agentError;
-      }
-      const fallbackMessages = contents
-        .map((item) => ({
-          role: item.role === "model" ? "assistant" as const : "user" as const,
-          content: item.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n").trim(),
-        }))
-        .filter((item) => item.content.length > 0)
-        .slice(-12);
-      if (!fallbackMessages.some((item) => item.role === "user")) throw agentError;
-      const latestUserQuery = [...fallbackMessages].reverse().find((item) => item.role === "user")?.content || "";
-      const fallback = await generateWithRouter({
-        systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery),
-        messages: fallbackMessages,
-        thinkingMode: requestedThinkingMode,
-      });
-      await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: fallback.provider || "fallback", outcome: "success", latencyMs: Date.now() - startedAt });
-      const fallbackContents = [...contents, { role: "model" as const, parts: [{ text: fallback.answer }] }];
-      return NextResponse.json({
-        contents: fallbackContents,
-        events: [],
-        answer: fallback.answer,
-        model: fallback.model,
-        provider: fallback.provider,
-        thinkingMode: fallback.thinkingMode,
-        fallbackMode: true,
-        plugins: PLUGINS.map((plugin) => ({ id: plugin.id, name: plugin.name, description: plugin.description, available: false, reason: "Réponse textuelle de secours : les outils nécessitent Gemini.", tools: 0, writeTools: 0 })),
-      });
+    const result = await runAgent({
+      ctx, apiKey, contents, pluginIds, decision, language, projectContext,
+      thinkingMode: requestedThinkingMode,
+      researchMode: body.researchMode === true,
+    });
+    if (result.answer) await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Gemini", outcome: "success", latencyMs: Date.now() - startedAt });
+    return NextResponse.json({ ...result, thinkingMode });
+  } catch (error) {
+    if (error instanceof AIError && fallbackCodes.includes(error.code || "")) {
+      return NextResponse.json(await createFallback());
     }
-  } catch (err) {
-    if (err instanceof AIError) return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
-    console.error("Agent", err instanceof Error ? err.message : err);
+    if (error instanceof AIError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+    console.error("Agent", error instanceof Error ? error.message : error);
     return NextResponse.json({ error: "L'agent a rencontré une erreur. Réessaie." }, { status: 500 });
   }
 }
