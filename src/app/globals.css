@@ -1960,3 +1960,46 @@ tr:hover .id-button svg, .id-button:focus-visible svg { opacity: 1; }
 .bcx-classic-chat .bcx-research-sources li small{display:block;margin-top:4px}
 .bcx-classic-chat .bcx-research-sources li p{margin:7px 0 0;font-size:12px;line-height:1.5;color:var(--text-muted);overflow-wrap:anywhere}
 @media(max-width:640px){.bcx-classic-chat .bcx-research-timeline>summary{align-items:flex-start;flex-wrap:wrap}.bcx-classic-chat .bcx-research-timeline>summary small{margin-left:0;width:100%}.bcx-classic-chat .bcx-research-sources{padding:11px}.bcx-classic-chat .bcx-research-toggle{padding:7px 10px}}
+
+
+/* BCX top bar: persistent desktop header and compact responsive profile selector. */
+.bcx-classic-chat { grid-template-rows: 58px minmax(0, 1fr) !important; }
+.bcx-classic-chat > .classic-chat-sidebar { grid-row: 1 / 3 !important; }
+.bcx-classic-chat > .bcx-chat-toolbar { grid-column: 2; grid-row: 1; display: flex !important; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; min-height: 58px; padding: 8px 20px !important; border-bottom: 1px solid #e5e7eb !important; background: #fff !important; color: #202123 !important; }
+.bcx-classic-chat > .chat-main { grid-column: 2; grid-row: 2; min-height: 0; height: 100%; }
+.bcx-toolbar-brand,.bcx-toolbar-actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.bcx-toolbar-brand strong { color: #172033; font-size: 13px; letter-spacing: .045em; white-space: nowrap; }
+.bcx-toolbar-brand strong span { color: #2563eb; }
+.bcx-toolbar-brand small { color: #8a93a3; font-size: 9px; font-weight: 700; letter-spacing: .13em; white-space: nowrap; }
+.bcx-toolbar-menu { display: none !important; }
+.bcx-profile-switch { display: inline-flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid #e5eaf1; border-radius: 13px; background: #f8fafc; }
+.bcx-profile-caption { display: inline-flex; align-items: center; gap: 5px; padding: 0 9px; color: #718096; font-size: 9px; font-weight: 800; letter-spacing: .09em; }
+.bcx-profile-caption svg { color: #2563eb; }
+.bcx-profile-switch button { min-width: 58px; min-height: 32px; padding: 0 11px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #64748b; font-size: 10px; font-weight: 800; letter-spacing: .04em; cursor: pointer; transition: background .18s ease, color .18s ease, box-shadow .18s ease; }
+.bcx-profile-switch button:hover { background: #eef4ff; color: #1d4ed8; }
+.bcx-profile-switch button.is-active { border-color: #dbeafe; background: #fff; color: #1d4ed8; box-shadow: 0 2px 7px rgba(37,99,235,.09); }
+.bcx-profile-switch button:disabled { cursor: not-allowed; opacity: .65; }
+.bcx-toolbar-status { display: inline-flex; align-items: center; gap: 7px; color: #64748b; font-size: 11px; white-space: nowrap; }
+.bcx-toolbar-status i { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,.1); }
+.bcx-toolbar-status:has(+ button) i { background: #16a34a; }
+@media (max-width: 760px) {
+  .bcx-classic-chat { grid-template-columns: minmax(0,1fr) !important; grid-template-rows: 58px minmax(0,1fr) !important; }
+  .bcx-classic-chat > .classic-chat-sidebar { display: none !important; grid-row: auto !important; }
+  .bcx-classic-chat > .bcx-chat-toolbar { grid-column: 1; grid-row: 1; display: flex !important; gap: 7px; padding: 7px 9px !important; min-height: 58px; }
+  .bcx-classic-chat > .chat-main { grid-column: 1; grid-row: 2; height: 100%; }
+  .bcx-toolbar-menu { display: inline-grid !important; width: 32px; height: 32px; flex: 0 0 32px; }
+  .bcx-toolbar-brand { gap: 6px; }
+  .bcx-toolbar-brand .classic-brand-mark { width: 25px; height: 25px; flex: 0 0 25px; }
+  .bcx-toolbar-brand strong { font-size: 10px; letter-spacing: .015em; }
+  .bcx-toolbar-brand small { display: none; }
+  .bcx-profile-switch { gap: 1px; padding: 3px; border-radius: 10px; }
+  .bcx-profile-caption { display: none; }
+  .bcx-profile-switch button { min-width: 0; min-height: 30px; padding: 0 7px; font-size: 9px; }
+  .bcx-toolbar-status { display: none; }
+  .bcx-toolbar-actions { gap: 2px; }
+}
+@media (max-width: 390px) {
+  .bcx-toolbar-brand strong { display: none; }
+  .bcx-profile-switch button { padding-inline: 6px; font-size: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .bcx-profile-switch button { transition: none; } }
