@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, GitBranch, ImagePlus, Layers, WandSparkles,
-  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon, Search,
+  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon, Search, Camera,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
@@ -116,11 +116,6 @@ export default function CodeAIPage() {
   const [welcomeMessage] = useState(() => WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)]);
   const [language, setLanguage] = useState(LANGUAGES[0]);
   const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("auto");
-  const [assistantProfile, setAssistantProfile] = useState<"auto" | "luna" | "terra" | "sol">("auto");
-  function changeAssistantProfile(profile: "auto" | "luna" | "terra" | "sol") {
-    setAssistantProfile(profile);
-    setThinkingMode(profile === "luna" ? "fast" : profile === "terra" ? "balanced" : profile === "sol" ? "deep" : "auto");
-  }
   const [researchMode, setResearchMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [thinkingStep, setThinkingStep] = useState(0);
@@ -139,6 +134,7 @@ export default function CodeAIPage() {
   const [chatAttachment, setChatAttachment] = useState<ChatAttachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
+  const cameraFileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sendLockRef = useRef(false);
@@ -605,10 +601,6 @@ export default function CodeAIPage() {
       </aside>
       <header className="bcx-chat-toolbar" aria-label="Barre supérieure Bickri AI">
         <div className="bcx-toolbar-brand"><button type="button" className="btn btn-ghost btn-icon bcx-toolbar-menu" aria-label="Ouvrir l’historique" onClick={() => setShowNav((v) => !v)}><Menu size={19} /></button><span className="classic-brand-mark">B</span><strong>BICKRI <span>CODEX</span></strong><small>AI WORKSPACE</small></div>
-        <div className="bcx-profile-switch" role="group" aria-label="Profil de l’assistant">
-          <span className="bcx-profile-caption"><Sparkles size={14} /> PROFIL</span>
-          {(["auto", "luna", "terra", "sol"] as const).map((profile) => <button key={profile} type="button" className={assistantProfile === profile ? "is-active" : ""} aria-pressed={assistantProfile === profile} onClick={() => changeAssistantProfile(profile)} disabled={loading}>{profile.toUpperCase()}</button>)}
-        </div>
         <div className="bcx-toolbar-actions"><span className="bcx-toolbar-status"><i /> {loading ? "En cours" : "Prêt"}</span><button type="button" className="btn btn-ghost btn-icon" aria-label="Nouvelle conversation" title="Nouvelle conversation" onClick={newChat}><SquarePen size={18} /></button></div>
       </header>
       {showNav && <div className="plugin-popover bcx-nav-popover" role="dialog" aria-label="Historique des conversations">
@@ -770,13 +762,16 @@ export default function CodeAIPage() {
         <div className="chat-composer">
           <input ref={fileInputRef} type="file" accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.log,.pdf,image/jpeg,image/png,image/webp" hidden onChange={readDocument} />
           <input ref={imageFileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={chooseImage} />
+          <input ref={cameraFileRef} type="file" accept="image/*" capture="environment" hidden onChange={chooseImage} />
           {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Ajouter à la conversation">
             <div className="row"><b className="grow">Ajouter à la conversation</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
             <div className="bcx-tool-grid">
-              <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); imageFileRef.current?.click(); }}><ImagePlus size={17} /> Joindre une photo à analyser</button>
+              <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); cameraFileRef.current?.click(); }}><Camera size={17} /> Appareil photo</button>
+              <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); imageFileRef.current?.click(); }}><ImagePlus size={17} /> Photos / Galerie</button>
               <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Importer un fichier ou du code</button>
               <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
               <Link className="btn bcx-attach-action" href="/plugins" onClick={() => setShowTools(false)}><Plug size={17} /> Plugins et intégrations</Link>
+              <button type="button" className="btn bcx-attach-action" disabled={loading} onClick={() => { setThinkingMode("deep"); setResearchMode(true); setShowTools(false); inputRef.current?.focus(); }}><Sparkles size={17} /> Analyser plus en profondeur</button>
               <Link className="btn bcx-attach-action" href="/ai/memories" onClick={() => setShowTools(false)}><User size={17} /> Mémoire personnelle</Link>
               <Link className="btn bcx-attach-action" href="/ai/spreadsheets" onClick={() => setShowTools(false)}><FileText size={17} /> Analyse Excel</Link>
               <Link className="btn bcx-attach-action" href="/ai/documents" onClick={() => setShowTools(false)}><FileText size={17} /> Documents</Link>
@@ -803,17 +798,6 @@ export default function CodeAIPage() {
                 <Plus size={20} />
               </button>
               <button type="button" className={`btn btn-sm bcx-research-toggle ${researchMode ? "is-active" : ""}`} aria-pressed={researchMode} onClick={() => setResearchMode((value) => !value)} disabled={loading} title="Activer la recherche Web approfondie"><Search size={15}/> Rechercher</button>
-              <button type="button" className={`btn btn-sm bcx-research-toggle ${thinkingMode === "deep" || thinkingMode === "expert" ? "is-active" : ""}`} aria-pressed={thinkingMode === "deep" || thinkingMode === "expert"} onClick={() => { const next = thinkingMode === "deep" || thinkingMode === "expert" ? "auto" : "deep"; setThinkingMode(next); setAssistantProfile(next === "deep" ? "sol" : "auto"); }} disabled={loading} title="Activer la réflexion approfondie"><Sparkles size={15}/> Réflexion</button>
-              <label className="bcx-thinking-mode-control" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }} title="Choisir la profondeur d’analyse">
-                <Sparkles size={15} aria-hidden="true" />
-                <select value={thinkingMode} onChange={(event) => { const mode = event.target.value as ThinkingMode; setThinkingMode(mode); setAssistantProfile(mode === "fast" ? "luna" : mode === "balanced" ? "terra" : mode === "deep" || mode === "expert" ? "sol" : "auto"); }} disabled={loading} aria-label="Mode de réflexion" style={{ maxWidth: 145, minHeight: 32, border: "1px solid var(--border)", borderRadius: 8, padding: "4px 7px", background: "var(--surface)", color: "var(--foreground)", fontSize: 12 }}>
-                  <option value="auto">BCX Auto · Intelligent</option>
-                  <option value="fast">BCX 1 · Rapide</option>
-                  <option value="balanced">BCX 2 · Équilibré</option>
-                  <option value="deep">BCX 3 · Approfondi</option>
-                  <option value="expert">BCX 4 · Expert</option>
-                </select>
-              </label>
               <VoiceAssistant
                 onSend={(text) => send(text)}
                 assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}
