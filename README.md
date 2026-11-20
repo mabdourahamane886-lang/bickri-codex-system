@@ -11,7 +11,7 @@ Plateforme en français de l'écosystème BICKRI : registre d'identifiants, stud
 | `/studio` | Studio | CodeMirror 6 (HTML/CSS/JS), aperçu ordinateur/tablette/mobile, console, modèles, export et aide IA |
 | `/ai` | BCX AI Workspace | Chat en streaming, historique recherchable et gérable, partage révocable en lecture seule, profils IA, fichiers et outils derrière une barre de saisie compacte |
 | `/share/[token]` | Conversation partagée | Instantané en lecture seule protégé par un jeton aléatoire révocable |
-| `/plugins` | Plugins | Catalogue autonome des outils disponibles pour la session |
+| `/plugins` | Plugins | Catalogue responsive de 100 services avec logos de marque, filtres et état des connecteurs BCX |
 | `/cloud` | BCX Cloud | État des intégrations configurées et feuille de route explicite |
 | `/settings` | Paramètres | État de configuration booléen, compte, thème et données locales |
 | `/login` | Connexion | Inscription et connexion par e-mail ou via Google, GitHub et Facebook |

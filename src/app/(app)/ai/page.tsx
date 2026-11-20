@@ -75,6 +75,14 @@ const WELCOME_MESSAGES = [
   { title: "Bienvenue dans ton espace de création.", subtitle: "Écris librement ta demande. Tu peux aussi joindre un fichier ou une image." },
   { title: "Quelle idée allons-nous concrétiser ?", subtitle: "Développement, rédaction, analyse ou résolution de problèmes : commençons." },
 ];
+const THINKING_PHASE_LABELS = ["Comprendre", "Organiser", "Vérifier", "Répondre"];
+const THINKING_PHASE_PHRASES: Record<ThinkingMode, string[]> = {
+  auto: ["Je prends en compte ta demande…", "Je prépare une réponse claire…", "Je vérifie les points importants…", "Je finalise le résultat…"],
+  fast: ["Je repère l’essentiel…", "Je prépare une réponse directe…", "Je vérifie la cohérence…", "Je finalise…"],
+  balanced: ["Je structure ta demande…", "Je rassemble les éléments utiles…", "Je vérifie les points clés…", "Je prépare une synthèse…"],
+  deep: ["Je prends en compte les contraintes…", "J’examine les options utiles…", "Je vérifie les cas importants…", "Je prépare une réponse détaillée…"],
+  expert: ["Je clarifie les exigences…", "Je compare les approches possibles…", "Je vérifie les limites et les risques…", "Je prépare une synthèse structurée…"],
+};
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -1141,7 +1149,18 @@ export default function CodeAIPage() {
                                 {isLast && !loading && <button type="button" className="btn btn-ghost btn-sm" onClick={retry} disabled={!lastMessage || Boolean(pending)} aria-label="Régénérer la réponse" title="Régénérer la réponse"><RefreshCw size={15} /> Régénérer</button>}
                               </div>
                             )}
-                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-neural" aria-hidden="true"><span className="bcx-neural-core"><Sparkles size={15} /></span><i className="bcx-neural-ring ring-one" /><i className="bcx-neural-ring ring-two" /><i className="bcx-neural-node node-one" /><i className="bcx-neural-node node-two" /><i className="bcx-neural-node node-three" /></span><span key={thinkingStep} className="bcx-thinking-label">{(thinkingMode === "expert" ? ["Analyse experte en cours…", "Compare les approches…", "Vérifie les risques et les cas limites…", "Prépare une synthèse vérifiée…"] : thinkingMode === "deep" ? ["Analyse approfondie…", "Vérifie les contraintes…", "Contrôle la cohérence…", "Prépare la solution…"] : thinkingMode === "fast" ? ["Bickri prépare la réponse…", "Traite ta demande…", "Finalise…", "Prépare le résultat…"] : ["Bickri réfléchit…", "Analyse ta demande…", "Évalue la complexité…", "Prépare la réponse…"])[thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
+                            {isLast && loading && (
+                              <div className="bcx-thinking" role="status" aria-live="polite">
+                                <div className="bcx-thinking-row">
+                                  <span className="bcx-thinking-neural" aria-hidden="true"><span className="bcx-neural-core"><Sparkles size={15} /></span><i className="bcx-neural-ring ring-one" /><i className="bcx-neural-ring ring-two" /><i className="bcx-neural-node node-one" /><i className="bcx-neural-node node-two" /><i className="bcx-neural-node node-three" /></span>
+                                  <span key={thinkingStep} className="bcx-thinking-label">{THINKING_PHASE_PHRASES[thinkingMode][thinkingStep]}</span>
+                                  <span className="bcx-thinking-caret" aria-hidden="true" />
+                                </div>
+                                <div className="bcx-thinking-phase-track" aria-hidden="true">
+                                  {THINKING_PHASE_LABELS.map((phase, index) => <span key={phase} className={`bcx-thinking-phase ${index === thinkingStep ? "is-current" : index < thinkingStep ? "is-complete" : ""}`}><i />{phase}</span>)}
+                                </div>
+                              </div>
+                            )}
                           </>
                         )}
                       </div>
