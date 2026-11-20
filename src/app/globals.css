@@ -3431,3 +3431,70 @@ html[data-theme="dark"] .bcx-classic-chat .starter.bcx-quick-start > svg {
   .auth-provider { justify-content: flex-start; min-height: 43px; padding-inline: 13px; }
   .auth-card-modern .auth-intro > p { font-size: 12px; }
 }
+
+/* BCX visual consistency: remove the isolated white canvas and use the
+   same workspace palette across the chat, composer, sidebar and tool panels. */
+.bcx-classic-chat .chat-main,
+.bcx-classic-chat .chat-inner {
+  background: transparent !important;
+}
+.bcx-classic-chat .chat-scroll {
+  background:
+    radial-gradient(ellipse at 72% 96%, rgba(244, 216, 193, .46), transparent 42%),
+    linear-gradient(130deg, #f8f6f3 0%, #f5f2ee 58%, #f6eee7 100%) !important;
+}
+.bcx-classic-chat .chat-composer,
+.bcx-classic-chat .chat-composer .composer,
+.bcx-classic-chat .bcx-tools-popover,
+.bcx-classic-chat .bcx-tool-grid > .btn,
+.bcx-classic-chat .starter.bcx-quick-start {
+  background: var(--bcx-surface) !important;
+  color: var(--bcx-ink) !important;
+  border-color: var(--bcx-line) !important;
+}
+.bcx-classic-chat .chat-composer textarea {
+  background: transparent !important;
+  color: var(--bcx-ink) !important;
+}
+.bcx-classic-chat .bcx-tools-popover > .row {
+  border-bottom-color: var(--bcx-line) !important;
+}
+.bcx-classic-chat .bcx-tools-popover > .row b,
+.bcx-classic-chat .bcx-tool-grid > .btn,
+.bcx-classic-chat .starter.bcx-quick-start strong {
+  color: var(--bcx-ink) !important;
+}
+.bcx-classic-chat .bcx-tool-grid > .btn svg {
+  color: var(--bcx-accent) !important;
+}
+.bcx-classic-chat .starter.bcx-quick-start > svg {
+  background: var(--bcx-accent-soft) !important;
+  color: var(--bcx-accent) !important;
+}
+html[data-theme="dark"] .bcx-classic-chat .chat-main,
+html[data-theme="dark"] .bcx-classic-chat .chat-inner {
+  background: transparent !important;
+}
+html[data-theme="dark"] .bcx-classic-chat .chat-scroll {
+  background:
+    radial-gradient(ellipse at 72% 96%, rgba(86, 62, 42, .24), transparent 42%),
+    #202124 !important;
+}
+html[data-theme="dark"] .bcx-classic-chat .chat-composer,
+html[data-theme="dark"] .bcx-classic-chat .chat-composer .composer,
+html[data-theme="dark"] .bcx-classic-chat .bcx-tools-popover,
+html[data-theme="dark"] .bcx-classic-chat .bcx-tool-grid > .btn,
+html[data-theme="dark"] .bcx-classic-chat .starter.bcx-quick-start {
+  background: var(--bcx-surface) !important;
+  color: var(--bcx-ink) !important;
+  border-color: var(--bcx-line) !important;
+}
+html[data-theme="dark"] .bcx-classic-chat .chat-composer textarea {
+  background: transparent !important;
+  color: var(--bcx-ink) !important;
+}
+html[data-theme="dark"] .bcx-classic-chat .bcx-tools-popover > .row b,
+html[data-theme="dark"] .bcx-classic-chat .bcx-tool-grid > .btn,
+html[data-theme="dark"] .bcx-classic-chat .starter.bcx-quick-start strong {
+  color: var(--bcx-ink) !important;
+}
