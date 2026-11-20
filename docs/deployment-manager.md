@@ -2,6 +2,20 @@
 
 BCX exposes a deployment plugin to the coding agent. It currently supports provider readiness checks and **Preview-only** deployment hooks for Vercel, Cloudflare, and Netlify. Production deployment is intentionally not enabled by this plugin.
 
+## GitHub Actions → Vercel
+
+`.github/workflows/deploy-vercel.yml` adds a manual deployment workflow. In GitHub Actions, choose **Deploy BCX to Vercel → Run workflow**, then select `preview` or `production`. The workflow runs `npm run check` before building and deploying with the Vercel CLI; it never deploys on every push.
+
+Configure these values in both GitHub Actions environments, `vercel-preview` and `vercel-production`:
+
+- Secret `VERCEL_TOKEN`: a Vercel token restricted to the BCX team/project.
+- Variable `VERCEL_ORG_ID`: the Vercel team ID.
+- Variable `VERCEL_PROJECT_ID`: the BCX project ID.
+
+Configure required reviewers for the `vercel-production` environment under **GitHub → Settings → Environments**. Without that protection, an authorized workflow dispatcher can deploy production. Keep the GitHub Actions permission at `contents: read`; Vercel credentials remain environment-scoped and are never exposed to application users. Do not grant repository-wide write permissions merely to deploy.
+
+The existing GitHub plugin can read and modify allowlisted repositories through its configured MCP server, with per-write approval in BCX. It is separate from the deployment workflow and should use only the repository scopes needed for the connected project.
+
 ## Configure Preview hooks
 
 Set these server-side environment variables in the BCX hosting platform (for example, Vercel Project Settings → Environment Variables):

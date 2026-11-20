@@ -3,6 +3,7 @@ import { AIError } from "@/lib/ai/gemini";
 import { generateWithRouter } from "@/lib/ai/router";
 import { resolveThinkingMode, type ThinkingMode } from "@/lib/ai/thinking";
 import { buildSystemInstruction } from "@/lib/ai/prompt";
+import { loadAuthorizedMemory } from "@/lib/ai/memory";
 import { getAgentContext } from "@/lib/agent/context";
 import { runAgent, sanitizeContents } from "@/lib/agent/run";
 import { PLUGINS } from "@/lib/agent/plugins";
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
                   })).filter((item) => item.content.length > 0).slice(-12);
                   const latest = [...fallbackMessages].reverse().find((item) => item.role === "user")?.content || "";
                   const fallback = await generateWithRouter({
-                    systemInstruction: buildSystemInstruction(language, projectContext, [], latest),
+                    systemInstruction: buildSystemInstruction(language, projectContext, [], latest, "", await loadAuthorizedMemory(ctx, latest)),
                     messages: fallbackMessages, thinkingMode: requestedThinkingMode, excludeProviders: ["google"],
                   });
                   send("result", { contents: [...contents, { role: "model", parts: [{ text: fallback.answer }] }], events: [], answer: fallback.answer, model: fallback.model, provider: fallback.provider, thinkingMode: fallback.thinkingMode, fallbackMode: true, plugins: [] });
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
                     })).filter((item) => item.content.length > 0).slice(-12);
                     const latest = [...fallbackMessages].reverse().find((item) => item.role === "user")?.content || "";
                     const fallback = await generateWithRouter({
-                      systemInstruction: buildSystemInstruction(language, projectContext, [], latest),
+                      systemInstruction: buildSystemInstruction(language, projectContext, [], latest, "", await loadAuthorizedMemory(ctx, latest)),
                       messages: fallbackMessages, thinkingMode: requestedThinkingMode, excludeProviders: ["google"],
                     });
                     send("result", { contents: [...contents, { role: "model", parts: [{ text: fallback.answer }] }], events: [], answer: fallback.answer, model: fallback.model, provider: fallback.provider, thinkingMode: fallback.thinkingMode, fallbackMode: true, plugins: [] });
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest) {
       if (!fallbackMessages.some((item) => item.role === "user")) throw agentError;
       const latestUserQuery = [...fallbackMessages].reverse().find((item) => item.role === "user")?.content || "";
       const fallback = await generateWithRouter({
-        systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery),
+        systemInstruction: buildSystemInstruction(language, projectContext, [], latestUserQuery, "", await loadAuthorizedMemory(ctx, latestUserQuery)),
         messages: fallbackMessages,
         thinkingMode: requestedThinkingMode,
         excludeProviders: ["google"],
