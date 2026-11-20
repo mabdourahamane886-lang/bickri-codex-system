@@ -63,6 +63,8 @@ Sans Supabase configuré, le mode local ne nécessite pas de connexion et stocke
 
 Après connexion, le chat fusionne l'historique local et celui du compte, puis synchronise les conversations via l'API authentifiée. La copie locale reste disponible. La migration `202611190001_bcx_ai_conversations.sql` crée les tables `bcx_ai_conversations` et `bcx_ai_shared_conversations`, applique RLS et fournit une fonction de lecture publique limitée aux liens de partage actifs. Les liens sont des instantanés en lecture seule; supprimer une conversation ou révoquer son partage invalide le lien. Les aperçus d'images encodés en données et les images générées en base64 ne sont pas copiés dans l'historique cloud.
 
+La mémoire personnelle est modifiable dans `/ai/memories` et isolée par compte. Les souvenirs explicites sont chargés pour les réponses de l'agent et du fournisseur IA de secours; l'IA ne transforme pas automatiquement toute conversation en souvenir. La migration `202610200001_bcx_ai_capabilities.sql` crée la table mémoire avec RLS. Pour une persistance entre appareils, connecte-toi et applique les migrations Supabase du dépôt; sans Supabase, l'historique reste local au navigateur.
+
 ## Variables d'environnement
 
 Copie `.env.example` et remplace les valeurs de démonstration. Les clés privées doivent rester côté serveur : ne préfixe jamais une clé secrète par `NEXT_PUBLIC_`. N'expose jamais une clé Supabase `service_role`.
@@ -121,6 +123,8 @@ Format : `BCX-<CATÉGORIE>-<SÉRIE GRECQUE>-<NUMÉRO>`, par exemple `BCX-AI-THET
 3. Configure dans Supabase l'URL du site et la redirection `https://TON-DOMAINE/auth/callback`.
 4. Déploie et vérifie `/api/health`, puis les routes principales.
 5. Après toute modification des variables d'environnement, déclenche un nouveau déploiement.
+
+Le workflow manuel GitHub Actions `.github/workflows/deploy-vercel.yml` permet de lancer un déploiement Preview ou Production après les vérifications. Configure `VERCEL_TOKEN` comme secret, `VERCEL_ORG_ID` et `VERCEL_PROJECT_ID` comme variables, dans les environnements GitHub `vercel-preview` et `vercel-production`. Ajoute des réviseurs obligatoires à l'environnement de production avant d'activer les déploiements de production.
 
 ## Déploiement Cloudflare
 
