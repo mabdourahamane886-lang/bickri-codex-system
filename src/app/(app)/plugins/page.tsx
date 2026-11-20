@@ -1,8 +1,13 @@
-"use client";
+import { PLUGIN_CATALOG } from "@/lib/plugin-catalog";
+import { PLUGIN_LOGOS } from "@/lib/plugin-logos";
+import { PluginCatalogClient } from "./PluginCatalogClient";
 
-import { redirect } from "next/navigation";
+export default function PluginsPage() {
+  const items = PLUGIN_CATALOG.map((item) => {
+    const icon = PLUGIN_LOGOS.get(item.icon);
+    if (!icon) throw new Error(`Logo Simple Icons introuvable pour ${item.name} (${item.icon}).`);
+    return { ...item, iconPath: icon.path, iconColor: icon.hex };
+  });
 
-/** Les anciens modules sont regroupés dans l'interface Chat/Codex. */
-export default function LegacyModuleRedirect() {
-  redirect("/ai");
+  return <PluginCatalogClient items={items}/>;
 }

@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-  ArrowUp, Plus, Bug, Check, CircleAlert, CircleCheck, CircleX, Copy, GitBranch, ImagePlus, Layers, WandSparkles,
-  Plug, RefreshCw, ShieldAlert, Sparkles, SquarePen, User, X, Menu, FileText, ImageIcon, Search,
+  ArrowUp, Plus, Archive, Bug, Check, CircleAlert, CircleCheck, CircleX, Code2, Copy, ImagePlus, Layers, Link2, WandSparkles,
+  LogIn, LogOut, MoreHorizontal, Pencil, Pin, Plug, RefreshCw, Share2, ShieldAlert, Sparkles, SquarePen, User, UserPlus, X, Menu, FileText,
+  ImageIcon, Search, ThumbsDown, ThumbsUp,
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
-import { Badge } from "@/components/ui/Badge";
+import { useSession } from "@/components/providers/SessionProvider";
 
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
 type Pending = { tool: string; label: string; args: Record<string, unknown> };
@@ -19,7 +20,7 @@ type ResolvedThinkingMode = "fast" | "balanced" | "deep" | "expert";
 type WebSource = { title: string; url: string; snippet: string; provider: string; opened: boolean; status?: number };
 type ChatMessage = { role: "user" | "assistant"; content: string; events?: AgentEvent[]; sources?: WebSource[]; model?: string; thinkingMode?: ResolvedThinkingMode; images?: ImageSearchResult[]; generatedImage?: string; attachment?: { name: string; mimeType: string; preview?: string } };
 type ChatAttachment = { name: string; mimeType: string; data: string; preview?: string };
-type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents: unknown[]; language: string };
+type SavedConversation = { id: string; title: string; updatedAt: string; messages: ChatMessage[]; contents?: unknown[]; language: string; pinned?: boolean; archived?: boolean };
 function createConversationId() { return `bcx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
 function sourceFavicon(url: string): string {
   try {
@@ -56,10 +57,16 @@ const HISTORY_KEY = "bcx_ai_conversations_v1";
 const PLUGINS_KEY = "bcx_ai_plugins_v1";
 const LANGUAGES = ["TypeScript / Next.js", "JavaScript", "HTML / CSS", "Python", "Python / Django", "Dart / Flutter", "Kotlin / Android", "Java", "C / C++", "Rust", "PHP", "SQL / Supabase", "Autre langage"];
 const STARTERS = [
-  { icon: Layers, text: "Crée une application web responsive en Next.js avec authentification Supabase." },
-  { icon: Bug, text: "Explique et corrige cette erreur TypeScript : " },
-  { icon: ImagePlus, text: "Prépare une affiche publicitaire premium pour mon entreprise." },
-  { icon: GitBranch, text: "Analyse le dépôt mabdourahamane886-lang/bickri-codex-system." },
+  { icon: Code2, title: "Écrire un script", description: "Créer ou améliorer un script pour un besoin précis.", prompt: "Aide-moi à écrire un script pour : " },
+  { icon: FileText, title: "Analyser un document", description: "Résumer un fichier et en dégager les points clés.", prompt: "Analyse et résume le document que je vais joindre." },
+  { icon: Sparkles, title: "Trouver des idées", description: "Faire émerger des pistes originales pour mon projet.", prompt: "Aide-moi à trouver des idées originales pour : " },
+  { icon: Search, title: "Explorer un sujet", description: "Obtenir une vue d’ensemble claire et structurée.", prompt: "Fais une recherche approfondie sur le sujet suivant : " },
+];
+const CODE_STARTERS = [
+  { icon: Code2, title: "Créer une fonctionnalité", description: "Construire une solution complète, étape par étape.", prompt: "Aide-moi à créer cette fonctionnalité : " },
+  { icon: Bug, title: "Corriger un bug", description: "Analyser une erreur et proposer un correctif fiable.", prompt: "Analyse et corrige ce bug : " },
+  { icon: Layers, title: "Concevoir un projet", description: "Définir l’architecture et les étapes de réalisation.", prompt: "Conçois l’architecture d’un projet qui permet de : " },
+  { icon: FileText, title: "Comprendre du code", description: "Expliquer un fichier ou un extrait clairement.", prompt: "Explique ce code et suggère des améliorations : " },
 ];
 const WELCOME_MESSAGES = [
   { title: "Bonjour ! Que souhaites-tu créer aujourd’hui ?", subtitle: "Décris ton idée, pose une question ou partage un problème : Bickri AI t’accompagne." },
@@ -68,6 +75,14 @@ const WELCOME_MESSAGES = [
   { title: "Bienvenue dans ton espace de création.", subtitle: "Écris librement ta demande. Tu peux aussi joindre un fichier ou une image." },
   { title: "Quelle idée allons-nous concrétiser ?", subtitle: "Développement, rédaction, analyse ou résolution de problèmes : commençons." },
 ];
+const THINKING_PHASE_LABELS = ["Comprendre", "Organiser", "Vérifier", "Répondre"];
+const THINKING_PHASE_PHRASES: Record<ThinkingMode, string[]> = {
+  auto: ["Je prends en compte ta demande…", "Je prépare une réponse claire…", "Je vérifie les points importants…", "Je finalise le résultat…"],
+  fast: ["Je repère l’essentiel…", "Je prépare une réponse directe…", "Je vérifie la cohérence…", "Je finalise…"],
+  balanced: ["Je structure ta demande…", "Je rassemble les éléments utiles…", "Je vérifie les points clés…", "Je prépare une synthèse…"],
+  deep: ["Je prends en compte les contraintes…", "J’examine les options utiles…", "Je vérifie les cas importants…", "Je prépare une réponse détaillée…"],
+  expert: ["Je clarifie les exigences…", "Je compare les approches possibles…", "Je vérifie les limites et les risques…", "Je prépare une synthèse structurée…"],
+};
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -76,6 +91,36 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("Lecture du fichier impossible."));
     reader.readAsDataURL(file);
   });
+}
+
+function cloudConversation(item: SavedConversation) {
+  const messages = item.messages.map((message) => {
+    return {
+      ...message,
+      ...(message.attachment ? { attachment: { name: message.attachment.name, mimeType: message.attachment.mimeType } } : {}),
+      ...(message.generatedImage?.startsWith("data:") ? { generatedImage: undefined } : {}),
+    };
+  });
+  return {
+    id: item.id,
+    title: item.title,
+    messages,
+    language: item.language,
+    pinned: item.pinned ?? false,
+    archived: item.archived ?? false,
+  };
+}
+
+async function saveCloudConversation(item: SavedConversation) {
+  const response = await fetch("/api/ai/conversations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ conversation: cloudConversation(item) }),
+  });
+  if (!response.ok) {
+    const result = await response.json();
+    throw new Error(typeof result.error === "string" ? result.error : "Impossible d'enregistrer l'historique cloud.");
+  }
 }
 
 function argsPreview(args: Record<string, unknown>): string {
@@ -106,14 +151,30 @@ function ToolEvents({ events }: { events: AgentEvent[] }) {
 }
 
 export default function CodeAIPage() {
+  const { configured, loading: sessionLoading, user, signOut } = useSession();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contents, setContents] = useState<unknown[]>([]);
   const [history, setHistory] = useState<SavedConversation[]>([]);
+  const [historyReady, setHistoryReady] = useState(false);
+  const [cloudReady, setCloudReady] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState<"local" | "loading" | "saving" | "synced" | "error">("local");
+  const [syncAttempt, setSyncAttempt] = useState(0);
   const [historySearch, setHistorySearch] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [workspaceMode, setWorkspaceMode] = useState<"chat" | "code">("chat");
+  const [showArchived, setShowArchived] = useState(false);
+  const [conversationMenuId, setConversationMenuId] = useState("");
+  const [renamingConversationId, setRenamingConversationId] = useState("");
+  const [titleDraft, setTitleDraft] = useState("");
+  const [shareConversationId, setShareConversationId] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
+  const [shareError, setShareError] = useState("");
+  const [sharing, setSharing] = useState(false);
   const [pending, setPending] = useState<Pending[] | null>(null);
   const [prompt, setPrompt] = useState("");
-  const [welcomeMessage] = useState(() => WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)]);
+  const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
+  const welcomeMessage = WELCOME_MESSAGES[0];
   const [language, setLanguage] = useState(LANGUAGES[0]);
   const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("auto");
   const [assistantProfile, setAssistantProfile] = useState<"auto" | "luna" | "terra" | "sol">("auto");
@@ -127,6 +188,7 @@ export default function CodeAIPage() {
   const [error, setError] = useState("");
   const [lastMessage, setLastMessage] = useState("");
   const [copiedPromptIndex, setCopiedPromptIndex] = useState<number | null>(null);
+  const [feedbackByIndex, setFeedbackByIndex] = useState<Record<number, -1 | 1>>({});
   const [plugins, setPlugins] = useState<PluginStatus[] | null>(null);
   const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
   const [showTools, setShowTools] = useState(false);
@@ -142,6 +204,11 @@ export default function CodeAIPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sendLockRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const historyRef = useRef<SavedConversation[]>([]);
+  const cloudSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  useEffect(() => { historyRef.current = history; }, [history]);
 
   useEffect(() => {
     try {
@@ -156,6 +223,7 @@ export default function CodeAIPage() {
       const p = JSON.parse(localStorage.getItem(PLUGINS_KEY) || "null");
       if (Array.isArray(p)) setEnabled(p);
     } catch { /* ignoré */ }
+    setHistoryReady(true);
   }, []);
   useEffect(() => {
     try { sessionStorage.setItem(CHAT_KEY, JSON.stringify({ messages, contents, pending, language, activeConversationId })); } catch { /* quota : ignoré */ }
@@ -164,23 +232,104 @@ export default function CodeAIPage() {
 
   useEffect(() => {
     try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch { /* quota : ignoré */ }
-  }, [history]);
+  }, [history, historyReady]);
 
   useEffect(() => {
     if (!activeConversationId || messages.length === 0) return;
     const firstUserMessage = messages.find((message) => message.role === "user")?.content ?? "Nouvelle conversation";
-    const item: SavedConversation = {
-      id: activeConversationId,
-      title: firstUserMessage.replaceAll(String.fromCharCode(10), " ").slice(0, 56) || "Nouvelle conversation",
-      updatedAt: new Date().toISOString(),
-      messages,
-      contents,
-      language,
-    };
-    setHistory((all) => [item, ...all.filter((entry) => entry.id !== activeConversationId)].slice(0, 40));
+    const generatedTitle = firstUserMessage.replaceAll(String.fromCharCode(10), " ").slice(0, 56) || "Nouvelle conversation";
+    setHistory((all) => {
+      const existing = all.find((entry) => entry.id === activeConversationId);
+      const item: SavedConversation = {
+        ...existing,
+        id: activeConversationId,
+        title: existing?.title ?? generatedTitle,
+        updatedAt: new Date().toISOString(),
+        messages,
+        contents,
+        language,
+      };
+      return [item, ...all.filter((entry) => entry.id !== activeConversationId)].slice(0, 40);
+    });
   }, [activeConversationId, messages, contents, language]);
   useEffect(() => { try { localStorage.setItem(PLUGINS_KEY, JSON.stringify(enabled)); } catch { /* ignoré */ } }, [enabled]);
   useEffect(() => () => { if (imageSource?.preview) URL.revokeObjectURL(imageSource.preview); }, [imageSource?.preview]);
+
+  useEffect(() => {
+    if (!historyReady || sessionLoading) return;
+    if (!configured || !user) {
+      setCloudReady(false);
+      setCloudStatus("local");
+      return;
+    }
+
+    let cancelled = false;
+    setCloudReady(false);
+    setCloudStatus("loading");
+    void (async () => {
+      try {
+        const response = await fetch("/api/ai/conversations", { cache: "no-store" });
+        const result = await response.json();
+        if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : "Impossible de charger l'historique cloud.");
+        const remote: SavedConversation[] = Array.isArray(result.conversations) ? result.conversations.map((item: Record<string, unknown>) => ({
+          id: String(item.id),
+          title: String(item.title),
+          updatedAt: String(item.updated_at),
+          messages: item.messages as ChatMessage[],
+          language: typeof item.language === "string" ? item.language : LANGUAGES[0],
+          pinned: item.pinned === true,
+          archived: item.archived === true,
+        })) : [];
+        const merged = new Map(remote.map((item) => [item.id, item]));
+        for (const local of historyRef.current) {
+          const cloud = merged.get(local.id);
+          if (!cloud || Date.parse(local.updatedAt) > Date.parse(cloud.updatedAt)) merged.set(local.id, local);
+        }
+        const conversations = [...merged.values()]
+          .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+          .slice(0, 40);
+        for (let index = 0; index < conversations.length; index += 10) {
+          const saveResponse = await fetch("/api/ai/conversations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversations: conversations.slice(index, index + 10).map(cloudConversation) }),
+          });
+          if (!saveResponse.ok) {
+            const saveResult = await saveResponse.json();
+            throw new Error(typeof saveResult.error === "string" ? saveResult.error : "Impossible de synchroniser l'historique cloud.");
+          }
+          if (cancelled) return;
+        }
+        if (!cancelled) {
+          historyRef.current = conversations;
+          setHistory(conversations);
+          setCloudReady(true);
+          setCloudStatus("synced");
+        }
+      } catch {
+        if (!cancelled) {
+          setCloudReady(false);
+          setCloudStatus("error");
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [configured, historyReady, sessionLoading, syncAttempt, user]);
+
+  useEffect(() => {
+    if (!cloudReady || !configured || !user || history.length === 0 || !activeConversationId) return;
+    const conversation = history.find((item) => item.id === activeConversationId);
+    if (!conversation) return;
+    const timeout = window.setTimeout(() => {
+      setCloudStatus("saving");
+      cloudSaveQueueRef.current = cloudSaveQueueRef.current
+        .catch(() => undefined)
+        .then(() => saveCloudConversation(conversation))
+        .then(() => setCloudStatus("synced"))
+        .catch(() => setCloudStatus("error"));
+    }, 750);
+    return () => window.clearTimeout(timeout);
+  }, [activeConversationId, cloudReady, configured, history, user]);
 
   const loadPlugins = useCallback(async () => {
     try {
@@ -216,7 +365,8 @@ export default function CodeAIPage() {
     });
   }
 
-  async function runAgent(body: Record<string, unknown>, baseContents: unknown[], retryAttempt = 0) {
+  async function runAgent(body: Record<string, unknown>, baseContents: unknown[], retryAttempt = 0, controller = new AbortController()) {
+    if (retryAttempt === 0) abortControllerRef.current = controller;
     setLoading(true); setError("");
     let state = baseContents;
     let serverReportedError = false;
@@ -228,6 +378,7 @@ export default function CodeAIPage() {
           method: "POST",
           headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
           body: JSON.stringify({ ...body, contents: state, plugins: activePlugins.map((p) => p.id), language, thinkingMode, researchMode, stream: true }),
+          signal: controller.signal,
         });
         if (!res.ok) {
           const failure = await res.json().catch(() => ({}));
@@ -324,6 +475,10 @@ export default function CodeAIPage() {
         body = {}; // poursuite automatique sans nouveau message
       }
     } catch (err) {
+      if (controller.signal.aborted) {
+        setError("");
+        return;
+      }
       const message = err instanceof Error ? err.message : "";
       const transportFailure = !serverReportedError && /network|fetch|connexion|connection|stream|flux|socket|timed out|timeout|interrupted|interrompue/i.test(message);
       // Never replay an approved write after an ambiguous transport failure: the server may have completed it before the stream dropped.
@@ -340,10 +495,12 @@ export default function CodeAIPage() {
           }],
         }));
         await new Promise((resolve) => window.setTimeout(resolve, waitMs));
-        return await runAgent(body, state, retryAttempt + 1);
+        if (controller.signal.aborted) return;
+        return await runAgent(body, state, retryAttempt + 1, controller);
       }
       setError(friendlyError(err));
     } finally {
+      if (abortControllerRef.current === controller) abortControllerRef.current = null;
       setLoading(false);
     }
   }
@@ -368,6 +525,7 @@ export default function CodeAIPage() {
       setImageSource(null);
       setImageMode("create");
       setImageIntent(false);
+      setEditingMessageIndex(null);
       setShowTools(false);
       setError("");
       inputRef.current?.focus();
@@ -484,7 +642,37 @@ export default function CodeAIPage() {
     await runAgent({ decision }, contents);
   }
 
-  function onSubmit(e: FormEvent) { e.preventDefault(); void send(prompt); }
+  async function resendEditedMessage() {
+    if (editingMessageIndex === null || loading || pending || sendLockRef.current) return;
+    const text = prompt.trim();
+    if (!text) return;
+    const previousMessages = messages.slice(0, editingMessageIndex);
+    const baseContents = previousMessages.filter((message) => message.content).map((message) => ({
+      role: message.role === "assistant" ? "model" : "user",
+      parts: [{ text: message.content }],
+    }));
+    sendLockRef.current = true;
+    setMessages([...previousMessages, { role: "user", content: text }, { role: "assistant", content: "", events: [] }]);
+    setContents(baseContents);
+    setLastMessage(text);
+    setPrompt("");
+    setEditingMessageIndex(null);
+    setFeedbackByIndex({});
+    setError("");
+    try {
+      await runAgent({ message: text, researchMode }, baseContents);
+    } finally {
+      setLoading(false);
+      sendLockRef.current = false;
+    }
+  }
+
+  function submitPrompt() {
+    if (editingMessageIndex !== null) void resendEditedMessage();
+    else void send(prompt);
+  }
+
+  function onSubmit(e: FormEvent) { e.preventDefault(); submitPrompt(); }
   async function readDocument(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
     const supportedText = /\.(txt|md|json|csv|ts|tsx|js|jsx|py|html|css|xml|log)$/i.test(file.name);
@@ -506,7 +694,7 @@ export default function CodeAIPage() {
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(prompt); }
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submitPrompt(); }
   }
   function retry() {
     if (!lastMessage) return;
@@ -524,15 +712,18 @@ export default function CodeAIPage() {
     setTimeout(() => void send(lastMessage), 0);
   }
   function newChat() {
+    abortControllerRef.current?.abort();
     setMessages([]);
     setContents([]);
     setPending(null);
     setError("");
+    setEditingMessageIndex(null);
     setImageResult(null);
     setImageSource(null);
     setChatAttachment(null);
     setImageMode("create");
     setImageIntent(false);
+    setFeedbackByIndex({});
     setActiveConversationId(createConversationId());
     setShowNav(false);
     setShowTools(false);
@@ -542,16 +733,117 @@ export default function CodeAIPage() {
   function openConversation(item: SavedConversation) {
     setActiveConversationId(item.id);
     setMessages(item.messages);
-    setContents(item.contents ?? []);
+    setContents(item.contents ?? item.messages.filter((message) => message.content).map((message) => ({
+      role: message.role === "assistant" ? "model" : "user",
+      parts: [{ text: message.content }],
+    })));
     setLanguage(item.language || LANGUAGES[0]);
     setPending(null);
     setError("");
+    setFeedbackByIndex({});
     setImageResult(null);
     setShowNav(false);
   }
 
+  function updateConversation(id: string, patch: Partial<Pick<SavedConversation, "title" | "pinned" | "archived">>) {
+    const updatedAt = new Date().toISOString();
+    const current = historyRef.current.find((item) => item.id === id);
+    const updated = current ? { ...current, ...patch, updatedAt } : null;
+    const next = historyRef.current.map((item) => item.id === id && updated ? updated : item);
+    historyRef.current = next;
+    setHistory(next);
+    if (updated && id !== activeConversationId && cloudReady && configured && user) {
+      setCloudStatus("saving");
+      cloudSaveQueueRef.current = cloudSaveQueueRef.current
+        .catch(() => undefined)
+        .then(() => saveCloudConversation(updated))
+        .then(() => setCloudStatus("synced"))
+        .catch(() => setCloudStatus("error"));
+    }
+    setConversationMenuId("");
+  }
+
+  function saveConversationTitle(id: string) {
+    const title = titleDraft.trim();
+    if (title) updateConversation(id, { title: title.slice(0, 200) });
+    setRenamingConversationId("");
+  }
+
+  async function createShareLink(item: SavedConversation) {
+    setShareConversationId(item.id);
+    setShareUrl("");
+    setShareError("");
+    setSharing(true);
+    setConversationMenuId("");
+    try {
+      if (!configured || !user || !cloudReady) throw new Error("Connecte-toi et attends la synchronisation Supabase avant de partager.");
+      await cloudSaveQueueRef.current.catch(() => undefined);
+      await saveCloudConversation(item);
+      const response = await fetch("/api/ai/conversations/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: item.id }),
+      });
+      const result = await response.json();
+      if (!response.ok || typeof result.token !== "string") throw new Error(typeof result.error === "string" ? result.error : "Impossible de créer le lien de partage.");
+      setShareUrl(`${window.location.origin}/share/${result.token}`);
+    } catch (shareFailure) {
+      setShareError(shareFailure instanceof Error ? shareFailure.message : "Impossible de créer le lien de partage.");
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function revokeShare() {
+    if (!shareConversationId) return;
+    try {
+      const response = await fetch(`/api/ai/conversations/share?conversationId=${encodeURIComponent(shareConversationId)}`, { method: "DELETE" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : "Impossible de révoquer le lien.");
+      setShareUrl("");
+      setShareError("Le lien a été révoqué.");
+    } catch (revokeFailure) {
+      setShareError(revokeFailure instanceof Error ? revokeFailure.message : "Impossible de révoquer le lien.");
+    }
+  }
+
+  async function rateAnswer(index: number, rating: -1 | 1) {
+    try {
+      const response = await fetch("/api/ai/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating, category: "chat", conversationId: activeConversationId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : "Impossible d'envoyer ton évaluation.");
+      setFeedbackByIndex((all) => ({ ...all, [index]: rating }));
+    } catch (feedbackFailure) {
+      setError(feedbackFailure instanceof Error ? feedbackFailure.message : "Impossible d'envoyer ton évaluation.");
+    }
+  }
+
   function deleteConversation(id: string) {
-    setHistory((all) => all.filter((item) => item.id !== id));
+    const deleted = historyRef.current.find((item) => item.id === id);
+    const remaining = historyRef.current.filter((item) => item.id !== id);
+    historyRef.current = remaining;
+    setHistory(remaining);
+    setConversationMenuId("");
+    if (configured && user && cloudReady) {
+      void fetch(`/api/ai/conversations?id=${encodeURIComponent(id)}`, { method: "DELETE" })
+        .then((response) => {
+          if (!response.ok) throw new Error("Impossible de supprimer la conversation du cloud.");
+        })
+        .catch(() => {
+          setCloudStatus("error");
+          if (deleted) {
+            const restored = [...historyRef.current.filter((item) => item.id !== id), deleted]
+              .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+              .slice(0, 40);
+            historyRef.current = restored;
+            setHistory(restored);
+          }
+        });
+    }
     if (id === activeConversationId) newChat();
   }
 
@@ -587,36 +879,175 @@ export default function CodeAIPage() {
     return /```(html|css|javascript|js)\s*\n[\s\S]*?```/i.test(answer);
   }
 
-  return (
-    <main className="chat bcx-classic-chat">
-      <aside className="classic-chat-sidebar" aria-label="Historique des conversations">
-        <div className="classic-sidebar-brand"><span className="classic-brand-mark">B</span><strong>Bickri AI</strong></div>
-        <button type="button" className="classic-new-chat" onClick={newChat}><SquarePen size={17}/> Nouveau chat</button>
-        <nav className="classic-shortcuts" aria-label="Navigation principale">
-          <Link href="/studio" onClick={() => setShowNav(false)}><Layers size={17}/> Projets</Link>
+  const visibleHistory = history
+    .filter((item) => Boolean(item.archived) === showArchived)
+    .filter((item) => item.title.toLocaleLowerCase("fr").includes(historySearch.toLocaleLowerCase("fr")));
+  const pinnedHistory = visibleHistory.filter((item) => item.pinned && !showArchived);
+  const datedHistory = visibleHistory.filter((item) => !item.pinned || showArchived);
+
+  function renderConversationRow(item: SavedConversation) {
+    return (
+      <div key={item.id} className={`classic-history-row ${item.id === activeConversationId ? "active" : ""}`}>
+        {renamingConversationId === item.id ? (
+          <input
+            autoFocus
+            className="bcx-rename-input"
+            value={titleDraft}
+            maxLength={200}
+            aria-label="Nouveau titre de conversation"
+            onChange={(event) => setTitleDraft(event.target.value)}
+            onBlur={() => saveConversationTitle(item.id)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") { event.preventDefault(); saveConversationTitle(item.id); }
+              if (event.key === "Escape") setRenamingConversationId("");
+            }}
+          />
+        ) : (
+          <button type="button" onClick={() => openConversation(item)} title={item.title}>
+            {item.pinned && <Pin size={12} aria-label="Épinglée" />}
+            <span>{item.title}</span>
+          </button>
+        )}
+        <button
+          type="button"
+          className="classic-delete-chat bcx-conversation-menu-button"
+          aria-label={`Options pour ${item.title}`}
+          aria-expanded={conversationMenuId === item.id}
+          title="Options"
+          onClick={() => setConversationMenuId((current) => current === item.id ? "" : item.id)}
+        >
+          <MoreHorizontal size={16} />
+        </button>
+        {conversationMenuId === item.id && (
+          <div className="bcx-conversation-menu" role="group" aria-label={`Options pour ${item.title}`}>
+            <button type="button" onClick={() => { setTitleDraft(item.title); setRenamingConversationId(item.id); setConversationMenuId(""); }}><Pencil size={14} /> Renommer</button>
+            <button type="button" onClick={() => updateConversation(item.id, { pinned: !item.pinned })}><Pin size={14} /> {item.pinned ? "Désépingler" : "Épingler"}</button>
+            <button type="button" onClick={() => updateConversation(item.id, { archived: !item.archived })}><Archive size={14} /> {item.archived ? "Désarchiver" : "Archiver"}</button>
+            {!item.archived && <button type="button" onClick={() => void createShareLink(item)}><Share2 size={14} /> Partager</button>}
+            <button type="button" className="danger" onClick={() => deleteConversation(item.id)}><X size={14} /> Supprimer</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderHistorySections() {
+    const groups = showArchived
+      ? ["Aujourd’hui", "Hier", "7 derniers jours", "30 derniers jours", "Plus anciens"]
+      : ["Aujourd’hui", "Hier", "7 derniers jours", "30 derniers jours", "Plus anciens"];
+    return (
+      <>
+        {!showArchived && pinnedHistory.length > 0 && (
+          <section className="bcx-history-group">
+            <div className="bcx-history-group-title">Épinglées</div>
+            {pinnedHistory.map(renderConversationRow)}
+          </section>
+        )}
+        {groups.map((group) => {
+          const items = datedHistory.filter((item) => conversationGroup(item.updatedAt) === group);
+          return items.length ? (
+            <section className="bcx-history-group" key={group}>
+              <div className="bcx-history-group-title">{group}</div>
+              {items.map(renderConversationRow)}
+            </section>
+          ) : null;
+        })}
+        {visibleHistory.length === 0 && (
+          <p className="classic-history-empty">
+            {historySearch ? "Aucune conversation correspondante." : showArchived ? "Aucune conversation archivée." : "Tes conversations apparaîtront ici."}
+          </p>
+        )}
+      </>
+    );
+  }
+
+  function renderSidebarLinks() {
+    return (
+      <>
+        <nav className="bcx-rail-nav bcx-rail-nav-secondary" aria-label="Personnalisation">
+          <Link href="/settings" onClick={() => setShowNav(false)}><WandSparkles size={16}/> Personnaliser</Link>
         </nav>
-        <div className="classic-history-heading">Historique</div>
-        <label className="bcx-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher une conversation…" aria-label="Rechercher dans l’historique"/></label>
-        <div className="classic-history-list">{(["Aujourd’hui","Hier","7 derniers jours","30 derniers jours","Plus anciens"] as const).map((group) => {
-          const items = history.filter((item) => item.title.toLocaleLowerCase("fr").includes(historySearch.toLocaleLowerCase("fr")) && conversationGroup(item.updatedAt) === group);
-          return items.length ? <section className="bcx-history-group" key={group}><div className="bcx-history-group-title">{group}</div>{items.map((item) => <div key={item.id} className={`classic-history-row ${item.id === activeConversationId ? "active" : ""}`}><button type="button" onClick={() => { openConversation(item); setShowNav(false); }} title={item.title}>{item.title}</button><button type="button" className="classic-delete-chat" aria-label={`Supprimer ${item.title}`} onClick={() => deleteConversation(item.id)}><X size={14}/></button></div>)}</section> : null;
-        })}{history.length === 0 && <p className="classic-history-empty">Tes conversations apparaîtront ici.</p>}{history.length > 0 && !history.some((item) => item.title.toLocaleLowerCase("fr").includes(historySearch.toLocaleLowerCase("fr"))) && <p className="classic-history-empty">Aucune conversation correspondante.</p>}</div>
-        <div className="classic-sidebar-bottom"><button type="button" onClick={() => { if (confirm("Effacer toutes les conversations enregistrées ?")) { history.forEach((item) => deleteConversation(item.id)); newChat(); } }}>Effacer l’historique</button><Link href="/settings">Paramètres</Link><Link href="/login">Compte</Link></div>
+        <div className="bcx-rail-divider" />
+        <nav className="bcx-rail-nav" aria-label="Navigation principale">
+          <Link href="/ai" aria-current="page" onClick={() => setShowNav(false)}><SquarePen size={16}/> Chats</Link>
+          <Link href="/studio" onClick={() => setShowNav(false)}><Layers size={16}/> Projets</Link>
+          <Link href="/workspace" onClick={() => setShowNav(false)}><Check size={16}/> Espace de travail</Link>
+          <Link href="/plugins" onClick={() => setShowNav(false)}><Plug size={16}/> Agents et outils</Link>
+          <Link href="/ai/documents" onClick={() => setShowNav(false)}><FileText size={16}/> Documents</Link>
+        </nav>
+      </>
+    );
+  }
+
+  function renderAccountActions() {
+    if (!user) {
+      return (
+        <>
+          <Link href="/login?mode=signup" className="bcx-account-card bcx-create-account" onClick={() => setShowNav(false)}>
+            <span className="bcx-account-avatar"><UserPlus size={15}/></span>
+            <span className="bcx-account-copy"><strong>Créer un compte</strong><small>Enregistrer tes conversations</small></span>
+          </Link>
+          <Link href="/login" className="bcx-auth-login" onClick={() => setShowNav(false)}><LogIn size={15}/> Se connecter</Link>
+        </>
+      );
+    }
+
+    return (
+      <div className="bcx-account-card">
+        <Link href="/settings" className="bcx-account-profile" onClick={() => setShowNav(false)}>
+          <span className="bcx-account-avatar">{(user.email?.[0] ?? "B").toUpperCase()}</span>
+          <span className="bcx-account-copy"><strong>{user.email?.split("@")[0] ?? "Compte BCX"}</strong><small>{user.email ?? "Compte connecté"}</small></span>
+        </Link>
+        <button type="button" className="bcx-signout-button" onClick={() => void signOut()} aria-label="Se déconnecter" title="Se déconnecter"><LogOut size={15}/></button>
+      </div>
+    );
+  }
+
+  return (
+    <main className={`chat bcx-classic-chat ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}>
+      <aside className="classic-chat-sidebar" aria-label="Historique des conversations">
+        <div className="classic-sidebar-brand"><strong>BICKRI AI</strong></div>
+        <button type="button" className="classic-new-chat" onClick={newChat}><SquarePen size={17}/> Nouveau chat</button>
+        <label className="bcx-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher" aria-label="Rechercher dans l’historique"/></label>
+        {renderSidebarLinks()}
+        <div className="bcx-history-heading-row">
+          <div className="classic-history-heading">{showArchived ? "Archives" : "Récents"}</div>
+          <button type="button" className="bcx-archive-toggle" onClick={() => setShowArchived((value) => !value)} aria-pressed={showArchived}>
+            {showArchived ? "Voir l’historique" : `Archives${history.filter((item) => item.archived).length ? ` · ${history.filter((item) => item.archived).length}` : ""}`}
+          </button>
+        </div>
+        <div className="classic-history-list">{renderHistorySections()}</div>
+        <div className="classic-sidebar-bottom">
+          {renderAccountActions()}
+        </div>
       </aside>
       <header className="bcx-chat-toolbar" aria-label="Barre supérieure Bickri AI">
-        <div className="bcx-toolbar-brand"><button type="button" className="btn btn-ghost btn-icon bcx-toolbar-menu" aria-label="Ouvrir l’historique" onClick={() => setShowNav((v) => !v)}><Menu size={19} /></button><span className="classic-brand-mark">B</span><strong>BICKRI <span>CODEX</span></strong><small>AI WORKSPACE</small></div>
-        <div className="bcx-profile-switch" role="group" aria-label="Profil de l’assistant">
-          <span className="bcx-profile-caption"><Sparkles size={14} /> PROFIL</span>
-          {(["auto", "luna", "terra", "sol"] as const).map((profile) => <button key={profile} type="button" className={assistantProfile === profile ? "is-active" : ""} aria-pressed={assistantProfile === profile} onClick={() => changeAssistantProfile(profile)} disabled={loading}>{profile.toUpperCase()}</button>)}
+        <div className="bcx-toolbar-brand">
+          <button type="button" className="btn btn-ghost btn-icon bcx-toolbar-menu" aria-label="Ouvrir l’historique" onClick={() => setShowNav((v) => !v)}><Menu size={19} /></button>
+          <button type="button" className="btn btn-ghost btn-icon bcx-sidebar-collapse" aria-label={sidebarCollapsed ? "Afficher la barre latérale" : "Réduire la barre latérale"} aria-expanded={!sidebarCollapsed} onClick={() => setSidebarCollapsed((value) => !value)}><Menu size={18} /></button>
         </div>
-        <div className="bcx-toolbar-actions"><span className="bcx-toolbar-status"><i /> {loading ? "En cours" : "Prêt"}</span><button type="button" className="btn btn-ghost btn-icon" aria-label="Nouvelle conversation" title="Nouvelle conversation" onClick={newChat}><SquarePen size={18} /></button></div>
+        <nav className="bcx-workspace-tabs" aria-label="Espaces de travail">
+          <button type="button" aria-pressed={workspaceMode === "chat"} onClick={() => setWorkspaceMode("chat")}>Chats</button>
+          <button type="button" aria-pressed={workspaceMode === "code"} onClick={() => setWorkspaceMode("code")}>Code</button>
+        </nav>
+        <div className="bcx-toolbar-actions">
+          <span className="bcx-plan-badge"><span>Assistant</span><strong>Bickri AI</strong></span>
+          {cloudStatus === "error" ? (
+            <button type="button" className="bcx-cloud-status error" onClick={() => setSyncAttempt((attempt) => attempt + 1)} title="Réessayer la synchronisation">Cloud · Réessayer</button>
+          ) : cloudStatus !== "local" && (
+            <span className="bcx-cloud-status" role="status">{cloudStatus === "loading" ? "Synchronisation…" : cloudStatus === "saving" ? "Enregistrement…" : "Synchronisé"}</span>
+          )}
+          <button type="button" className="btn btn-ghost btn-icon bcx-toolbar-new-chat" aria-label="Nouvelle conversation" title="Nouvelle conversation" onClick={newChat}><SquarePen size={18} /></button>
+        </div>
       </header>
       {showNav && <div className="plugin-popover bcx-nav-popover" role="dialog" aria-label="Historique des conversations">
-        <div className="row"><b className="grow">Historique</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div>
+        <div className="row"><b className="grow">BICKRI AI</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div>
         <button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); newChat(); }}><SquarePen size={18}/> Nouvelle conversation</button>
-        <button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); setShowTools(true); }}><Layers size={18}/> Tous les outils</button>
         <label className="bcx-history-search bcx-mobile-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher dans l’historique…" aria-label="Rechercher dans l’historique"/></label>
-        {history.length ? <div className="bcx-history-list">{history.filter((item) => item.title.toLocaleLowerCase("fr").includes(historySearch.toLocaleLowerCase("fr"))).map((item) => <div className={`bcx-history-item ${item.id === activeConversationId ? "active" : ""}`} key={item.id}><button type="button" className="bcx-history-open" title={item.title} onClick={() => { openConversation(item); setShowNav(false); }}>{item.title}</button><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={`Supprimer ${item.title}`} title="Supprimer" onClick={() => deleteConversation(item.id)}><X size={14}/></button></div>)}</div> : <p className="muted" style={{fontSize:12}}>Tes conversations apparaîtront ici.</p>}
+        {renderSidebarLinks()}
+        <div className="bcx-history-heading-row"><div className="classic-history-heading">Récents</div><button type="button" className="bcx-archive-toggle" onClick={() => setShowArchived((value) => !value)}>{showArchived ? "Historique" : "Archives"}</button></div>
+        <div className="bcx-history-list">{renderHistorySections()}</div>
+        <div className="bcx-mobile-account-actions">{renderAccountActions()}</div>
         <div className="row"><span className="muted">{history.length} conversation(s)</span><Link href="/settings" onClick={() => setShowNav(false)}>Paramètres</Link></div>
       </div>}
       <div className="chat-main">
@@ -624,18 +1055,15 @@ export default function CodeAIPage() {
           <div className="chat-inner">
             {messages.length === 0 ? (
               <>
-                <div className="chat-hero">
-                  <Badge tone="accent">Bickri AI</Badge>
-                  <div className="bcx-welcome-mark" aria-hidden="true"><Sparkles size={32}/></div>
-                  <h1>{welcomeMessage.title}</h1>
-                  <p>{welcomeMessage.subtitle}
-                    {activePlugins.length ? ` Plugins actifs : ${activePlugins.map((p) => p.name).join(", ")}.` : " Active des plugins pour que l’IA utilise les outils connectés."}
-                  </p>
+                <div className={`chat-hero ${workspaceMode === "code" ? "is-codex-mode" : ""}`}>
+                  {workspaceMode === "code" && <span className="bcx-mode-eyebrow"><Code2 size={12}/> BICKRI CODEX · {language}</span>}
+                  <h1>{workspaceMode === "code" ? "Qu’allons-nous coder aujourd’hui ?" : welcomeMessage.title}</h1>
+                  <p>{workspaceMode === "code" ? "Décris ce que tu veux construire, corriger ou comprendre. Bickri Codex travaille avec toi dans cette conversation." : welcomeMessage.subtitle}</p>
                 </div>
                 <div className="starter-grid">
-                  {STARTERS.map(({ icon: Icon, text }) => (
-                    <button key={text} className="starter" onClick={() => { setPrompt(text); inputRef.current?.focus(); }}>
-                      <Icon aria-hidden="true" /><span>{text}</span>
+                  {(workspaceMode === "code" ? CODE_STARTERS : STARTERS).map(({ icon: Icon, title, description, prompt: starterPrompt }) => (
+                    <button key={title} className="starter bcx-quick-start" onClick={() => { setPrompt(starterPrompt); inputRef.current?.focus(); }}>
+                      <Icon aria-hidden="true" /><span><strong>{title}</strong><small>{description}</small></span>
                     </button>
                   ))}
                 </div>
@@ -654,6 +1082,7 @@ export default function CodeAIPage() {
                             {m.attachment?.preview && <img src={m.attachment.preview} alt={`Pièce jointe : ${m.attachment.name}`} loading="lazy" style={{ display: "block", maxWidth: "min(100%, 360px)", maxHeight: 320, objectFit: "contain", borderRadius: 14, border: "1px solid var(--border)", marginTop: 10 }} />}
                             {m.attachment && <small className="muted" style={{ display: "block", marginTop: 6 }}>{m.attachment.name} · {m.attachment.mimeType}</small>}
                             <div className="row" style={{ gap: 6, marginTop: 8 }}>
+                              {!m.attachment && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setEditingMessageIndex(i); setPrompt(m.content); inputRef.current?.focus(); }} aria-label="Modifier le message" title="Modifier le message"><Pencil size={14}/> Modifier</button>}
                               <button
                                 type="button"
                                 className="btn btn-ghost btn-sm"
@@ -714,11 +1143,24 @@ export default function CodeAIPage() {
                             {m.content && (
                               <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: "wrap" }} aria-label="Actions sur la réponse">
                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => { void navigator.clipboard.writeText(m.content).catch(() => setError("Impossible de copier la réponse sur cet appareil.")); }} aria-label="Copier la réponse" title="Copier la réponse"><Copy size={15} /> Copier</button>
+                                <button type="button" className={`btn btn-ghost btn-sm ${feedbackByIndex[i] === 1 ? "is-rated" : ""}`} onClick={() => void rateAnswer(i, 1)} disabled={Boolean(feedbackByIndex[i])} aria-label="Évaluer positivement la réponse" title="Bonne réponse"><ThumbsUp size={15}/></button>
+                                <button type="button" className={`btn btn-ghost btn-sm ${feedbackByIndex[i] === -1 ? "is-rated" : ""}`} onClick={() => void rateAnswer(i, -1)} disabled={Boolean(feedbackByIndex[i])} aria-label="Évaluer négativement la réponse" title="Réponse à améliorer"><ThumbsDown size={15}/></button>
                                 {hasStudioCode(m.content) && <Link href="/studio" className="btn btn-ghost btn-sm" onClick={() => transferToStudio(m.content)}><Layers size={15} /> Ouvrir dans le Studio</Link>}
                                 {isLast && !loading && <button type="button" className="btn btn-ghost btn-sm" onClick={retry} disabled={!lastMessage || Boolean(pending)} aria-label="Régénérer la réponse" title="Régénérer la réponse"><RefreshCw size={15} /> Régénérer</button>}
                               </div>
                             )}
-                            {isLast && loading && <div className="bcx-thinking" role="status" aria-live="polite"><span className="bcx-thinking-neural" aria-hidden="true"><span className="bcx-neural-core"><Sparkles size={15} /></span><i className="bcx-neural-ring ring-one" /><i className="bcx-neural-ring ring-two" /><i className="bcx-neural-node node-one" /><i className="bcx-neural-node node-two" /><i className="bcx-neural-node node-three" /></span><span key={thinkingStep} className="bcx-thinking-label">{(thinkingMode === "expert" ? ["Analyse experte en cours…", "Compare les approches…", "Vérifie les risques et les cas limites…", "Prépare une synthèse vérifiée…"] : thinkingMode === "deep" ? ["Analyse approfondie…", "Vérifie les contraintes…", "Contrôle la cohérence…", "Prépare la solution…"] : thinkingMode === "fast" ? ["Bickri prépare la réponse…", "Traite ta demande…", "Finalise…", "Prépare le résultat…"] : ["Bickri réfléchit…", "Analyse ta demande…", "Évalue la complexité…", "Prépare la réponse…"])[thinkingStep]}</span><span className="bcx-thinking-caret" aria-hidden="true" /></div>}
+                            {isLast && loading && (
+                              <div className="bcx-thinking" role="status" aria-live="polite">
+                                <div className="bcx-thinking-row">
+                                  <span className="bcx-thinking-neural" aria-hidden="true"><span className="bcx-neural-core"><Sparkles size={15} /></span><i className="bcx-neural-ring ring-one" /><i className="bcx-neural-ring ring-two" /><i className="bcx-neural-node node-one" /><i className="bcx-neural-node node-two" /><i className="bcx-neural-node node-three" /></span>
+                                  <span key={thinkingStep} className="bcx-thinking-label">{THINKING_PHASE_PHRASES[thinkingMode][thinkingStep]}</span>
+                                  <span className="bcx-thinking-caret" aria-hidden="true" />
+                                </div>
+                                <div className="bcx-thinking-phase-track" aria-hidden="true">
+                                  {THINKING_PHASE_LABELS.map((phase, index) => <span key={phase} className={`bcx-thinking-phase ${index === thinkingStep ? "is-current" : index < thinkingStep ? "is-complete" : ""}`}><i />{phase}</span>)}
+                                </div>
+                              </div>
+                            )}
                           </>
                         )}
                       </div>
@@ -773,8 +1215,23 @@ export default function CodeAIPage() {
           {showTools && <div className="plugin-popover bcx-tools-popover" role="dialog" aria-label="Ajouter à la conversation">
             <div className="row"><b className="grow">Ajouter à la conversation</b><button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les outils" onClick={() => setShowTools(false)}><X size={16} /></button></div>
             <div className="bcx-tool-grid">
+              <button type="button" className={`btn bcx-attach-action ${researchMode ? "is-active" : ""}`} aria-pressed={researchMode} onClick={() => setResearchMode((value) => !value)} disabled={loading}><Search size={17} /> {researchMode ? "Recherche Web activée" : "Activer la recherche Web"}</button>
               <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); imageFileRef.current?.click(); }}><ImagePlus size={17} /> Joindre une photo à analyser</button>
               <button type="button" className="btn bcx-attach-action" onClick={() => { setShowTools(false); fileInputRef.current?.click(); }}><FileText size={17} /> Importer un fichier ou du code</button>
+              <div className="bcx-voice-control"><span>Conversation vocale</span><VoiceAssistant onSend={(text) => send(text)} assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""} busy={loading} blocked={Boolean(pending)} /></div>
+              {messages.length > 0 && <button type="button" className="btn bcx-attach-action" onClick={() => {
+                const payload = { app: "BICKRI CODEX SYSTEM", exportedAt: new Date().toISOString(), language, messages };
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const anchor = document.createElement("a");
+                anchor.href = url;
+                anchor.download = `bcx-conversation-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+                URL.revokeObjectURL(url);
+                setShowTools(false);
+              }}><FileText size={17} /> Exporter la conversation</button>}
               <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
               <Link className="btn bcx-attach-action" href="/plugins" onClick={() => setShowTools(false)}><Plug size={17} /> Plugins et intégrations</Link>
               <Link className="btn bcx-attach-action" href="/ai/memories" onClick={() => setShowTools(false)}><User size={17} /> Mémoire personnelle</Link>
@@ -790,7 +1247,8 @@ export default function CodeAIPage() {
           {imageSource && <div className="bcx-image-attachment"><img src={imageSource.preview} alt="Image à modifier" /><div className="grow"><b>Image à modifier</b><small>{imageSource.file.name}</small></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => { setImageSource(null); setImageMode("create"); }} aria-label="Retirer l’image"><X size={16} /></button></div>}
           <form className="composer" onSubmit={onSubmit}>
             <label htmlFor="ai-input" className="sr-only">Message</label>
-            <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : "Demande une question"} />
+            {editingMessageIndex !== null && <div className="bcx-editing-indicator"><Pencil size={13}/> Modification du message <button type="button" onClick={() => { setEditingMessageIndex(null); setPrompt(""); }} aria-label="Annuler la modification"><X size={14}/></button></div>}
+            <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : editingMessageIndex !== null ? "Modifie ton message puis envoie-le" : workspaceMode === "code" ? "Décris le code que tu veux créer ou corriger…" : "Écris à Bickri AI…"} />
             <div className="composer-bar bcx-simple-composer-bar">
               <button
                 type="button"
@@ -802,41 +1260,27 @@ export default function CodeAIPage() {
               >
                 <Plus size={20} />
               </button>
-              <button type="button" className={`btn btn-sm bcx-research-toggle ${researchMode ? "is-active" : ""}`} aria-pressed={researchMode} onClick={() => setResearchMode((value) => !value)} disabled={loading} title="Activer la recherche Web approfondie"><Search size={15}/> Rechercher</button>
-              <button type="button" className={`btn btn-sm bcx-research-toggle ${thinkingMode === "deep" || thinkingMode === "expert" ? "is-active" : ""}`} aria-pressed={thinkingMode === "deep" || thinkingMode === "expert"} onClick={() => { const next = thinkingMode === "deep" || thinkingMode === "expert" ? "auto" : "deep"; setThinkingMode(next); setAssistantProfile(next === "deep" ? "sol" : "auto"); }} disabled={loading} title="Activer la réflexion approfondie"><Sparkles size={15}/> Réflexion</button>
-              <label className="bcx-thinking-mode-control" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }} title="Choisir la profondeur d’analyse">
-                <Sparkles size={15} aria-hidden="true" />
-                <select value={thinkingMode} onChange={(event) => { const mode = event.target.value as ThinkingMode; setThinkingMode(mode); setAssistantProfile(mode === "fast" ? "luna" : mode === "balanced" ? "terra" : mode === "deep" || mode === "expert" ? "sol" : "auto"); }} disabled={loading} aria-label="Mode de réflexion" style={{ maxWidth: 145, minHeight: 32, border: "1px solid var(--border)", borderRadius: 8, padding: "4px 7px", background: "var(--surface)", color: "var(--foreground)", fontSize: 12 }}>
-                  <option value="auto">BCX Auto · Intelligent</option>
-                  <option value="fast">BCX 1 · Rapide</option>
-                  <option value="balanced">BCX 2 · Équilibré</option>
-                  <option value="deep">BCX 3 · Approfondi</option>
-                  <option value="expert">BCX 4 · Expert</option>
+              <span className="bcx-composer-spacer" aria-hidden="true" />
+              {workspaceMode === "code" && (
+                <select className="bcx-code-language-picker" value={language} onChange={(event) => setLanguage(event.target.value)} aria-label="Langage du projet">
+                  {LANGUAGES.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
-              </label>
-              <VoiceAssistant
-                onSend={(text) => send(text)}
-                assistantResponse={messages.slice().reverse().find((message) => message.role === "assistant")?.content ?? ""}
-                busy={loading}
-                blocked={Boolean(pending)}
-              />
-              {messages.length > 0 && <button type="button" className="btn btn-ghost btn-sm bcx-export-chat" onClick={() => {
-                const payload = { app: "BICKRI CODEX SYSTEM", exportedAt: new Date().toISOString(), language, messages };
-                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
-                const url = URL.createObjectURL(blob);
-                const anchor = document.createElement("a");
-                anchor.href = url;
-                anchor.download = `bcx-conversation-${new Date().toISOString().slice(0, 10)}.json`;
-                document.body.appendChild(anchor);
-                anchor.click();
-                anchor.remove();
-                URL.revokeObjectURL(url);
-              }} aria-label="Exporter la conversation" title="Exporter la conversation"><FileText size={15} /><span className="hide-sm">Exporter</span></button>}
+              )}
+              <div className="bcx-composer-profiles" role="group" aria-label="Choisir le profil IA">
+                {(["auto", "luna", "terra", "sol"] as const).map((profile) => (
+                  <button key={profile} type="button" className={assistantProfile === profile ? "is-active" : ""} aria-pressed={assistantProfile === profile} onClick={() => changeAssistantProfile(profile)} disabled={loading}>
+                    {profile.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              {loading ? (
+                <button type="button" className="btn btn-ghost btn-sm bcx-stop-generation" onClick={() => abortControllerRef.current?.abort()} aria-label="Arrêter la génération" title="Arrêter la génération"><X size={14}/><span>Arrêter</span></button>
+              ) : null}
               <button
                 className="btn btn-primary btn-icon btn-sm composer-send"
                 type="button"
-                onClick={() => { void send(prompt); }}
-                disabled={loading || (!prompt.trim() && !chatAttachment) || Boolean(pending)}
+                onClick={submitPrompt}
+                disabled={imageLoading || loading || (!prompt.trim() && !chatAttachment) || Boolean(pending)}
                 aria-label="Envoyer"
                 title="Envoyer"
               >
@@ -848,7 +1292,26 @@ export default function CodeAIPage() {
         </div>
       </div>
 
-      
+      {shareConversationId && (
+        <div className="bcx-dialog-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) { setShareConversationId(""); setShareUrl(""); setShareError(""); }
+        }}>
+          <section className="bcx-share-dialog" role="dialog" aria-modal="true" aria-labelledby="bcx-share-title">
+            <header><div><h2 id="bcx-share-title">Partager la conversation</h2><p>Le lien ouvre une copie en lecture seule.</p></div><button type="button" className="btn btn-ghost btn-icon" onClick={() => { setShareConversationId(""); setShareUrl(""); setShareError(""); }} aria-label="Fermer"><X size={18}/></button></header>
+            {shareUrl && <label className="bcx-share-link"><span>Lien de partage</span><input readOnly value={shareUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Lien de partage en lecture seule"/></label>}
+            {sharing && <p className="bcx-share-status" role="status">Préparation du lien sécurisé…</p>}
+            {shareError && <p className="bcx-share-status" role="status">{shareError}</p>}
+            <footer>
+              {shareUrl && <button type="button" className="btn btn-ghost" disabled={sharing} onClick={() => {
+                if (!navigator.clipboard) { setShareError("Sélectionne le lien pour le copier manuellement."); return; }
+                void navigator.clipboard.writeText(shareUrl).then(() => setShareError("Lien copié.")).catch(() => setShareError("Sélectionne le lien pour le copier manuellement."));
+              }}><Link2 size={16}/> Copier le lien</button>}
+              {shareUrl && <button type="button" className="btn btn-ghost danger" disabled={sharing} onClick={() => void revokeShare()}>Révoquer</button>}
+              <button type="button" className="btn btn-primary" onClick={() => { setShareConversationId(""); setShareUrl(""); setShareError(""); }}>Terminé</button>
+            </footer>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

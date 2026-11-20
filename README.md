@@ -9,11 +9,12 @@ Plateforme en français de l'écosystème BICKRI : registre d'identifiants, stud
 | `/` | Tableau de bord | Indicateurs calculés depuis les données disponibles, derniers identifiants et état des services |
 | `/registry` | Registre BCX | Création, recherche, filtres, export CSV, synchronisation Supabase avec mode local |
 | `/studio` | Studio | CodeMirror 6 (HTML/CSS/JS), aperçu ordinateur/tablette/mobile, console, modèles, export et aide IA |
-| `/ai` | Bickri Code AI | Chat Markdown, blocs de code copiables, langage choisi, outils/plugins et contexte GitHub autorisé |
-| `/plugins` | Plugins | Catalogue autonome des outils disponibles pour la session |
+| `/ai` | BCX AI Workspace | Chat en streaming, historique recherchable et gérable, partage révocable en lecture seule, profils IA, fichiers et outils derrière une barre de saisie compacte |
+| `/share/[token]` | Conversation partagée | Instantané en lecture seule protégé par un jeton aléatoire révocable |
+| `/plugins` | Plugins | Catalogue responsive de 100 services avec logos de marque, filtres et état des connecteurs BCX |
 | `/cloud` | BCX Cloud | État des intégrations configurées et feuille de route explicite |
 | `/settings` | Paramètres | État de configuration booléen, compte, thème et données locales |
-| `/login` | Connexion | Inscription et connexion par e-mail via Supabase Auth |
+| `/login` | Connexion | Inscription et connexion par e-mail ou via Google, GitHub et Facebook |
 | `/auth/callback` | Callback | Échange du code de confirmation et redirection interne sûre |
 
 Le terminal cloud, les conteneurs de build, la compilation Flutter/Android et le stockage cloud des fichiers ne sont pas inclus dans cette version ; ils sont présentés comme fonctionnalités à venir.
@@ -55,9 +56,12 @@ La CI GitHub exécute `npm run check` à chaque push sur `main` et à chaque pul
 1. Crée un projet Supabase et copie son URL ainsi que sa clé publishable dans `.env.local` ou dans les variables d'environnement de l'hébergeur.
 2. Applique dans l'ordre les migrations présentes dans `supabase/migrations/` via Supabase CLI ou l'éditeur SQL. N'exécute pas les migrations dans un ordre différent.
 3. Dans **Authentication → URL Configuration**, définis l'URL du site et ajoute `http://localhost:3000/auth/callback` ainsi que l'URL de production terminée par `/auth/callback` dans les URL de redirection autorisées.
-4. Les nouveaux comptes commencent avec le rôle `viewer`. Les rôles `editor` et `admin` doivent être attribués par un administrateur. Les politiques RLS restent la barrière d'autorisation côté base.
+4. Pour la connexion sociale, active Google, GitHub et Facebook dans **Authentication → Sign In / Providers** et renseigne les identifiants OAuth fournis par chaque plateforme. Pour chaque fournisseur, configure l'URL de callback Supabase affichée dans son tableau de bord; l'application renvoie ensuite l'utilisateur vers `/auth/callback`.
+5. Les nouveaux comptes commencent avec le rôle `viewer`. Les rôles `editor` et `admin` doivent être attribués par un administrateur. Les politiques RLS restent la barrière d'autorisation côté base.
 
 Sans Supabase configuré, le mode local ne nécessite pas de connexion et stocke les données dans le navigateur de l'utilisateur.
+
+Après connexion, le chat fusionne l'historique local et celui du compte, puis synchronise les conversations via l'API authentifiée. La copie locale reste disponible. La migration `202611190001_bcx_ai_conversations.sql` crée les tables `bcx_ai_conversations` et `bcx_ai_shared_conversations`, applique RLS et fournit une fonction de lecture publique limitée aux liens de partage actifs. Les liens sont des instantanés en lecture seule; supprimer une conversation ou révoquer son partage invalide le lien. Les aperçus d'images encodés en données et les images générées en base64 ne sont pas copiés dans l'historique cloud.
 
 ## Variables d'environnement
 
