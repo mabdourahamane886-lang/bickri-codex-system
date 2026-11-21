@@ -113,15 +113,25 @@ function cloudConversation(item: SavedConversation) {
 }
 
 async function saveCloudConversation(item: SavedConversation) {
-  const response = await fetch("/api/ai/conversations", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ conversation: cloudConversation(item) }),
-  });
-  if (!response.ok) {
-    const result = await response.json();
-    throw new Error(typeof result.error === "string" ? result.error : "Impossible d'enregistrer l'historique cloud.");
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch("/api/ai/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation: cloudConversation(item) }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(typeof result.error === "string" ? result.error : "Impossible d'enregistrer l'historique cloud.");
+      }
+      return;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Échec de synchronisation cloud.");
+      if (attempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 500 * (2 ** attempt)));
+    }
   }
+  throw lastError ?? new Error("Impossible d'enregistrer l'historique cloud.");
 }
 
 function argsPreview(args: Record<string, unknown>): string {
