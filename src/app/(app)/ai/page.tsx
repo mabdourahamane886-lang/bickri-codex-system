@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
+import { LiveThinkingCenter } from "@/components/ai/LiveThinkingCenter";
 import { useSession } from "@/components/providers/SessionProvider";
 
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
@@ -177,10 +178,10 @@ export default function CodeAIPage() {
   const welcomeMessage = WELCOME_MESSAGES[0];
   const [language, setLanguage] = useState(LANGUAGES[0]);
   const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("auto");
-  const [assistantProfile, setAssistantProfile] = useState<"auto" | "luna" | "terra" | "sol">("auto");
-  function changeAssistantProfile(profile: "auto" | "luna" | "terra" | "sol") {
+  const [assistantProfile, setAssistantProfile] = useState<"auto" | "luna" | "terra" | "sol" | "bcx">("auto");
+  function changeAssistantProfile(profile: "auto" | "luna" | "terra" | "sol" | "bcx") {
     setAssistantProfile(profile);
-    setThinkingMode(profile === "luna" ? "fast" : profile === "terra" ? "balanced" : profile === "sol" ? "deep" : "auto");
+    setThinkingMode(profile === "bcx" ? "expert" : profile === "luna" ? "fast" : profile === "terra" ? "balanced" : profile === "sol" ? "deep" : "auto");
   }
   const [researchMode, setResearchMode] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1159,6 +1160,7 @@ export default function CodeAIPage() {
                                 <div className="bcx-thinking-phase-track" aria-hidden="true">
                                   {THINKING_PHASE_LABELS.map((phase, index) => <span key={phase} className={`bcx-thinking-phase ${index === thinkingStep ? "is-current" : index < thinkingStep ? "is-complete" : ""}`}><i />{phase}</span>)}
                                 </div>
+                                <LiveThinkingCenter events={messages[messages.length - 1]?.events ?? []} mode={thinkingMode} />
                               </div>
                             )}
                           </>
@@ -1267,9 +1269,9 @@ export default function CodeAIPage() {
                 </select>
               )}
               <div className="bcx-composer-profiles" role="group" aria-label="Choisir le profil IA">
-                {(["auto", "luna", "terra", "sol"] as const).map((profile) => (
-                  <button key={profile} type="button" className={assistantProfile === profile ? "is-active" : ""} aria-pressed={assistantProfile === profile} onClick={() => changeAssistantProfile(profile)} disabled={loading}>
-                    {profile.toUpperCase()}
+                {(["auto", "luna", "terra", "sol", "bcx"] as const).map((profile) => (
+                  <button key={profile} type="button" className={assistantProfile === profile ? "is-active" : ""} aria-pressed={assistantProfile === profile} onClick={() => changeAssistantProfile(profile)} disabled={loading} title={profile === "bcx" ? "Option C : orchestration hybride, revue multi-agents, outils et vérifications renforcées" : undefined}>
+                    {profile === "bcx" ? "BCX C" : profile.toUpperCase()}
                   </button>
                 ))}
               </div>
