@@ -633,6 +633,14 @@ export default function CodeAIPage() {
     setChatAttachment(null);
     try {
       await runAgent({ message: content || `Analyse la pièce jointe ${attachment?.name ?? ""} et explique son contenu.`, researchMode: forceResearch || researchMode }, baseContents);
+      // Capture uniquement les informations durables explicitement formulées par l'utilisateur.
+      if (configured && user && content && !attachment) {
+        void fetch("/api/ai/memories/capture", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: content }),
+        }).catch(() => undefined);
+      }
     } catch (err) { setError(err instanceof Error ? err.message : "Une erreur est survenue."); }
     finally { setLoading(false); sendLockRef.current = false; }
   }
