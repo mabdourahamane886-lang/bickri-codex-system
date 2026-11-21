@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
+import { LiveThinkingCenter } from "@/components/ai/LiveThinkingCenter";
 import { useSession } from "@/components/providers/SessionProvider";
 
 type AgentEvent = { tool: string; label: string; write: boolean; status: "ok" | "error" | "refused" | "pending" };
@@ -1159,6 +1160,7 @@ export default function CodeAIPage() {
                                 <div className="bcx-thinking-phase-track" aria-hidden="true">
                                   {THINKING_PHASE_LABELS.map((phase, index) => <span key={phase} className={`bcx-thinking-phase ${index === thinkingStep ? "is-current" : index < thinkingStep ? "is-complete" : ""}`}><i />{phase}</span>)}
                                 </div>
+                                <LiveThinkingCenter events={messages[messages.length - 1]?.events ?? []} mode={thinkingMode} />
                               </div>
                             )}
                           </>
