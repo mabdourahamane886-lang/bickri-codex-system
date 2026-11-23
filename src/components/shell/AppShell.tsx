@@ -34,23 +34,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const current = ALL_NAV.find((i) => isActive(pathname, i.href));
   const currentLabel = current?.label ?? (pathname === "/ai" ? "Bickri Chat" : "Page");
-  const isWorkspace = pathname === "/";
-  const isStandaloneLogin = pathname === "/login";
-  const isStandalonePlugins = pathname === "/plugins";
-  const isStandaloneSettings = pathname === "/settings";
-
-  if (isWorkspace) return <>{children}</>;
-  if (isStandaloneLogin) return <>{children}</>;
-  // Keep the Plugins catalogue focused: its own header and “Retour au chat” control
-  // replace the global sidebar and mobile tab bar on this route only.
-  if (isStandalonePlugins) return <div className="plugins-standalone">{children}</div>;
-  // Settings gets its own focused page, without the global sidebar or mobile navigation.
-  if (isStandaloneSettings) return <div className="settings-standalone">{children}</div>;
-
   return (
     <div className="shell">
       <aside className="sidebar" aria-label="Navigation principale">
-        <div className="sidebar-head"><Link href="/"><Logo /></Link></div>
+        <div className="sidebar-head"><Link href="/ai"><Logo /></Link></div>
         <nav className="sidebar-nav">
           {NAV_GROUPS.map((group) => (
             <div className="nav-group" key={group.label}>
@@ -69,7 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="main">
         <header className="topbar">
-          <Link href="/" className="topbar-mobile-brand" aria-label="Bickri Codex System — Accueil"><Logo /></Link>
+          <Link href="/ai" className="topbar-mobile-brand" aria-label="Bickri Codex System — Accueil"><Logo /></Link>
           <div className="breadcrumbs">
             <span>BCX</span><ChevronRight size={14} aria-hidden="true" /><b>{currentLabel}</b>
           </div>

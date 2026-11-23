@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-  ArrowUp, Plus, Archive, Bug, Check, CircleAlert, CircleCheck, CircleX, Code2, Copy, ImagePlus, Layers, Link2, WandSparkles,
+  ArrowUp, Plus, Archive, Bug, Check, CircleAlert, CircleCheck, CircleX, Code2, Copy, ImagePlus, Layers, Link2, ChevronDown,
   LogIn, LogOut, MoreHorizontal, Pencil, Pin, Plug, RefreshCw, Share2, ShieldAlert, Sparkles, SquarePen, User, UserPlus, X, Menu, FileText,
   ImageIcon, Search, ThumbsDown, ThumbsUp,
 } from "lucide-react";
+import { NAV_GROUPS } from "@/components/shell/nav";
+import { Logo, LogoMark } from "@/components/brand/Logo";
+import { ThemeToggle } from "@/components/providers/ThemeToggle";
 import { Markdown } from "@/components/ai/Markdown";
 import { VoiceAssistant } from "@/components/ai/VoiceAssistant";
 import { LiveThinkingCenter } from "@/components/ai/LiveThinkingCenter";
@@ -69,22 +72,6 @@ const CODE_STARTERS = [
   { icon: Layers, title: "Concevoir un projet", description: "Définir l’architecture et les étapes de réalisation.", prompt: "Conçois l’architecture d’un projet qui permet de : " },
   { icon: FileText, title: "Comprendre du code", description: "Expliquer un fichier ou un extrait clairement.", prompt: "Explique ce code et suggère des améliorations : " },
 ];
-const WELCOME_MESSAGES = [
-  { title: "Bonjour ! Que souhaites-tu créer aujourd’hui ?", subtitle: "Décris ton idée, pose une question ou partage un problème : Bickri AI t’accompagne." },
-  { title: "Prêt à construire quelque chose de remarquable ?", subtitle: "Du premier concept au code final, travaillons ensemble étape par étape." },
-  { title: "Comment puis-je t’aider aujourd’hui ?", subtitle: "Je peux expliquer, rechercher, analyser des fichiers et t’aider à développer tes projets." },
-  { title: "Bienvenue dans ton espace de création.", subtitle: "Écris librement ta demande. Tu peux aussi joindre un fichier ou une image." },
-  { title: "Quelle idée allons-nous concrétiser ?", subtitle: "Développement, rédaction, analyse ou résolution de problèmes : commençons." },
-];
-const THINKING_PHASE_LABELS = ["Comprendre", "Organiser", "Vérifier", "Répondre"];
-const THINKING_PHASE_PHRASES: Record<ThinkingMode, string[]> = {
-  auto: ["Je prends en compte ta demande…", "Je prépare une réponse claire…", "Je vérifie les points importants…", "Je finalise le résultat…"],
-  fast: ["Je repère l’essentiel…", "Je prépare une réponse directe…", "Je vérifie la cohérence…", "Je finalise…"],
-  balanced: ["Je structure ta demande…", "Je rassemble les éléments utiles…", "Je vérifie les points clés…", "Je prépare une synthèse…"],
-  deep: ["Je prends en compte les contraintes…", "J’examine les options utiles…", "Je vérifie les cas importants…", "Je prépare une réponse détaillée…"],
-  expert: ["Je clarifie les exigences…", "Je compare les approches possibles…", "Je vérifie les limites et les risques…", "Je prépare une synthèse structurée…"],
-};
-
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -185,7 +172,6 @@ export default function CodeAIPage() {
   const [pending, setPending] = useState<Pending[] | null>(null);
   const [prompt, setPrompt] = useState("");
   const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
-  const welcomeMessage = WELCOME_MESSAGES[0];
   const [language, setLanguage] = useState(LANGUAGES[0]);
   const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("auto");
   const [assistantProfile, setAssistantProfile] = useState<"auto" | "luna" | "terra" | "sol" | "bcx">("auto");
@@ -195,13 +181,12 @@ export default function CodeAIPage() {
   }
   const [researchMode, setResearchMode] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [thinkingStep, setThinkingStep] = useState(0);
   const [error, setError] = useState("");
   const [lastMessage, setLastMessage] = useState("");
   const [copiedPromptIndex, setCopiedPromptIndex] = useState<number | null>(null);
   const [feedbackByIndex, setFeedbackByIndex] = useState<Record<number, -1 | 1>>({});
   const [plugins, setPlugins] = useState<PluginStatus[] | null>(null);
-  const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
+  const [enabled, setEnabled] = useState<string[]>(["github", "web"]);
   const [showTools, setShowTools] = useState(false);
   const [showNav, setShowNav] = useState(false);
   const [imageMode, setImageMode] = useState<"create" | "edit">("create");
@@ -351,11 +336,7 @@ export default function CodeAIPage() {
   }, []);
   useEffect(() => { void loadPlugins(); }, [loadPlugins]);
 
-  useEffect(() => {
-    if (!loading) { setThinkingStep(0); return; }
-    const timer = setInterval(() => setThinkingStep((step) => (step + 1) % 4), 1900);
-    return () => clearInterval(timer);
-  }, [loading]);
+
 
   useEffect(() => {
     const el = inputRef.current;
@@ -642,15 +623,11 @@ export default function CodeAIPage() {
     setPrompt(""); setLastMessage(content || `Analyse la pièce jointe ${attachment?.name ?? ""}`);
     setChatAttachment(null);
     try {
-      await runAgent({ message: content || `Analyse la pièce jointe ${attachment?.name ?? ""} et explique son contenu.`, researchMode: forceResearch || researchMode }, baseContents);
-      // Capture uniquement les informations durables explicitement formulées par l'utilisateur.
-      if (configured && user && content && !attachment) {
-        void fetch("/api/ai/memories/capture", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: content }),
-        }).catch(() => undefined);
-      }
+      await runAgent({
+        message: content || `Analyse la pièce jointe ${attachment?.name ?? ""} et explique son contenu.`,
+        researchMode: forceResearch || researchMode,
+        captureMemory: !attachment,
+      }, baseContents);
     } catch (err) { setError(err instanceof Error ? err.message : "Une erreur est survenue."); }
     finally { setLoading(false); sendLockRef.current = false; }
   }
@@ -982,19 +959,19 @@ export default function CodeAIPage() {
 
   function renderSidebarLinks() {
     return (
-      <>
-        <nav className="bcx-rail-nav bcx-rail-nav-secondary" aria-label="Personnalisation">
-          <Link href="/settings" onClick={() => setShowNav(false)}><WandSparkles size={16}/> Personnaliser</Link>
-        </nav>
-        <div className="bcx-rail-divider" />
-        <nav className="bcx-rail-nav" aria-label="Navigation principale">
-          <Link href="/ai" aria-current="page" onClick={() => setShowNav(false)}><SquarePen size={16}/> Chats</Link>
-          <Link href="/studio" onClick={() => setShowNav(false)}><Layers size={16}/> Projets</Link>
-          <Link href="/workspace" onClick={() => setShowNav(false)}><Check size={16}/> Espace de travail</Link>
-          <Link href="/plugins" onClick={() => setShowNav(false)}><Plug size={16}/> Agents et outils</Link>
-          <Link href="/ai/documents" onClick={() => setShowNav(false)}><FileText size={16}/> Documents</Link>
-        </nav>
-      </>
+      <nav className="bcx-rail-nav" aria-label="Espaces BCX">
+        {NAV_GROUPS[0].items.slice(1).map(({ href, label, icon: Icon }) => (
+          <Link key={href} href={href} onClick={() => setShowNav(false)}><Icon size={16} />{label}</Link>
+        ))}
+        <details className="bcx-tools-menu">
+          <summary><Plug size={16} /> Outils et réglages <ChevronDown size={14} /></summary>
+          <div className="bcx-tools-menu-links">
+            {NAV_GROUPS.slice(1).flatMap(({ items }) => items).map(({ href, label, icon: Icon }) => (
+              <Link key={href} href={href} onClick={() => setShowNav(false)}><Icon size={16} />{label}</Link>
+            ))}
+          </div>
+        </details>
+      </nav>
     );
   }
 
@@ -1025,7 +1002,7 @@ export default function CodeAIPage() {
   return (
     <main className={`chat bcx-classic-chat ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}>
       <aside className="classic-chat-sidebar" aria-label="Historique des conversations">
-        <div className="classic-sidebar-brand"><strong>BICKRI AI</strong></div>
+        <div className="classic-sidebar-brand"><Logo subtitle="Espace de travail" /></div>
         <button type="button" className="classic-new-chat" onClick={newChat}><SquarePen size={17}/> Nouveau chat</button>
         <label className="bcx-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher" aria-label="Rechercher dans l’historique"/></label>
         {renderSidebarLinks()}
@@ -1042,7 +1019,7 @@ export default function CodeAIPage() {
       </aside>
       <header className="bcx-chat-toolbar" aria-label="Barre supérieure Bickri AI">
         <div className="bcx-toolbar-brand">
-          <button type="button" className="btn btn-ghost btn-icon bcx-toolbar-menu" aria-label="Ouvrir l’historique" onClick={() => setShowNav((v) => !v)}><Menu size={19} /></button>
+          <button type="button" className="btn btn-ghost btn-icon bcx-toolbar-menu" aria-label="Ouvrir la navigation et l’historique" aria-expanded={showNav} onClick={() => setShowNav((v) => !v)}><Menu size={19} /></button>
           <button type="button" className="btn btn-ghost btn-icon bcx-sidebar-collapse" aria-label={sidebarCollapsed ? "Afficher la barre latérale" : "Réduire la barre latérale"} aria-expanded={!sidebarCollapsed} onClick={() => setSidebarCollapsed((value) => !value)}><Menu size={18} /></button>
         </div>
         <nav className="bcx-workspace-tabs" aria-label="Espaces de travail">
@@ -1050,7 +1027,7 @@ export default function CodeAIPage() {
           <button type="button" aria-pressed={workspaceMode === "code"} onClick={() => setWorkspaceMode("code")}>Code</button>
         </nav>
         <div className="bcx-toolbar-actions">
-          <span className="bcx-plan-badge"><span>Assistant</span><strong>Bickri AI</strong></span>
+          <ThemeToggle />
           {cloudStatus === "error" ? (
             <button type="button" className="bcx-cloud-status error" onClick={() => setSyncAttempt((attempt) => attempt + 1)} title="Réessayer la synchronisation">Cloud · Réessayer</button>
           ) : cloudStatus !== "local" && (
@@ -1060,14 +1037,13 @@ export default function CodeAIPage() {
         </div>
       </header>
       {showNav && <div className="plugin-popover bcx-nav-popover" role="dialog" aria-label="Historique des conversations">
-        <div className="row"><b className="grow">BICKRI AI</b><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div>
+        <div className="row"><div className="grow"><Logo subtitle="Espace de travail" /></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div>
         <button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); newChat(); }}><SquarePen size={18}/> Nouvelle conversation</button>
         <label className="bcx-history-search bcx-mobile-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher dans l’historique…" aria-label="Rechercher dans l’historique"/></label>
         {renderSidebarLinks()}
         <div className="bcx-history-heading-row"><div className="classic-history-heading">Récents</div><button type="button" className="bcx-archive-toggle" onClick={() => setShowArchived((value) => !value)}>{showArchived ? "Historique" : "Archives"}</button></div>
         <div className="bcx-history-list">{renderHistorySections()}</div>
         <div className="bcx-mobile-account-actions">{renderAccountActions()}</div>
-        <div className="row"><span className="muted">{history.length} conversation(s)</span><Link href="/settings" onClick={() => setShowNav(false)}>Paramètres</Link></div>
       </div>}
       <div className="chat-main">
         <div className="chat-scroll">
@@ -1075,9 +1051,10 @@ export default function CodeAIPage() {
             {messages.length === 0 ? (
               <>
                 <div className={`chat-hero ${workspaceMode === "code" ? "is-codex-mode" : ""}`}>
+                  <span className="bcx-chat-emblem"><LogoMark /></span>
                   {workspaceMode === "code" && <span className="bcx-mode-eyebrow"><Code2 size={12}/> BICKRI CODEX · {language}</span>}
-                  <h1>{workspaceMode === "code" ? "Qu’allons-nous coder aujourd’hui ?" : welcomeMessage.title}</h1>
-                  <p>{workspaceMode === "code" ? "Décris ce que tu veux construire, corriger ou comprendre. Bickri Codex travaille avec toi dans cette conversation." : welcomeMessage.subtitle}</p>
+                  <h1>{workspaceMode === "code" ? "Qu’allons-nous coder aujourd’hui ?" : "Que souhaites-tu créer ?"}</h1>
+                  <p>{workspaceMode === "code" ? "Décris ce que tu veux construire, corriger ou comprendre. Bickri Codex travaille avec toi dans cette conversation." : "Écris une demande ou joins un fichier pour commencer."}</p>
                 </div>
                 <div className="starter-grid">
                   {(workspaceMode === "code" ? CODE_STARTERS : STARTERS).map(({ icon: Icon, title, description, prompt: starterPrompt }) => (
@@ -1169,16 +1146,12 @@ export default function CodeAIPage() {
                               </div>
                             )}
                             {isLast && loading && (
-                              <div className="bcx-thinking" role="status" aria-live="polite">
-                                <div className="bcx-thinking-row">
-                                  <span className="bcx-thinking-neural" aria-hidden="true"><span className="bcx-neural-core"><Sparkles size={15} /></span><i className="bcx-neural-ring ring-one" /><i className="bcx-neural-ring ring-two" /><i className="bcx-neural-node node-one" /><i className="bcx-neural-node node-two" /><i className="bcx-neural-node node-three" /></span>
-                                  <span key={thinkingStep} className="bcx-thinking-label">{THINKING_PHASE_PHRASES[thinkingMode][thinkingStep]}</span>
-                                  <span className="bcx-thinking-caret" aria-hidden="true" />
+                              <div className="bcx-response-activity">
+                                <div className="bcx-reflection" role="status">
+                                  <span className="bcx-reflection-mark" aria-hidden="true"><Sparkles size={19} /></span>
+                                  <span>{m.content ? "Réponse en cours…" : "Réflexion en cours…"}</span>
                                 </div>
-                                <div className="bcx-thinking-phase-track" aria-hidden="true">
-                                  {THINKING_PHASE_LABELS.map((phase, index) => <span key={phase} className={`bcx-thinking-phase ${index === thinkingStep ? "is-current" : index < thinkingStep ? "is-complete" : ""}`}><i />{phase}</span>)}
-                                </div>
-                                <LiveThinkingCenter events={messages[messages.length - 1]?.events ?? []} mode={thinkingMode} />
+                                {!!m.events?.length && <LiveThinkingCenter events={m.events} mode={thinkingMode} />}
                               </div>
                             )}
                           </>
@@ -1258,7 +1231,6 @@ export default function CodeAIPage() {
               <Link className="btn bcx-attach-action" href="/ai/spreadsheets" onClick={() => setShowTools(false)}><FileText size={17} /> Analyse Excel</Link>
               <Link className="btn bcx-attach-action" href="/ai/documents" onClick={() => setShowTools(false)}><FileText size={17} /> Documents</Link>
               <Link className="btn bcx-attach-action" href="/ai/execute" onClick={() => setShowTools(false)}><Bug size={17} /> Exécuter du code</Link>
-              <Link className="btn bcx-attach-action" href="/cloud" onClick={() => setShowTools(false)}><WandSparkles size={17} /> BCX Cloud</Link>
               <Link className="btn bcx-attach-action" href="/settings" onClick={() => setShowTools(false)}><User size={17} /> Paramètres</Link>
               
             </div>

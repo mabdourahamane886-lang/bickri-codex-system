@@ -24,7 +24,7 @@ const badge: CSSProperties = {
 };
 
 export function LiveThinkingCenter({ events, mode }: Props) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const stats = useMemo(() => ({
     done: events.filter((event) => event.status === "ok").length,
     issues: events.filter((event) => event.status === "error" || event.status === "refused").length,
@@ -39,8 +39,8 @@ export function LiveThinkingCenter({ events, mode }: Props) {
       <button type="button" onClick={() => setExpanded((value) => !value)}
         aria-expanded={expanded}
         style={{ ...row, width: "100%", border: 0, padding: 0, background: "transparent", color: "inherit", cursor: "pointer", textAlign: "left" }}>
-        <span style={{ ...badge, color: "var(--primary, #3285e8)" }}><Activity size={13} /> LIVE THINKING</span>
-        <strong style={{ fontSize: 13, flex: 1 }}>Centre de pilotage BCX</strong>
+        <span style={{ ...badge, color: "var(--primary, #3285e8)" }}><Activity size={13} /> Activité</span>
+        <strong style={{ fontSize: 13, flex: 1 }}>Actions et outils</strong>
         <span style={muted}>{modeLabel}</span>
         <ChevronDown size={16} style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform .18s" }} />
       </button>

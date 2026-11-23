@@ -41,3 +41,18 @@ Dans **Supabase → Authentication → URL Configuration** :
 ## 4. Vérification
 
 Ouvre `/settings` sur le site déployé : les lignes Supabase et Bickri Code AI doivent afficher « Configuré ». `/api/health` renvoie le même état en JSON (sans aucune valeur secrète).
+
+## 5. Mémoire Cloud BCX
+
+Applique d’abord les migrations de mémoire BCX existantes, puis
+`supabase/migrations/20261123090000_bcx_cloud_memory_queue.sql` sur le même projet
+Supabase que celui utilisé par Vercel. La migration active Supabase Cron et
+programme le job `bcx-cloud-memory` chaque minute. Aucune clé supplémentaire
+n’est nécessaire sur Vercel.
+
+Pour la vérification, envoie depuis un compte connecté « Mémorise que je préfère
+les exemples en TypeScript. », ferme le chat et vérifie après le prochain passage
+que le souvenir apparaît dans **Paramètres → Personnalisation → Gérer la mémoire**.
+Le tableau **Integrations → Cron** de Supabase affiche les exécutions du job.
+Les tâches qui échouent restent dans la file et sont retentées avec un délai
+progressif plafonné à une heure.
