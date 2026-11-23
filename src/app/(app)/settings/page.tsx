@@ -80,7 +80,7 @@ export default function SettingsPage() {
             <SettingRow title="Application BCX" detail="Ajoute BCX à ton écran d’accueil ou à ton ordinateur."><InstallApp /></SettingRow>
           </>}
           {section.id === "personalisation" && (
-            <SettingRow title="Mémoire de Bickri AI" detail="Consulte, modifie ou supprime les informations mémorisées.">
+            <SettingRow title="Mémoire Cloud BCX" detail="Les souvenirs mis en file sont traités en arrière-plan. Tu peux les consulter, les modifier ou les supprimer.">
               <Link className="btn" href={configured && !loading && !user ? "/login" : "/ai/memories"}>
                 {configured && !loading && !user ? "Se connecter" : "Gérer la mémoire"} <ArrowUpRight size={16} />
               </Link>

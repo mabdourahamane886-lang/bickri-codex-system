@@ -3,6 +3,7 @@ import { AIError } from "@/lib/ai/gemini";
 import { generateWithRouter } from "@/lib/ai/router";
 import { resolveThinkingMode, type ThinkingMode } from "@/lib/ai/thinking";
 import { buildSystemInstruction } from "@/lib/ai/prompt";
+import { queueMemoryCapture } from "@/lib/ai/memory-capture";
 import { loadAuthorizedMemory } from "@/lib/ai/memory";
 import { getAgentContext } from "@/lib/agent/context";
 import { runAgent, sanitizeContents } from "@/lib/agent/run";
@@ -39,13 +40,18 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const startedAt = Date.now();
   const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
-  if (!apiKey && !process.env.OPENAI_API_KEY) return NextResponse.json({ error: "Aucune clé IA serveur n’est configurée. Ajoute GEMINI_API_KEY ou OPENAI_API_KEY dans Vercel.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
 
   const limit = rateLimit(`agent:${clientKey(request.headers)}`, 30, 60_000);
   if (!limit.ok) return NextResponse.json({ error: `Trop de requêtes. Réessaie dans ${limit.retryAfter} s.` }, { status: 429 });
 
   let body: Record<string, unknown>;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Requête JSON invalide." }, { status: 400 }); }
+  try {
+    const parsed: unknown = await request.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid");
+    body = parsed as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Requête JSON invalide." }, { status: 400 });
+  }
 
   const contents = sanitizeContents(body.contents);
   const message = typeof body.message === "string" ? body.message.trim().slice(0, 8000) : "";
@@ -61,6 +67,16 @@ export async function POST(request: NextRequest) {
     console.error("Agent context unavailable:", error instanceof Error ? error.message : error);
     return NextResponse.json({ error: "L’espace de travail est momentanément indisponible. Réessaie dans quelques instants.", code: "AGENT_CONTEXT_UNAVAILABLE" }, { status: 503 });
   }
+
+  if (ctx.user && ctx.supabase && message && !decision && body.captureMemory !== false) {
+    try {
+      await queueMemoryCapture(ctx.supabase, message);
+    } catch (error) {
+      console.error("BCX memory enqueue failed", error instanceof Error ? error.message : "unknown");
+    }
+  }
+
+  if (!apiKey && !process.env.OPENAI_API_KEY) return NextResponse.json({ error: "Aucune clé IA serveur n’est configurée. Ajoute GEMINI_API_KEY ou OPENAI_API_KEY dans Vercel.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
 
   try {
     const language = typeof body.language === "string" ? body.language.slice(0, 80) : "multi-langage";
