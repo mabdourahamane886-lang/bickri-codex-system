@@ -1,4 +1,4 @@
-import { Code, MessageSquare, TerminalSquare, type LucideIcon } from "lucide-react";
+import { Code, KeyRound, MessageSquare, TerminalSquare, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; short: string; icon: LucideIcon };
 
@@ -16,10 +16,11 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { href: "/workspace", label: "IDE Cloud", short: "IDE", icon: TerminalSquare },
     ],
   },
+  { label: "Développeurs", items: [{ href: "/settings/api-keys", label: "Clés API", short: "API", icon: KeyRound }] },
 ];
 
 export const ALL_NAV = NAV_GROUPS.flatMap((g) => g.items);
-export const MOBILE_NAV = ALL_NAV;
+export const MOBILE_NAV = ALL_NAV.filter((item) => item.href !== "/settings/api-keys");
 
 export function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
