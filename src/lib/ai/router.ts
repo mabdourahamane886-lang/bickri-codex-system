@@ -1,5 +1,6 @@
 import "server-only";
 import { AIError, generateWithGemini, type ChatMessage } from "./gemini";
+import { generateWithOllama } from "./ollama";
 import { getThinkingInstruction, resolveThinkingMode, type ThinkingMode, type ResolvedThinkingMode } from "./thinking";
 
 type RouterOptions = {
@@ -10,7 +11,7 @@ type RouterOptions = {
   thinkingMode?: ThinkingMode;
 };
 
-type AIProvider = "google" | "openai";
+type AIProvider = "google" | "openai" | "ollama";
 type ProviderResult = { answer: string; model: string; provider: AIProvider; thinkingMode: ResolvedThinkingMode };
 
 export function getAIProviderOrder(): AIProvider[] {
@@ -77,6 +78,11 @@ export async function generateWithRouter(opts: RouterOptions): Promise<ProviderR
     thinkingMode === "balanced" ? 4096 :
     thinkingMode === "deep" ? 12288 : 16384
   );
+
+  if (process.env.AI_PROVIDER === "ollama" && !opts.excludeProviders?.includes("ollama")) {
+    const result = await generateWithOllama({ systemInstruction, messages: opts.messages, maxOutputTokens });
+    return { ...result, provider: "ollama", thinkingMode };
+  }
 
   const googleKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
   if (googleKey && !opts.excludeProviders?.includes("google")) {
