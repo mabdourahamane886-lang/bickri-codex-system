@@ -39,7 +39,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const startedAt = Date.now();
   const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
-  if (!apiKey && !process.env.OPENAI_API_KEY) return NextResponse.json({ error: "Aucune clé IA serveur n’est configurée. Ajoute GEMINI_API_KEY ou OPENAI_API_KEY dans Vercel.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
+  if (process.env.AI_PROVIDER !== "ollama" && !apiKey && !process.env.OPENAI_API_KEY) return NextResponse.json({ error: "Aucune clé IA serveur n’est configurée. Ajoute GEMINI_API_KEY ou OPENAI_API_KEY dans Vercel.", code: "AI_NOT_CONFIGURED" }, { status: 503 });
 
   const limit = rateLimit(`agent:${clientKey(request.headers)}`, 30, 60_000);
   if (!limit.ok) return NextResponse.json({ error: `Trop de requêtes. Réessaie dans ${limit.retryAfter} s.` }, { status: 429 });
@@ -68,6 +68,49 @@ export async function POST(request: NextRequest) {
     const requestedThinkingMode: ThinkingMode = body.thinkingMode === "fast" || body.thinkingMode === "balanced" || body.thinkingMode === "deep" || body.thinkingMode === "expert" || body.thinkingMode === "auto" ? body.thinkingMode : "auto";
     const latestUserQuery = [...contents].reverse().find((item) => item.role === "user")?.parts.filter((part) => typeof part.text === "string").map((part) => part.text || "").join("\n") || "";
     const thinkingMode = resolveThinkingMode(latestUserQuery, requestedThinkingMode);
+    // Self-hosted mode: keep the existing chat envelope and authorized user memory.
+    // Tool-using agent steps still require separate Ollama tool-calling integration.
+    if (process.env.AI_PROVIDER === "ollama") {
+      const messages = contents.map(item => ({
+        role: item.role === "model" ? "assistant" as const : "user" as const,
+        content: item.parts.filter(p => typeof p.text === "string").map(p => p.text || "").join("\n").trim(),
+      })).filter(item => item.content).slice(-20);
+      const run = async () => {
+        const memory = await loadAuthorizedMemory(ctx, latestUserQuery);
+        const systemInstruction = buildSystemInstruction(language, projectContext, [], latestUserQuery, "", memory);
+        const result = await generateWithRouter({ systemInstruction, messages, thinkingMode: requestedThinkingMode });
+        await recordAIUsage({ userId: ctx.user?.id, capability: "chat", provider: "Ollama", outcome: "success", latencyMs: Date.now() - startedAt });
+        return {
+          contents: [...contents, { role: "model", parts: [{ text: result.answer }] }],
+          events: [], answer: result.answer, model: result.model, provider: "ollama",
+          thinkingMode: result.thinkingMode, fallbackMode: false, plugins: [],
+        };
+      };
+      if (body.stream === true) {
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            const send = (event: string, data: unknown) =>
+              controller.enqueue(encoder.encode("event: " + event + "\ndata: " + JSON.stringify(data) + "\n\n"));
+            void (async () => {
+              try {
+                send("phase", { phase: "analysis", label: "Analyse avec BCX AI Engine", status: "started" });
+                const result = await run();
+                send("phase", { phase: "complete", label: "Traitement terminé", status: "ok" });
+                send("result", result);
+              } catch (error) {
+                send("stream_error", { error: error instanceof Error ? error.message : "Moteur Ollama indisponible." });
+              } finally { controller.close(); }
+            })();
+          },
+        });
+        return new Response(stream, { headers: { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform" } });
+      }
+      try { return NextResponse.json(await run(), { headers: { "Cache-Control": "no-store" } }); }
+      catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Moteur Ollama indisponible.", code: "AI_PROVIDER_UNAVAILABLE" }, { status: 503 });
+      }
+    }
     try {
       if (!apiKey && body.stream !== true) throw new AIError("Gemini n'est pas configuré; bascule vers un fournisseur IA de secours en mode réponse textuelle.", 503, "AI_PROVIDER_UNAVAILABLE");
       if (body.stream === true) {
