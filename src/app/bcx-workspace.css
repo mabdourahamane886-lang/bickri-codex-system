@@ -1,0 +1,79 @@
+:root[data-theme="light"] {
+  --workspace-surface: #f3f5fc;
+  --workspace-accent: #3d4ac3;
+  --reflection-accent: #a04426;
+}
+:root[data-theme="dark"] {
+  --workspace-surface: #22263a;
+  --workspace-accent: #a7affe;
+  --reflection-accent: #ffb28c;
+}
+.bcx-classic-chat .classic-sidebar-brand .logo { gap: 9px; }
+.bcx-classic-chat .classic-sidebar-brand .logo-mark,
+.bcx-nav-popover .logo-mark { width: 31px; height: 31px; color: var(--workspace-accent); }
+.bcx-classic-chat .classic-sidebar-brand .logo-word { display: grid; }
+.bcx-tools-menu { min-width: 0; }
+.bcx-tools-menu summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 35px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+.bcx-tools-menu summary::-webkit-details-marker { display: none; }
+.bcx-tools-menu summary:hover { background: var(--workspace-surface); }
+.bcx-tools-menu summary svg:last-child { margin-inline-start: auto; }
+.bcx-tools-menu[open] summary svg:last-child { transform: rotate(180deg); }
+.bcx-tools-menu-links {
+  max-height: min(190px, 24dvh);
+  overflow-y: auto;
+  margin-inline-start: 10px;
+  border-inline-start: 1px solid var(--border);
+}
+.bcx-chat-emblem {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 8px;
+  border-radius: 18px;
+  color: var(--workspace-accent);
+  background: var(--workspace-surface);
+}
+.bcx-chat-emblem svg { width: 36px; height: 36px; }
+.bcx-classic-chat .starter.bcx-quick-start:hover {
+  border-color: var(--workspace-accent) !important;
+  background: var(--workspace-surface) !important;
+}
+.bcx-response-activity { margin-block: 12px; }
+.bcx-reflection {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--reflection-accent);
+  font-size: .87rem;
+  font-weight: 600;
+}
+.bcx-reflection-mark {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+}
+.bcx-reflection-mark svg { animation: bcx-reflection-spin 3.6s ease-in-out infinite; }
+@keyframes bcx-reflection-spin {
+  0%, 100% { transform: rotate(0) scale(.88); opacity: .72; }
+  50% { transform: rotate(45deg) scale(1.15); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bcx-reflection-mark svg { animation: none; }
+}
+.bcx-install { display: grid; justify-items: start; gap: 8px; }
+.bcx-install-help { max-width: 52ch; color: var(--text-muted); }
+.shell:not(:has(.bcx-classic-chat)) .nav-link[aria-current="page"] {
+  color: var(--workspace-accent);
+  background: var(--workspace-surface);
+}

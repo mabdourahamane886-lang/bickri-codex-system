@@ -3,9 +3,10 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { ToastProvider } from "@/components/ui/Toast";
-import { themeScript } from "@/components/providers/ThemeToggle";
+import { themeScript } from "@/components/providers/theme";
 import "./globals.css";
 import "./bcx-light-theme.css";
+import "./bcx-workspace.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://bickri-codex-system.vercel.app"),
@@ -32,7 +33,8 @@ export const metadata: Metadata = {
     title: "BICKRI CODEX SYSTEM (BCX)",
     description: "Studio de développement et assistant IA Bickri Code AI.",
   },
-  icons: { icon: "/icon.svg" },
+  manifest: "/manifest.webmanifest",
+  icons: { icon: "/icon.svg", apple: "/bcx-180.png" },
 };
 
 export const viewport: Viewport = {

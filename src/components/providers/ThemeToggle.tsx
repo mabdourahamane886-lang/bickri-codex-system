@@ -3,10 +3,7 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
-export const THEME_KEY = "bcx_theme_v2";
-
-/** Le thème clair est le choix initial ; un choix explicite de l'utilisateur est conservé. */
-export const themeScript = `(function(){try{var t=localStorage.getItem("${THEME_KEY}");document.documentElement.dataset.theme=(t==="dark"||t==="light")?t:"light";}catch(e){document.documentElement.dataset.theme="light";}})();`;
+import { THEME_KEY } from "./theme";
 
 export function ThemeToggle({ className = "btn btn-ghost btn-icon" }: { className?: string }) {
   const [theme, setTheme] = useState<"dark" | "light">("light");
