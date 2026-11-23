@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   const input = body as Record<string, unknown>;
   const name = typeof input.name === "string" ? input.name.trim().slice(0, 80) : "";
   if (!name) return response({ error: "Indique un nom pour la clé." }, 400);
-  if (input.expiresInDays !== undefined && (!Number.isInteger(input.expiresInDays) || Number(input.expiresInDays) < 1 || Number(input.expiresInDays) > 365))
+  if (input.expiresInDays !== undefined && (typeof input.expiresInDays !== "number" || !Number.isInteger(input.expiresInDays) || input.expiresInDays < 1 || Number(input.expiresInDays) > 365))
     return response({ error: "Expiration : de 1 à 365 jours." }, 400);
   const expiresAt = new Date(Date.now() + Number(input.expiresInDays ?? 90) * 86400_000).toISOString();
   const { key, hash, prefix } = createBcxKey();
