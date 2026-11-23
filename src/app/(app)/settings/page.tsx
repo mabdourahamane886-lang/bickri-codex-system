@@ -1,84 +1,116 @@
 "use client";
 
-import { CircleAlert, CircleCheck, CircleDashed, HardDrive, LogIn, LogOut, Trash2 } from "lucide-react";
-import { InstallApp } from "@/components/shell/InstallApp";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { ArrowUpRight, Brain, Database, LogIn, LogOut, Monitor, Plug, Trash2, UserRound } from "lucide-react";
+import { InstallApp } from "@/components/shell/InstallApp";
 import { Badge } from "@/components/ui/Badge";
-import { ThemeToggle } from "@/components/providers/ThemeToggle";
 import { useSession } from "@/components/providers/SessionProvider";
+import { setThemePreference, THEME_EVENT, type ThemePreference } from "@/components/providers/theme";
 import { useToast } from "@/components/ui/Toast";
 import { useConfig } from "@/hooks/useConfig";
 
-const LOCAL_KEYS = [
-  { key: "bcx_registry_v1", label: "Registre local" },
-  { key: "bcx_studio_workspace_v1", label: "Projet du studio" },
-];
+const sections = [
+  { id: "general", title: "Général", icon: Monitor },
+  { id: "personalisation", title: "Personnalisation", icon: Brain },
+  { id: "donnees", title: "Données", icon: Database },
+  { id: "integrations", title: "Intégrations", icon: Plug },
+  { id: "compte", title: "Compte", icon: UserRound },
+] as const;
+
+type Section = typeof sections[number];
+
+function SettingRow({ title, detail, children }: { title: string; detail?: string; children: ReactNode }) {
+  return (
+    <div className="bcx-setting-row">
+      <div><h3>{title}</h3>{detail && <p>{detail}</p>}</div>
+      {children}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
+  const [section, setSection] = useState<Section>(sections[0]);
+  const [theme, setTheme] = useState<ThemePreference>("light");
   const { config, error } = useConfig();
-  const { user, configured, signOut } = useSession();
+  const { user, loading, configured, signOut } = useSession();
   const { notify } = useToast();
 
-  const rows = [
-    { name: "Supabase (authentification et registre)", vars: "NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", ok: config?.supabase, required: true },
-    { name: "Bickri Code AI (Gemini)", vars: "GEMINI_API_KEY, GEMINI_MODEL, GEMINI_FALLBACK_MODEL", ok: config?.ai, required: true },
-    { name: "Studio d’images IA", vars: "GEMINI_API_KEY, GEMINI_IMAGE_MODEL (optionnel)", ok: config?.imageGeneration, required: false },
-    { name: "GitHub MCP (contexte de dépôt)", vars: "GITHUB_MCP_URL, GITHUB_MCP_BEARER_TOKEN", ok: config?.githubMcp, required: false },
-  ];
+  useEffect(() => {
+    const update = () => {
+      const preference = document.documentElement.dataset.themePreference;
+      setTheme(preference === "dark" || preference === "system" ? preference : "light");
+    };
+    update();
+    window.addEventListener(THEME_EVENT, update);
+    return () => window.removeEventListener(THEME_EVENT, update);
+  }, []);
 
-  function clearLocal(key: string, label: string) {
-    if (!window.confirm(`Effacer « ${label} » de cet appareil ? Cette action est définitive.`)) return;
-    localStorage.removeItem(key);
-    notify(`${label} effacé. Recharge la page pour repartir de zéro.`, "success");
+  function clearProject() {
+    if (!window.confirm("Effacer définitivement le projet Codex Studio sur cet appareil ?")) return;
+    try {
+      localStorage.removeItem("bcx_studio_workspace_v1");
+      notify("Projet local effacé.", "success");
+    } catch {
+      notify("Le navigateur n’a pas permis de supprimer le projet.", "error");
+    }
   }
 
   return (
-    <main className="content" style={{ maxWidth: 960 }}>
-      <PageHeader title="Paramètres" description="Gère la configuration, ton compte, l’apparence et les données locales de BCX depuis cette page dédiée." />
-
-      <div className="stack" style={{ gap: 20 }}>
-        <section className="card" aria-labelledby="cfg-title">
-          <div className="card-head"><div><h2 id="cfg-title">Configuration du serveur</h2><p>Variables d&apos;environnement à définir dans Vercel. Les valeurs ne sont jamais affichées.</p></div></div>
-          {error && <div className="card-body"><div className="alert alert-danger"><CircleAlert /><span>Impossible de lire l&apos;état du serveur.</span></div></div>}
-          <div>
-            {rows.map((r) => (
-              <div className="check-row" key={r.name}>
-                <span className="status-icon">{r.ok === undefined ? <CircleDashed /> : r.ok ? <CircleCheck style={{ color: "var(--success)" }} /> : <CircleAlert style={{ color: r.required ? "var(--warning)" : "var(--text-faint)" }} />}</span>
-                <div style={{ minWidth: 0 }}><b>{r.name}</b><code style={{ overflowWrap: "anywhere" }}>{r.vars}</code></div>
-                <Badge tone={r.ok === undefined ? "neutral" : r.ok ? "success" : r.required ? "warning" : "neutral"}>{r.ok === undefined ? "…" : r.ok ? "Configuré" : r.required ? "Manquant" : "Optionnel"}</Badge>
-              </div>
-            ))}
-          </div>
-          <div className="card-foot"><span>Après une modification dans Vercel, redéploie le projet.</span>{config && <span className="mono">{config.aiModel}</span>}</div>
-        </section>
-
-        <section className="card" aria-labelledby="acc-title">
-          <div className="card-head"><div><h2 id="acc-title">Compte</h2><p>{configured ? "Connexion par e-mail et mot de passe via Supabase." : "Supabase n'est pas configuré : l'application fonctionne en mode local."}</p></div></div>
-          <div className="card-body row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-            <div><b style={{ fontWeight: 500 }}>{user?.email ?? "Non connecté"}</b><p className="faint" style={{ fontSize: "var(--text-xs)" }}>{user ? "Rôle par défaut : lecteur. Les rôles élevés sont attribués par un administrateur." : "Connecte-toi pour utiliser le registre partagé."}</p></div>
-            {user ? <button className="btn" onClick={signOut}><LogOut /> Se déconnecter</button> : <Link className="btn btn-primary" href="/login"><LogIn /> Se connecter</Link>}
-          </div>
-        </section>
-
-        <section className="card" aria-labelledby="app-title">
-          <div className="card-head"><div><h2 id="app-title">Apparence</h2><p>Thème sombre ou clair, mémorisé sur cet appareil.</p></div><ThemeToggle className="btn btn-icon" /></div>
-        </section>
-
-        <section className="card" aria-labelledby="install-title">
-          <div className="card-head"><div><h2 id="install-title">Application BCX</h2><p>Ajoute BCX à ton écran d’accueil ou à ton ordinateur.</p></div></div>
-          <div className="card-body"><InstallApp /></div>
-        </section>
-
-        <section className="card" aria-labelledby="data-title">
-          <div className="card-head"><div><h2 id="data-title">Données locales</h2><p>Stockées uniquement dans ce navigateur.</p></div></div>
-          {LOCAL_KEYS.map((k) => (
-            <div className="check-row" key={k.key}>
-              <span className="status-icon"><HardDrive /></span>
-              <div><b>{k.label}</b><code>{k.key}</code></div>
-              <button className="btn btn-sm btn-danger" onClick={() => clearLocal(k.key, k.label)}><Trash2 /> Effacer</button>
-            </div>
+    <main className="content bcx-preferences">
+      <h1>Paramètres</h1>
+      <div className="bcx-preferences-layout">
+        <nav className="bcx-preferences-nav" aria-label="Rubriques des paramètres">
+          {sections.map((entry) => (
+            <button key={entry.id} type="button" aria-pressed={section.id === entry.id} aria-controls="bcx-preferences-panel" onClick={() => setSection(entry)}>
+              <entry.icon size={18} aria-hidden="true" /> {entry.title}
+            </button>
           ))}
+        </nav>
+        <section className="bcx-preferences-panel" id="bcx-preferences-panel" aria-labelledby="bcx-preferences-title">
+          <h2 id="bcx-preferences-title">{section.title}</h2>
+          {section.id === "general" && <>
+            <SettingRow title="Apparence" detail="Choisis le thème utilisé sur cet appareil.">
+              <select className="select" aria-label="Thème de BCX" value={theme} onChange={(event) => setThemePreference(event.target.value as ThemePreference)}>
+                <option value="light">Clair</option>
+                <option value="dark">Sombre</option>
+                <option value="system">Système</option>
+              </select>
+            </SettingRow>
+            <SettingRow title="Application BCX" detail="Ajoute BCX à ton écran d’accueil ou à ton ordinateur."><InstallApp /></SettingRow>
+          </>}
+          {section.id === "personalisation" && (
+            <SettingRow title="Mémoire de Bickri AI" detail="Consulte, modifie ou supprime les informations mémorisées.">
+              <Link className="btn" href={configured && !loading && !user ? "/login" : "/ai/memories"}>
+                {configured && !loading && !user ? "Se connecter" : "Gérer la mémoire"} <ArrowUpRight size={16} />
+              </Link>
+            </SettingRow>
+          )}
+          {section.id === "donnees" && <>
+            <SettingRow title="Conversations" detail="Retrouve tes chats et leurs archives. Chaque conversation peut être exportée depuis le menu de saisie.">
+              <Link className="btn" href="/ai">Ouvrir le chat <ArrowUpRight size={16} /></Link>
+            </SettingRow>
+            <SettingRow title="Projet Codex Studio" detail="Supprime la copie du projet enregistrée dans ce navigateur.">
+              <button type="button" className="btn btn-danger" onClick={clearProject}><Trash2 size={16} /> Effacer le projet</button>
+            </SettingRow>
+          </>}
+          {section.id === "integrations" && <>
+            <SettingRow title="Plugins" detail="Explore GitHub et les intégrations disponibles dans BCX.">
+              <Link className="btn" href="/plugins">Ouvrir le catalogue <ArrowUpRight size={16} /></Link>
+            </SettingRow>
+            {error && <p role="status" className="muted">Impossible de vérifier l’état des services.</p>}
+            {config && <>
+              <SettingRow title="Assistant IA"><Badge tone={config.ai ? "success" : "neutral"}>{config.ai ? "Configuré" : "À configurer"}</Badge></SettingRow>
+              <SettingRow title="GitHub MCP"><Badge tone={config.githubMcp ? "success" : "neutral"}>{config.githubMcp ? "Configuré" : "À configurer"}</Badge></SettingRow>
+            </>}
+          </>}
+          {section.id === "compte" && (
+            <SettingRow title={loading ? "Chargement du compte…" : user?.email ?? "Session BCX"} detail={loading ? undefined : user ? "Compte connecté" : configured ? "Connecte-toi pour retrouver ta mémoire et ton historique synchronisé." : "BCX fonctionne en mode local sur cet appareil."}>
+              {!loading && (user
+                ? <button type="button" className="btn" onClick={() => void signOut()}><LogOut size={16} /> Se déconnecter</button>
+                : configured && <Link className="btn btn-primary" href="/login"><LogIn size={16} /> Se connecter</Link>)}
+            </SettingRow>
+          )}
         </section>
       </div>
     </main>

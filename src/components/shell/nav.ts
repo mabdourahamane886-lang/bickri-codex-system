@@ -1,5 +1,5 @@
 import {
-  BookOpen, Code2, FileSpreadsheet, FileText, Fingerprint, Image,
+  BookOpen, Code2, FileSpreadsheet, FileText,
   MessageSquare, Plug, Settings, SquareTerminal, type LucideIcon,
 } from "lucide-react";
 
@@ -23,10 +23,8 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Création et données",
     items: [
-      { href: "/images", label: "Studio d’images", short: "Images", description: "Génère, retouche et télécharge des images.", icon: Image },
       { href: "/ai/documents", label: "Documents", short: "Documents", description: "Rédige un document et exporte-le en Word, Markdown ou PDF.", icon: FileText },
       { href: "/ai/spreadsheets", label: "Tableurs", short: "Tableurs", description: "Importe un fichier Excel et explore ses statistiques.", icon: FileSpreadsheet },
-      { href: "/registry", label: "Registre BCX", short: "Registre", description: "Crée, recherche et exporte tes identifiants BCX.", icon: Fingerprint },
     ],
   },
   {

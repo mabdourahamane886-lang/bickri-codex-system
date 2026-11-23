@@ -186,7 +186,7 @@ export default function CodeAIPage() {
   const [copiedPromptIndex, setCopiedPromptIndex] = useState<number | null>(null);
   const [feedbackByIndex, setFeedbackByIndex] = useState<Record<number, -1 | 1>>({});
   const [plugins, setPlugins] = useState<PluginStatus[] | null>(null);
-  const [enabled, setEnabled] = useState<string[]>(["github", "registry", "web"]);
+  const [enabled, setEnabled] = useState<string[]>(["github", "web"]);
   const [showTools, setShowTools] = useState(false);
   const [showNav, setShowNav] = useState(false);
   const [imageMode, setImageMode] = useState<"create" | "edit">("create");
@@ -1235,7 +1235,6 @@ export default function CodeAIPage() {
               <Link className="btn bcx-attach-action" href="/ai/spreadsheets" onClick={() => setShowTools(false)}><FileText size={17} /> Analyse Excel</Link>
               <Link className="btn bcx-attach-action" href="/ai/documents" onClick={() => setShowTools(false)}><FileText size={17} /> Documents</Link>
               <Link className="btn bcx-attach-action" href="/ai/execute" onClick={() => setShowTools(false)}><Bug size={17} /> Exécuter du code</Link>
-              <Link className="btn bcx-attach-action" href="/images" onClick={() => setShowTools(false)}><ImageIcon size={17} /> Studio d’images</Link>
               <Link className="btn bcx-attach-action" href="/settings" onClick={() => setShowTools(false)}><User size={17} /> Paramètres</Link>
               
             </div>

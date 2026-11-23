@@ -3,20 +3,20 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
-import { THEME_KEY } from "./theme";
+import { setThemePreference, THEME_EVENT } from "./theme";
 
 export function ThemeToggle({ className = "btn btn-ghost btn-icon" }: { className?: string }) {
   const [theme, setTheme] = useState<"dark" | "light">("light");
 
   useEffect(() => {
-    setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+    const update = () => setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+    update();
+    window.addEventListener(THEME_EVENT, update);
+    return () => window.removeEventListener(THEME_EVENT, update);
   }, []);
 
   function toggle() {
-    const next = theme === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem(THEME_KEY, next); } catch { /* ignoré */ }
-    setTheme(next);
+    setThemePreference(theme === "dark" ? "light" : "dark");
   }
 
   return (

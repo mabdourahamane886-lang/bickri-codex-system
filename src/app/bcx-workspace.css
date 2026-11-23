@@ -77,3 +77,66 @@
   color: var(--workspace-accent);
   background: var(--workspace-surface);
 }
+
+.bcx-preferences { max-width: 1090px; }
+.bcx-preferences h1 { margin: 8px 0 24px; font-size: 1.8rem; font-weight: 650; letter-spacing: -.035em; }
+.bcx-preferences-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.bcx-preferences-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  background: var(--surface-2);
+  border-inline-end: 1px solid var(--border);
+}
+.bcx-preferences-nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: start;
+}
+.bcx-preferences-nav button:hover,
+.bcx-preferences-nav button[aria-pressed="true"] {
+  color: var(--workspace-accent);
+  background: var(--workspace-surface);
+}
+.bcx-preferences-panel { min-width: 0; min-height: 310px; padding: 22px 24px; }
+.bcx-preferences-panel h2 { margin: 0 0 8px; font-size: 1.2rem; font-weight: 650; }
+.bcx-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding: 16px 0;
+}
+.bcx-setting-row > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.bcx-setting-row > :is(.btn, .select, .badge) { flex-shrink: 0; }
+.bcx-setting-row h3 { font-weight: 600; }
+.bcx-setting-row p { margin: 3px 0 0; color: var(--text-muted); font-size: .85rem; }
+
+@media (max-width: 760px) {
+  .bcx-preferences-layout { grid-template-columns: minmax(0, 1fr); }
+  .bcx-preferences-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 8px;
+  }
+  .bcx-preferences-nav button { flex: 0 0 auto; }
+  .bcx-preferences-panel { min-height: 250px; padding: 16px; }
+  .bcx-setting-row { flex-wrap: wrap; gap: 10px; }
+}
