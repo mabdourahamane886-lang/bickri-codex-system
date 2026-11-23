@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     if (process.env.AI_PROVIDER === "ollama") {
       const messages = contents.map(item => ({
         role: item.role === "model" ? "assistant" as const : "user" as const,
-        content: item.parts.filter(p => typeof p.text === "string").map(p => p.text || "").join("\\n").trim(),
+        content: item.parts.filter(p => typeof p.text === "string").map(p => p.text || "").join("\n").trim(),
       })).filter(item => item.content).slice(-20);
       const run = async () => {
         const memory = await loadAuthorizedMemory(ctx, latestUserQuery);
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
         const stream = new ReadableStream<Uint8Array>({
           start(controller) {
             const send = (event: string, data: unknown) =>
-              controller.enqueue(encoder.encode("event: " + event + "\\ndata: " + JSON.stringify(data) + "\\n\\n"));
+              controller.enqueue(encoder.encode("event: " + event + "\ndata: " + JSON.stringify(data) + "\n\n"));
             void (async () => {
               try {
                 send("phase", { phase: "analysis", label: "Analyse avec BCX AI Engine", status: "started" });
