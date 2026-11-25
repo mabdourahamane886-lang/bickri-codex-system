@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   ArrowUp, Plus, Archive, Bug, Check, CircleAlert, CircleCheck, CircleX, Code2, Copy, ImagePlus, Layers, Link2, ChevronDown,
@@ -148,7 +150,13 @@ function ToolEvents({ events }: { events: AgentEvent[] }) {
   );
 }
 
+const CodexWorkspace = dynamic(() => import("../workspace/page"), { ssr: false });
+const CodexStudio = dynamic(() => import("../studio/page"), { ssr: false });
+
 export default function CodeAIPage() {
+  const pathname = usePathname();
+  const workspaceMode = pathname === "/codex" ? "code" : "chat";
+  const [codexTool, setCodexTool] = useState<"projects" | "studio">("projects");
   const { configured, loading: sessionLoading, user, signOut } = useSession();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contents, setContents] = useState<unknown[]>([]);
@@ -160,7 +168,6 @@ export default function CodeAIPage() {
   const [historySearch, setHistorySearch] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [workspaceMode, setWorkspaceMode] = useState<"chat" | "code">("chat");
   const [showArchived, setShowArchived] = useState(false);
   const [conversationMenuId, setConversationMenuId] = useState("");
   const [renamingConversationId, setRenamingConversationId] = useState("");
@@ -1003,7 +1010,7 @@ export default function CodeAIPage() {
     <main className={`chat bcx-classic-chat ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}>
       <aside className="classic-chat-sidebar" aria-label="Historique des conversations">
         <div className="classic-sidebar-brand"><Logo subtitle="Espace de travail" /></div>
-        <button type="button" className="classic-new-chat" onClick={newChat}><SquarePen size={17}/> Nouveau chat</button>
+        {workspaceMode === "code" ? <Link href="/ai" className="classic-new-chat"><SquarePen size={17}/> Nouveau chat</Link> : <button type="button" className="classic-new-chat" onClick={newChat}><SquarePen size={17}/> Nouveau chat</button>}
         <label className="bcx-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher" aria-label="Rechercher dans l’historique"/></label>
         {renderSidebarLinks()}
         <div className="bcx-history-heading-row">
@@ -1023,8 +1030,8 @@ export default function CodeAIPage() {
           <button type="button" className="btn btn-ghost btn-icon bcx-sidebar-collapse" aria-label={sidebarCollapsed ? "Afficher la barre latérale" : "Réduire la barre latérale"} aria-expanded={!sidebarCollapsed} onClick={() => setSidebarCollapsed((value) => !value)}><Menu size={18} /></button>
         </div>
         <nav className="bcx-workspace-tabs" aria-label="Espaces de travail">
-          <button type="button" aria-pressed={workspaceMode === "chat"} onClick={() => setWorkspaceMode("chat")}>Chats</button>
-          <button type="button" aria-pressed={workspaceMode === "code"} onClick={() => setWorkspaceMode("code")}>Code</button>
+          <Link href="/ai" aria-current={workspaceMode === "chat" ? "page" : undefined}>Chat</Link>
+          <Link href="/codex" aria-current={workspaceMode === "code" ? "page" : undefined}>Codex</Link>
         </nav>
         <div className="bcx-toolbar-actions">
           <ThemeToggle />
@@ -1038,13 +1045,24 @@ export default function CodeAIPage() {
       </header>
       {showNav && <div className="plugin-popover bcx-nav-popover" role="dialog" aria-label="Historique des conversations">
         <div className="row"><div className="grow"><Logo subtitle="Espace de travail" /></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div>
-        <button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); newChat(); }}><SquarePen size={18}/> Nouvelle conversation</button>
+        {workspaceMode === "code" ? <Link href="/ai" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}}><SquarePen size={18}/> Nouvelle conversation</Link> : <button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); newChat(); }}><SquarePen size={18}/> Nouvelle conversation</button>}
         <label className="bcx-history-search bcx-mobile-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher dans l’historique…" aria-label="Rechercher dans l’historique"/></label>
         {renderSidebarLinks()}
         <div className="bcx-history-heading-row"><div className="classic-history-heading">Récents</div><button type="button" className="bcx-archive-toggle" onClick={() => setShowArchived((value) => !value)}>{showArchived ? "Historique" : "Archives"}</button></div>
         <div className="bcx-history-list">{renderHistorySections()}</div>
         <div className="bcx-mobile-account-actions">{renderAccountActions()}</div>
       </div>}
+      {workspaceMode === "code" ? (
+        <section className="bcx-codex-space" aria-label="Espace Codex">
+          <nav className="bcx-codex-space-nav" aria-label="Outils Codex">
+            <button type="button" aria-pressed={codexTool === "projects"} onClick={() => setCodexTool("projects")}><Code2 size={16}/> Projets avancés</button>
+            <button type="button" aria-pressed={codexTool === "studio"} onClick={() => setCodexTool("studio")}><Layers size={16}/> Éditeur visuel</button>
+          </nav>
+          <div className="bcx-codex-space-content">
+            {codexTool === "projects" ? <CodexWorkspace /> : <CodexStudio />}
+          </div>
+        </section>
+      ) : (
       <div className="chat-main">
         <div className="chat-scroll">
           <div className="chat-inner">
@@ -1283,6 +1301,7 @@ export default function CodeAIPage() {
           <p className="composer-note">Les réponses sont générées par IA : vérifie le code avant une mise en production. Les actions d&apos;écriture demandent toujours ta validation.</p>
         </div>
       </div>
+      )}
 
       {shareConversationId && (
         <div className="bcx-dialog-backdrop" role="presentation" onMouseDown={(event) => {
