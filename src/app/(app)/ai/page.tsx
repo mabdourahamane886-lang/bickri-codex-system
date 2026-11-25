@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-  ArrowUp, Plus, Archive, Bug, Check, CircleAlert, CircleCheck, CircleX, Code2, Copy, ImagePlus, Layers, Link2, ChevronDown,
+  ArrowUp, Plus, Archive, Check, CircleAlert, CircleCheck, CircleX, Code2, Copy, ImagePlus, Layers, Link2, ChevronDown,
   LogIn, LogOut, MoreHorizontal, Pencil, Pin, Plug, RefreshCw, Share2, ShieldAlert, Sparkles, SquarePen, User, UserPlus, X, Menu, FileText,
   ImageIcon, Search, ThumbsDown, ThumbsUp,
 } from "lucide-react";
@@ -65,12 +67,6 @@ const STARTERS = [
   { icon: FileText, title: "Analyser un document", description: "Résumer un fichier et en dégager les points clés.", prompt: "Analyse et résume le document que je vais joindre." },
   { icon: Sparkles, title: "Trouver des idées", description: "Faire émerger des pistes originales pour mon projet.", prompt: "Aide-moi à trouver des idées originales pour : " },
   { icon: Search, title: "Explorer un sujet", description: "Obtenir une vue d’ensemble claire et structurée.", prompt: "Fais une recherche approfondie sur le sujet suivant : " },
-];
-const CODE_STARTERS = [
-  { icon: Code2, title: "Créer une fonctionnalité", description: "Construire une solution complète, étape par étape.", prompt: "Aide-moi à créer cette fonctionnalité : " },
-  { icon: Bug, title: "Corriger un bug", description: "Analyser une erreur et proposer un correctif fiable.", prompt: "Analyse et corrige ce bug : " },
-  { icon: Layers, title: "Concevoir un projet", description: "Définir l’architecture et les étapes de réalisation.", prompt: "Conçois l’architecture d’un projet qui permet de : " },
-  { icon: FileText, title: "Comprendre du code", description: "Expliquer un fichier ou un extrait clairement.", prompt: "Explique ce code et suggère des améliorations : " },
 ];
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -148,7 +144,16 @@ function ToolEvents({ events }: { events: AgentEvent[] }) {
   );
 }
 
+const CodexWorkspace = dynamic(() => import("../workspace/page"), { ssr: false });
+const CodexStudio = dynamic(() => import("../studio/page"), { ssr: false });
+
 export default function CodeAIPage() {
+  const pathname = usePathname();
+  const workspaceMode = pathname === "/codex" ? "code" : "chat";
+  const [codexTool, setCodexTool] = useState<"projects" | "studio">("projects");
+  useEffect(() => {
+    if (pathname === "/codex" && new URLSearchParams(window.location.search).get("tool") === "studio") setCodexTool("studio");
+  }, [pathname]);
   const { configured, loading: sessionLoading, user, signOut } = useSession();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contents, setContents] = useState<unknown[]>([]);
@@ -160,7 +165,6 @@ export default function CodeAIPage() {
   const [historySearch, setHistorySearch] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [workspaceMode, setWorkspaceMode] = useState<"chat" | "code">("chat");
   const [showArchived, setShowArchived] = useState(false);
   const [conversationMenuId, setConversationMenuId] = useState("");
   const [renamingConversationId, setRenamingConversationId] = useState("");
@@ -961,7 +965,7 @@ export default function CodeAIPage() {
     return (
       <nav className="bcx-rail-nav" aria-label="Espaces BCX">
         {NAV_GROUPS[0].items.slice(1).map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} onClick={() => setShowNav(false)}><Icon size={16} />{label}</Link>
+          <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} onClick={() => setShowNav(false)}><Icon size={16} />{label}</Link>
         ))}
         <details className="bcx-tools-menu">
           <summary><Plug size={16} /> Outils et réglages <ChevronDown size={14} /></summary>
@@ -1003,9 +1007,10 @@ export default function CodeAIPage() {
     <main className={`chat bcx-classic-chat ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}>
       <aside className="classic-chat-sidebar" aria-label="Historique des conversations">
         <div className="classic-sidebar-brand"><Logo subtitle="Espace de travail" /></div>
-        <button type="button" className="classic-new-chat" onClick={newChat}><SquarePen size={17}/> Nouveau chat</button>
+        {workspaceMode === "code" ? <Link href="/ai" className="classic-new-chat"><SquarePen size={17}/> Nouveau chat</Link> : <button type="button" className="classic-new-chat" onClick={newChat}><SquarePen size={17}/> Nouveau chat</button>}
         <label className="bcx-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher" aria-label="Rechercher dans l’historique"/></label>
         {renderSidebarLinks()}
+        {workspaceMode === "chat" && <>
         <div className="bcx-history-heading-row">
           <div className="classic-history-heading">{showArchived ? "Archives" : "Récents"}</div>
           <button type="button" className="bcx-archive-toggle" onClick={() => setShowArchived((value) => !value)} aria-pressed={showArchived}>
@@ -1013,6 +1018,7 @@ export default function CodeAIPage() {
           </button>
         </div>
         <div className="classic-history-list">{renderHistorySections()}</div>
+        </>}
         <div className="classic-sidebar-bottom">
           {renderAccountActions()}
         </div>
@@ -1023,8 +1029,8 @@ export default function CodeAIPage() {
           <button type="button" className="btn btn-ghost btn-icon bcx-sidebar-collapse" aria-label={sidebarCollapsed ? "Afficher la barre latérale" : "Réduire la barre latérale"} aria-expanded={!sidebarCollapsed} onClick={() => setSidebarCollapsed((value) => !value)}><Menu size={18} /></button>
         </div>
         <nav className="bcx-workspace-tabs" aria-label="Espaces de travail">
-          <button type="button" aria-pressed={workspaceMode === "chat"} onClick={() => setWorkspaceMode("chat")}>Chats</button>
-          <button type="button" aria-pressed={workspaceMode === "code"} onClick={() => setWorkspaceMode("code")}>Code</button>
+          <Link href="/ai" aria-current={workspaceMode === "chat" ? "page" : undefined}>Chat</Link>
+          <Link href="/codex" aria-current={workspaceMode === "code" ? "page" : undefined}>Codex</Link>
         </nav>
         <div className="bcx-toolbar-actions">
           <ThemeToggle />
@@ -1038,26 +1044,36 @@ export default function CodeAIPage() {
       </header>
       {showNav && <div className="plugin-popover bcx-nav-popover" role="dialog" aria-label="Historique des conversations">
         <div className="row"><div className="grow"><Logo subtitle="Espace de travail" /></div><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowNav(false)} aria-label="Fermer"><X /></button></div>
-        <button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); newChat(); }}><SquarePen size={18}/> Nouvelle conversation</button>
+        {workspaceMode === "code" ? <Link href="/ai" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}}><SquarePen size={18}/> Nouvelle conversation</Link> : <button type="button" className="btn btn-ghost" style={{width:"100%",justifyContent:"flex-start"}} onClick={() => { setShowNav(false); newChat(); }}><SquarePen size={18}/> Nouvelle conversation</button>}
         <label className="bcx-history-search bcx-mobile-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher dans l’historique…" aria-label="Rechercher dans l’historique"/></label>
         {renderSidebarLinks()}
         <div className="bcx-history-heading-row"><div className="classic-history-heading">Récents</div><button type="button" className="bcx-archive-toggle" onClick={() => setShowArchived((value) => !value)}>{showArchived ? "Historique" : "Archives"}</button></div>
         <div className="bcx-history-list">{renderHistorySections()}</div>
         <div className="bcx-mobile-account-actions">{renderAccountActions()}</div>
       </div>}
+      {workspaceMode === "code" ? (
+        <section className="bcx-codex-space" aria-label="Espace Codex">
+          <nav className="bcx-codex-space-nav" aria-label="Outils Codex">
+            <button type="button" aria-pressed={codexTool === "projects"} onClick={() => setCodexTool("projects")}><Code2 size={16}/> Projets avancés</button>
+            <button type="button" aria-pressed={codexTool === "studio"} onClick={() => setCodexTool("studio")}><Layers size={16}/> Éditeur visuel</button>
+          </nav>
+          <div className="bcx-codex-space-content">
+            {codexTool === "projects" ? <CodexWorkspace /> : <CodexStudio />}
+          </div>
+        </section>
+      ) : (
       <div className="chat-main">
         <div className="chat-scroll">
           <div className="chat-inner">
             {messages.length === 0 ? (
               <>
-                <div className={`chat-hero ${workspaceMode === "code" ? "is-codex-mode" : ""}`}>
+                <div className="chat-hero">
                   <span className="bcx-chat-emblem"><LogoMark /></span>
-                  {workspaceMode === "code" && <span className="bcx-mode-eyebrow"><Code2 size={12}/> BICKRI CODEX · {language}</span>}
-                  <h1>{workspaceMode === "code" ? "Qu’allons-nous coder aujourd’hui ?" : "Que souhaites-tu créer ?"}</h1>
-                  <p>{workspaceMode === "code" ? "Décris ce que tu veux construire, corriger ou comprendre. Bickri Codex travaille avec toi dans cette conversation." : "Écris une demande ou joins un fichier pour commencer."}</p>
+                  <h1>Que souhaites-tu créer ?</h1>
+                  <p>Écris une demande ou joins un fichier pour commencer.</p>
                 </div>
                 <div className="starter-grid">
-                  {(workspaceMode === "code" ? CODE_STARTERS : STARTERS).map(({ icon: Icon, title, description, prompt: starterPrompt }) => (
+                  {STARTERS.map(({ icon: Icon, title, description, prompt: starterPrompt }) => (
                     <button key={title} className="starter bcx-quick-start" onClick={() => { setPrompt(starterPrompt); inputRef.current?.focus(); }}>
                       <Icon aria-hidden="true" /><span><strong>{title}</strong><small>{description}</small></span>
                     </button>
@@ -1141,7 +1157,7 @@ export default function CodeAIPage() {
                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => { void navigator.clipboard.writeText(m.content).catch(() => setError("Impossible de copier la réponse sur cet appareil.")); }} aria-label="Copier la réponse" title="Copier la réponse"><Copy size={15} /> Copier</button>
                                 <button type="button" className={`btn btn-ghost btn-sm ${feedbackByIndex[i] === 1 ? "is-rated" : ""}`} onClick={() => void rateAnswer(i, 1)} disabled={Boolean(feedbackByIndex[i])} aria-label="Évaluer positivement la réponse" title="Bonne réponse"><ThumbsUp size={15}/></button>
                                 <button type="button" className={`btn btn-ghost btn-sm ${feedbackByIndex[i] === -1 ? "is-rated" : ""}`} onClick={() => void rateAnswer(i, -1)} disabled={Boolean(feedbackByIndex[i])} aria-label="Évaluer négativement la réponse" title="Réponse à améliorer"><ThumbsDown size={15}/></button>
-                                {hasStudioCode(m.content) && <Link href="/studio" className="btn btn-ghost btn-sm" onClick={() => transferToStudio(m.content)}><Layers size={15} /> Ouvrir dans le Studio</Link>}
+                                {hasStudioCode(m.content) && <Link href="/codex?tool=studio" className="btn btn-ghost btn-sm" onClick={() => transferToStudio(m.content)}><Layers size={15} /> Ouvrir dans Codex</Link>}
                                 {isLast && !loading && <button type="button" className="btn btn-ghost btn-sm" onClick={retry} disabled={!lastMessage || Boolean(pending)} aria-label="Régénérer la réponse" title="Régénérer la réponse"><RefreshCw size={15} /> Régénérer</button>}
                               </div>
                             )}
@@ -1225,12 +1241,11 @@ export default function CodeAIPage() {
                 URL.revokeObjectURL(url);
                 setShowTools(false);
               }}><FileText size={17} /> Exporter la conversation</button>}
-              <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
+              <Link className="btn" href="/codex?tool=studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur Codex</Link>
               <Link className="btn bcx-attach-action" href="/plugins" onClick={() => setShowTools(false)}><Plug size={17} /> Plugins et intégrations</Link>
               <Link className="btn bcx-attach-action" href="/ai/memories" onClick={() => setShowTools(false)}><User size={17} /> Mémoire personnelle</Link>
               <Link className="btn bcx-attach-action" href="/ai/spreadsheets" onClick={() => setShowTools(false)}><FileText size={17} /> Analyse Excel</Link>
               <Link className="btn bcx-attach-action" href="/ai/documents" onClick={() => setShowTools(false)}><FileText size={17} /> Documents</Link>
-              <Link className="btn bcx-attach-action" href="/ai/execute" onClick={() => setShowTools(false)}><Bug size={17} /> Exécuter du code</Link>
               <Link className="btn bcx-attach-action" href="/settings" onClick={() => setShowTools(false)}><User size={17} /> Paramètres</Link>
               
             </div>
@@ -1240,7 +1255,7 @@ export default function CodeAIPage() {
           <form className="composer" onSubmit={onSubmit}>
             <label htmlFor="ai-input" className="sr-only">Message</label>
             {editingMessageIndex !== null && <div className="bcx-editing-indicator"><Pencil size={13}/> Modification du message <button type="button" onClick={() => { setEditingMessageIndex(null); setPrompt(""); }} aria-label="Annuler la modification"><X size={14}/></button></div>}
-            <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : editingMessageIndex !== null ? "Modifie ton message puis envoie-le" : workspaceMode === "code" ? "Décris le code que tu veux créer ou corriger…" : "Écris à Bickri AI…"} />
+            <textarea id="ai-input" ref={inputRef} rows={1} value={prompt} maxLength={8000} onChange={(e) => setPrompt(e.target.value)} onKeyDown={onKeyDown} disabled={Boolean(pending)} placeholder={pending ? "Valide ou refuse l'action en attente…" : editingMessageIndex !== null ? "Modifie ton message puis envoie-le" : "Écris à Bickri AI…"} />
             <div className="composer-bar bcx-simple-composer-bar">
               <button
                 type="button"
@@ -1253,11 +1268,6 @@ export default function CodeAIPage() {
                 <Plus size={20} />
               </button>
               <span className="bcx-composer-spacer" aria-hidden="true" />
-              {workspaceMode === "code" && (
-                <select className="bcx-code-language-picker" value={language} onChange={(event) => setLanguage(event.target.value)} aria-label="Langage du projet">
-                  {LANGUAGES.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-              )}
               <div className="bcx-composer-profiles" role="group" aria-label="Choisir le profil IA">
                 {(["auto", "luna", "terra", "sol", "bcx"] as const).map((profile) => (
                   <button key={profile} type="button" className={assistantProfile === profile ? "is-active" : ""} aria-pressed={assistantProfile === profile} onClick={() => changeAssistantProfile(profile)} disabled={loading} title={profile === "bcx" ? "Option C : orchestration hybride, revue multi-agents, outils et vérifications renforcées" : undefined}>
@@ -1283,6 +1293,7 @@ export default function CodeAIPage() {
           <p className="composer-note">Les réponses sont générées par IA : vérifie le code avant une mise en production. Les actions d&apos;écriture demandent toujours ta validation.</p>
         </div>
       </div>
+      )}
 
       {shareConversationId && (
         <div className="bcx-dialog-backdrop" role="presentation" onMouseDown={(event) => {

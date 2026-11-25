@@ -20,9 +20,8 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/bcx-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "Bickri AI", url: "/ai" },
-      { name: "Codex Studio", url: "/studio" },
-      { name: "IDE Cloud", url: "/workspace" },
+      { name: "Chat", url: "/ai" },
+      { name: "Codex", url: "/codex" },
     ],
   };
 }

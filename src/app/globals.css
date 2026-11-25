@@ -3735,3 +3735,15 @@ html[data-theme="dark"] .bcx-classic-chat .bcx-tool-grid > .btn,
 html[data-theme="dark"] .bcx-classic-chat .starter.bcx-quick-start strong {
   color: var(--bcx-ink) !important;
 }
+
+/* Chat et Codex partagent la barre latérale et les paramètres existants. */
+.bcx-classic-chat > .bcx-codex-space { grid-column:2; grid-row:2; display:flex; flex-direction:column; min-width:0; min-height:0; height:100%; overflow:hidden; background:var(--bcx-surface, var(--surface)); }
+.bcx-codex-space-nav { display:flex; gap:8px; flex:0 0 auto; padding:10px 18px; border-bottom:1px solid var(--border); background:var(--bcx-surface, var(--surface)); }
+.bcx-codex-space-nav button { display:inline-flex; align-items:center; gap:7px; border:1px solid transparent; border-radius:10px; background:transparent; color:var(--text-muted); padding:9px 12px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+.bcx-codex-space-nav button[aria-pressed="true"] { color:var(--text); background:var(--surface-2); border-color:var(--border); }
+.bcx-codex-space-content { flex:1 1 auto; min-height:0; min-width:0; overflow:auto; }
+.bcx-codex-space-content > .bcx-ide, .bcx-codex-space-content > .studio { min-height:100%; }
+.bcx-codex-space-content .bcx-ide { padding-top:12px; }
+.bcx-codex-space-content .bcx-workspace { height:auto; min-height:620px; }
+@media (max-width:760px) { .bcx-classic-chat > .bcx-codex-space { grid-column:1; grid-row:2; } .bcx-codex-space-nav { padding:8px 10px; gap:4px; } .bcx-codex-space-nav button { padding:8px; font-size:12px; } .bcx-codex-space-content .bcx-ide { padding:12px 10px 100px; } .bcx-codex-space-content .studio { padding-bottom:90px; } }
+html[data-theme="dark"] .bcx-classic-chat > .bcx-codex-space, html[data-theme="dark"] .bcx-codex-space-nav { background:var(--bcx-surface, var(--surface)); }

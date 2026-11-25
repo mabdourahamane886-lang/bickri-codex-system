@@ -1,6 +1,6 @@
 import {
   BookOpen, Code2, FileSpreadsheet, FileText,
-  MessageSquare, Plug, Settings, SquareTerminal, type LucideIcon,
+  MessageSquare, Plug, Settings, type LucideIcon,
 } from "lucide-react";
 
 export type NavItem = {
@@ -15,9 +15,8 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Développement",
     items: [
-      { href: "/ai", label: "Bickri AI", short: "Chat", description: "Discute, analyse des fichiers et retrouve tes conversations.", icon: MessageSquare },
-      { href: "/studio", label: "Codex Studio", short: "Studio", description: "Édite tes fichiers HTML, CSS et JavaScript avec aperçu et console.", icon: Code2 },
-      { href: "/workspace", label: "IDE Cloud", short: "IDE", description: "Gère tes projets et lance ton code dans l’espace de travail.", icon: SquareTerminal },
+      { href: "/ai", label: "Chat", short: "Chat", description: "Conversations et fonctions IA existantes.", icon: MessageSquare },
+      { href: "/codex", label: "Codex", short: "Codex", description: "Projets avancés et éditeurs réunis.", icon: Code2 },
     ],
   },
   {
@@ -38,7 +37,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
 ];
 
 export const ALL_NAV = NAV_GROUPS.flatMap((group) => group.items);
-export const MOBILE_NAV = ALL_NAV.filter(({ href }) => ["/ai", "/studio", "/workspace", "/plugins", "/settings"].includes(href));
+export const MOBILE_NAV = ALL_NAV.filter(({ href }) => ["/ai", "/codex", "/plugins", "/settings"].includes(href));
 
 export function isActive(pathname: string, href: string) {
   return pathname === href || (href !== "/" && href !== "/ai" && pathname.startsWith(href + "/"));
