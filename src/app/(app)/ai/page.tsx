@@ -157,6 +157,9 @@ export default function CodeAIPage() {
   const pathname = usePathname();
   const workspaceMode = pathname === "/codex" ? "code" : "chat";
   const [codexTool, setCodexTool] = useState<"projects" | "studio">("projects");
+  useEffect(() => {
+    if (pathname === "/codex" && new URLSearchParams(window.location.search).get("tool") === "studio") setCodexTool("studio");
+  }, [pathname]);
   const { configured, loading: sessionLoading, user, signOut } = useSession();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contents, setContents] = useState<unknown[]>([]);
@@ -968,7 +971,7 @@ export default function CodeAIPage() {
     return (
       <nav className="bcx-rail-nav" aria-label="Espaces BCX">
         {NAV_GROUPS[0].items.slice(1).map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} onClick={() => setShowNav(false)}><Icon size={16} />{label}</Link>
+          <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} onClick={() => setShowNav(false)}><Icon size={16} />{label}</Link>
         ))}
         <details className="bcx-tools-menu">
           <summary><Plug size={16} /> Outils et réglages <ChevronDown size={14} /></summary>
@@ -1013,6 +1016,7 @@ export default function CodeAIPage() {
         {workspaceMode === "code" ? <Link href="/ai" className="classic-new-chat"><SquarePen size={17}/> Nouveau chat</Link> : <button type="button" className="classic-new-chat" onClick={newChat}><SquarePen size={17}/> Nouveau chat</button>}
         <label className="bcx-history-search"><Search size={15}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Rechercher" aria-label="Rechercher dans l’historique"/></label>
         {renderSidebarLinks()}
+        {workspaceMode === "chat" && <>
         <div className="bcx-history-heading-row">
           <div className="classic-history-heading">{showArchived ? "Archives" : "Récents"}</div>
           <button type="button" className="bcx-archive-toggle" onClick={() => setShowArchived((value) => !value)} aria-pressed={showArchived}>
@@ -1020,6 +1024,7 @@ export default function CodeAIPage() {
           </button>
         </div>
         <div className="classic-history-list">{renderHistorySections()}</div>
+        </>}
         <div className="classic-sidebar-bottom">
           {renderAccountActions()}
         </div>
@@ -1159,7 +1164,7 @@ export default function CodeAIPage() {
                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => { void navigator.clipboard.writeText(m.content).catch(() => setError("Impossible de copier la réponse sur cet appareil.")); }} aria-label="Copier la réponse" title="Copier la réponse"><Copy size={15} /> Copier</button>
                                 <button type="button" className={`btn btn-ghost btn-sm ${feedbackByIndex[i] === 1 ? "is-rated" : ""}`} onClick={() => void rateAnswer(i, 1)} disabled={Boolean(feedbackByIndex[i])} aria-label="Évaluer positivement la réponse" title="Bonne réponse"><ThumbsUp size={15}/></button>
                                 <button type="button" className={`btn btn-ghost btn-sm ${feedbackByIndex[i] === -1 ? "is-rated" : ""}`} onClick={() => void rateAnswer(i, -1)} disabled={Boolean(feedbackByIndex[i])} aria-label="Évaluer négativement la réponse" title="Réponse à améliorer"><ThumbsDown size={15}/></button>
-                                {hasStudioCode(m.content) && <Link href="/studio" className="btn btn-ghost btn-sm" onClick={() => transferToStudio(m.content)}><Layers size={15} /> Ouvrir dans le Studio</Link>}
+                                {hasStudioCode(m.content) && <Link href="/codex?tool=studio" className="btn btn-ghost btn-sm" onClick={() => transferToStudio(m.content)}><Layers size={15} /> Ouvrir dans Codex</Link>}
                                 {isLast && !loading && <button type="button" className="btn btn-ghost btn-sm" onClick={retry} disabled={!lastMessage || Boolean(pending)} aria-label="Régénérer la réponse" title="Régénérer la réponse"><RefreshCw size={15} /> Régénérer</button>}
                               </div>
                             )}
@@ -1243,12 +1248,11 @@ export default function CodeAIPage() {
                 URL.revokeObjectURL(url);
                 setShowTools(false);
               }}><FileText size={17} /> Exporter la conversation</button>}
-              <Link className="btn" href="/studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur</Link>
+              <Link className="btn" href="/codex?tool=studio" onClick={() => setShowTools(false)}><Layers size={17} /> Ouvrir l’éditeur Codex</Link>
               <Link className="btn bcx-attach-action" href="/plugins" onClick={() => setShowTools(false)}><Plug size={17} /> Plugins et intégrations</Link>
               <Link className="btn bcx-attach-action" href="/ai/memories" onClick={() => setShowTools(false)}><User size={17} /> Mémoire personnelle</Link>
               <Link className="btn bcx-attach-action" href="/ai/spreadsheets" onClick={() => setShowTools(false)}><FileText size={17} /> Analyse Excel</Link>
               <Link className="btn bcx-attach-action" href="/ai/documents" onClick={() => setShowTools(false)}><FileText size={17} /> Documents</Link>
-              <Link className="btn bcx-attach-action" href="/ai/execute" onClick={() => setShowTools(false)}><Bug size={17} /> Exécuter du code</Link>
               <Link className="btn bcx-attach-action" href="/settings" onClick={() => setShowTools(false)}><User size={17} /> Paramètres</Link>
               
             </div>
